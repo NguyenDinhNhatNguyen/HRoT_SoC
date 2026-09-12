@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 
 module PC (	
-		input wire 	        clk, rst,
+		input 	        clk, rst,
         // Pipeline control 
-        input wire          stall,          // Dong bang PC (Load-Use Hazard / Bus stall)
-        input wire          flush,          // Ep nhay PC (Branch/Jalr resolve o EX)
-		input wire  [31:0]  PCNext,
-        input wire  [31:0]  PCflush_target, // Dia chi dung khi flush (tu tang EX)
-		output wire [31:0]  PC
+        input           stall,          // Dong bang PC (Load-Use Hazard / Bus stall)
+        input           flush,          // Ep nhay PC (Branch/Jalr resolve o EX)
+		input   [31:0]  PCNext,
+        input   [31:0]  PCflush_target, // Dia chi dung khi flush (tu tang EX)
+		output  [31:0]  PC
 );
    
 reg [31:0] PCReg;

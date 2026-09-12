@@ -1,14 +1,18 @@
 `timescale 1ns / 1ps
 
 module Result_Mux(
-    input  wire [31:0] ALUResult,
-    input  wire [31:0] ReadData,
-    input  wire [31:0] PC_Plus_4,
-    input  wire [31:0] ResultSrc,
+    input   [31:0] ALUResult,
+    input   [31:0] ReadData,
+    input   [31:0] PC_Plus_4,
+    input   [31:0] PCTarget,
+    input   [1:0]  ResultSrc,
 
-    output wire [31:0] Result
+    output  [31:0] Result
 );
 
-assign Result = ResultSrc[1] ? PC_Plus_4 : (ResultSrc[0] ? ReadData : ALUResult);
+assign Result = (ResultSrc == 2'b00) ? ALUResult :
+                (ResultSrc == 2'b01) ? ReadData :
+                (ResultSrc == 2'b10) ? PC_Plus_4 : 
+                                       PCTarget; // ResultSrc == 2'b11
 
 endmodule

@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
 module Extend(
-    input  wire [31:0]  Instr,
-    input  wire [1:0]   ImmSrc,
+    input  [31:0]  Instr,
+    input  [1:0]   ImmSrc,
 
     output reg [31:0]  ImmExt
 );

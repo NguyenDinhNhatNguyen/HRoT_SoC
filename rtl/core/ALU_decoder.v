@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 
 module ALU_decoder(
-    input  wire       opb5,      //bit 5 of the opcode
-    input  wire [2:0] funct3,    // instr[14:12]
-    input  wire       funct7b5,  // bit 30 of instruction
-    input  wire [1:0] ALUOp,
+    input             opb5,      //bit 5 of the opcode
+    input       [2:0] funct3,    // instr[14:12]
+    input             funct7b5,  // bit 30 of instruction
+    input       [1:0] ALUOp,
     output reg  [3:0] ALUControl
 );
 
@@ -42,7 +42,7 @@ always @(*) begin
                 3'b110: ALUControl = 4'b0011; //or,ori
                 3'b111: ALUControl = 4'b0010; //and,andi
 
-                    efault: ALUControl = 4'bxxx;
+                    default: ALUControl = 4'bxxxx;
 
             endcase
 
