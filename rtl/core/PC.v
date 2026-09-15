@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module PC (	
+module PC(	
 		input 	        clk, rst,
         // Pipeline control 
         input           stall,          // Dong bang PC (Load-Use Hazard / Bus stall)

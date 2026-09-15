@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 
 module Register_File(
-    input        clk,
-    input        WE3,
+    input         clk,
+    input         WE3,
     input  [4:0]  RA1,
     input  [4:0]  RA2,
     input  [4:0]  WA3,
     input  [31:0] WD3,
-
+    
     output [31:0] RD1,
     output [31:0] RD2
 );
