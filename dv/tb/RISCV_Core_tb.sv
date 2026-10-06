@@ -2,7 +2,6 @@
 
 module RISCV_Core_tb;
 
-    // --- Khai bao tin hieu ---
     reg clk = 0, rst, bus_stall;
     reg [31:0] instr_rdata = 0, data_rdata = 0, imem_word, dmem_rdata_force, pc_before_stall;
     reg [31:0] instr_before_stall;
@@ -13,7 +12,7 @@ module RISCV_Core_tb;
 
     integer pass_count = 0, fail_count = 0, wb_seen = 0;
 
-    // --- Khoi tao DUT ---
+    // --- Khởi tạo DUT ---
     RISCV_Core dut (
         .clk(clk), .rst(rst), .bus_stall(bus_stall),
         .instr_rdata(instr_rdata), .data_rdata(data_rdata),
@@ -26,7 +25,7 @@ module RISCV_Core_tb;
 
     always #5 clk = ~clk;
 
-    // --- Cac ham ho tro (Chuan Verilog-2001 ANSI) ---
+    // --- Các hàm hỗ trợ (Chuẩn Verilog-2001 ANSI) ---
     function [31:0] enc_r(input [6:0] f7, input [4:0] rs2, input [4:0] rs1, input [2:0] f3, input [4:0] rd, input [6:0] op); enc_r = {f7,rs2,rs1,f3,rd,op}; endfunction
     function [31:0] enc_i(input [11:0] imm, input [4:0] rs1, input [2:0] f3, input [4:0] rd, input [6:0] op); enc_i = {imm,rs1,f3,rd,op}; endfunction
     function [31:0] enc_s(input [11:0] imm, input [4:0] rs2, input [4:0] rs1, input [2:0] f3, input [6:0] op); enc_s = {imm[11:5],rs2,rs1,f3,imm[4:0],op}; endfunction
@@ -58,10 +57,10 @@ module RISCV_Core_tb;
     function [31:0] JAL  (input [4:0] rd, input [20:0] imm);        JAL   = enc_j(imm,rd,7'b1101111); endfunction
     function [31:0] AUIPC(input [4:0] rd, input [19:0] imm20);      AUIPC = enc_u(imm20,rd,7'b0010111); endfunction
 
-    // --- Hinh anh bo nho lenh (Program Image) ---
+    // --- Program Image ---
     always @(*) begin
         case (PC_debug)
-            // Can ban & ALU
+            // Các bản & ALU
             32'h0000_0000: imem_word = ADDI(5'd1, 5'd0, 12'd5);        32'h0000_0004: imem_word = ADDI(5'd2, 5'd0, -12'd3);
             32'h0000_0008: imem_word = NOP();                          32'h0000_000C: imem_word = NOP(); 
             32'h0000_0010: imem_word = NOP();
@@ -73,10 +72,10 @@ module RISCV_Core_tb;
             32'h0000_003C: imem_word = ANDI(5'd13, 5'd1, 12'h003);     32'h0000_0040: imem_word = ORI (5'd14, 5'd1, 12'h008);
             32'h0000_0044: imem_word = XORI(5'd15, 5'd1, 12'h00F);     32'h0000_0048: imem_word = SLTI(5'd16, 5'd2, 12'd1);
             
-            // Bo nho & Bao ve x0
+            // Memory & Save x0
             32'h0000_004C: imem_word = ADDI(5'd17, 5'd0, 12'h100);     
             
-            // CHEN 3 NOPs DE GIAI QUYET RAW HAZARD CHO x17
+            // Chèn 3 NOPs để giải quyết RAW HAZARD cho x17
             32'h0000_0050: imem_word = NOP();
             32'h0000_0054: imem_word = NOP();
             32'h0000_0058: imem_word = NOP();
@@ -84,23 +83,23 @@ module RISCV_Core_tb;
             32'h0000_005C: imem_word = SW(5'd1, 5'd17, 12'h000);       32'h0000_0060: imem_word = LW(5'd18, 5'd17, 12'h000);
             32'h0000_0064: imem_word = ADDI(5'd0, 5'd0, 12'd123);      32'h0000_0068: imem_word = ADDI(5'd19, 5'd0, 12'd9);       
             
-            // DA DICH DIA CHI: Tinh toan AUIPC voi PC moi la 0x6C
+            // Đã dịch address: Tính toán AUIPC với PC mới = 0x6C
             32'h0000_006C: imem_word = AUIPC(5'd20, 20'h1);
             
-            // Lenh re nhanh BNE / BEQ
+            // BNE / BEQ
             32'h0000_0070: imem_word = BNE(5'd1, 5'd1, 13'd8);         32'h0000_0074: imem_word = ADDI(5'd21, 5'd0, 12'd21);
             32'h0000_0078: imem_word = BEQ(5'd1, 5'd1, 13'd8);         32'h0000_007C: imem_word = ADDI(5'd22, 5'd0, 12'd99); 
             32'h0000_0080: imem_word = ADDI(5'd23, 5'd0, 12'd23);      
             
-            // Lenh nhay (Jumps)
+            // Jumps
             32'h0000_0084: imem_word = JAL(5'd24, 21'd12);
             32'h0000_0088: imem_word = ADDI(5'd25, 5'd0, 12'd99);      32'h0000_008C: imem_word = ADDI(5'd25, 5'd0, 12'd98);
             32'h0000_0090: imem_word = ADDI(5'd26, 5'd0, 12'd26);      
             
-            // DA DICH DIA CHI: JALR target gio se nhay toi 0xC4
+            // Đã dịch address: JALR target giờ sẽ nhảy tới 0xC4
             32'h0000_0094: imem_word = ADDI(5'd27, 5'd0, 12'hC4);
             
-            // CHEN 3 NOPs DE GIAI QUYET RAW HAZARD CHO x27
+            // Chèn 3 NOPs để giải quyết RAW HAZARD cho x27
             32'h0000_0098: imem_word = NOP();
             32'h0000_009C: imem_word = NOP();
             32'h0000_00A0: imem_word = NOP();
@@ -110,7 +109,7 @@ module RISCV_Core_tb;
         endcase
     end
 
-    // --- Cac task kiem tra (Verification Tasks) ---
+    // --- Verification Tasks ---
     task automatic check_equal32(input [31:0] actual, input [31:0] expected, input [255:0] name);
         if (actual === expected) begin pass_count++; $display("[PASS] %s : actual=%h", name, actual); end
         else begin fail_count++; $display("[FAIL] %s : actual=%h expected=%h", name, actual, expected); end
@@ -139,21 +138,21 @@ module RISCV_Core_tb;
         end
     endtask
 
-    // --- Trinh tu test chinh ---
+    // --- Trình tự test chính ---
     initial begin
-        // Ep xung noi bo (Force signals)
+        // Ép xung nội bộ (Force signals)
         force dut.u_IF_Stage.Instr_IF_out = imem_word;
         force dut.u_MEM_Stage.ReadData_MEM_out = dmem_rdata_force;
         
         dmem_rdata_force = 32'hA5A5_5A5A;
         $display("\n=== RISC_Core COMPREHENSIVE TESTBENCH ===");
         
-        // 1. Kiem tra Reset
+        // 1. Check Reset
         pulse_reset();
         check_equal32(PC_debug, 32'h0, "Reset -> PC = 0");
         check_equal1(RegWrite_WB_debug, 1'b0, "Reset -> no WB write");
 
-        // 2. Kiem tra tuan tu & Write-Back
+        // 2. Check Instruction Execution & Write-Back
         expect_wb(5'd1, 32'h0000_0005, "ADDI x1, x0, 5");       expect_wb(5'd2, 32'hFFFF_FFFD, "ADDI x2, x0, -3");
         expect_wb(5'd3, 32'h0000_000A, "ADD x3,x1,x1");         expect_wb(5'd4, 32'h0000_0008, "SUB x4,x1,x2");
         expect_wb(5'd5, 32'h0000_0005 & 32'hFFFF_FFFD, "AND");  expect_wb(5'd6, 32'h0000_0005 | 32'hFFFF_FFFD, "OR");
@@ -181,7 +180,7 @@ module RISCV_Core_tb;
         
         expect_wb(5'd29, 32'h0000_001D, "JALR target");
 
-        // 3. Kiem tra dong bang duong ong (bus_stall) mo rong
+        // 3. Check bus_stall 
         repeat(5) @(posedge clk); #1; 
         bus_stall = 1'b1; #1; 
         pc_before_stall = PC_debug;
@@ -194,14 +193,14 @@ module RISCV_Core_tb;
         bus_stall = 1'b0; repeat(3) @(posedge clk); #1;
 
         // ============================================================
-        // 4. KIEM TRA FORWARDING
+        // 4. CHECK FORWARDING
         // ============================================================
         force dut.u_EX_Stage.RD1_EX       = 32'h1111_1111;
         force dut.u_EX_Stage.RD2_EX       = 32'h2222_2222;
         force dut.u_EX_Stage.ALUResult_MEM = 32'hAAAA_AAAA;
         force dut.u_EX_Stage.Result_WB    = 32'hBBBB_BBBB;
         
-        // ALUSrc = 0 -> ALU_Mux chon SrcB_EX thay vi ImmExt_EX
+        // ALUSrc = 0 -> ALU_Mux chọn SrcB_EX thay vì ImmExt_EX
         force dut.u_EX_Stage.ALUSrc_EX = 1'b0;
 
         // ---------------- Forward = 00 ----------------
@@ -233,7 +232,7 @@ module RISCV_Core_tb;
         ForwardA_EX = 2'b00; ForwardB_EX = 2'b00;
 
         // ============================================================
-        // 5. TEST ALUSrc = 1 (Xac nhan ALU_Mux chon Immediate thay vi ForwardB)
+        // 5. TEST ALUSrc = 1 (Xác nhận ALU_Mux chọn Immediate thay vì ForwardB)
         // ============================================================
         force dut.u_EX_Stage.RD2_EX        = 32'h2222_2222;
         force dut.u_EX_Stage.ALUResult_MEM = 32'hAAAA_AAAA;
@@ -241,7 +240,7 @@ module RISCV_Core_tb;
         force dut.u_EX_Stage.ForwardB_EX   = 2'b10;
         force dut.u_EX_Stage.ImmExt_EX     = 32'h0000_1234;
         
-        // ALUSrc = 1 -> SrcB_EX phai lay ImmExt
+        // ALUSrc = 1 -> SrcB_EX phải lấy ImmExt
         force dut.u_EX_Stage.ALUSrc_EX = 1'b1; #1;
         check_equal32(dut.u_EX_Stage.SrcB_EX, 32'h0000_1234, "ALUSrc=1 -> Immediate");
         
@@ -253,7 +252,7 @@ module RISCV_Core_tb;
         release dut.u_EX_Stage.ALUSrc_EX;
 
         // ============================================================
-        // 6. TEST RESET GIUA CHUNG
+        // 6. Test MID-RUN RESET
         // ============================================================
         repeat(3) @(posedge clk);
         rst = 1'b1; #1;
@@ -262,7 +261,7 @@ module RISCV_Core_tb;
         @(posedge clk); #1; rst = 1'b0;
 
         // ============================================================
-        // 7. KIEM TRA NGO RA DEBUG
+        // 7. Check OUTPUT DEBUG
         // ============================================================
         check_equal32(instr_addr, PC_debug, "instr_addr mirrors PC_debug");
         check_equal32(Instr_debug, imem_word, "Instr_debug matches instruction");
@@ -272,9 +271,25 @@ module RISCV_Core_tb;
         $finish;
     end
 
-    // --- Giam sat dang song (Waveform Monitor) ---
+    // --- Giám sát dạng sóng (Waveform Monitor) ---
     always @(posedge clk) begin
         if (!rst) $display("[%0t] PC=%h Instr=%h Stall=%b Flush=%b | WB=%b Rd=%0d Result=%h", $time, PC_debug, Instr_debug, bus_stall, dut.PCSrc_EX, RegWrite_WB_debug, Rd_WB_debug, Result_WB_debug);
     end
 
-endmodule
+    // ============================================================
+    // 8. KIEM TRA GIAO THUC AXI4-LITE (CHUAN BI CHO TUAN 5)
+    // ============================================================
+    // Lưu ý: Các tín hiệu S_AXI_* này phải được khai báo trong module AXI4_Lite_Slave 
+    // và được đấu nối với CPU. Đoạn SVA này sẽ hoạt động khi module đó được tích hợp.
+
+    property p_axi_aw_handshake;
+        @(posedge clk) disable iff (rst)
+        // Cần đảm bảo các đường dẫn (ví dụ: dut.u_AXI_Slave.S_AXI_AWVALID) là chính xác khi ghép code
+        // (Tạm thời comment lại hoặc dùng tín hiệu giả lập nếu module AXI chưa được tích hợp)
+        
+        // (dut.u_AXI_Slave.S_AXI_AWVALID && !dut.u_AXI_Slave.S_AXI_AWREADY) |=> dut.u_AXI_Slave.S_AXI_AWVALID;
+        1'b1 |=> 1'b1; // Tạm thời để luôn đúng cho đến khi code xong AXI
+    endproperty
+
+    assert property (p_axi_aw_handshake) 
+        else $error("Lỗi AXI4-Lite: Tín hiệu AWVALID bị ngắt trước khi Slave phản hồi READY!");

@@ -1,23 +1,28 @@
 module Data_Memory #(
     parameter MEM_SIZE = 1024 // 4KB
 )(
-    input  wire        clk_i,
-    input  wire        we_i,     
-    input  wire [31:0] addr_i,   
-    input  wire [31:0] data_w,   
-    output wire [31:0] data_r    
+    input             clk,
+    input             MemWrite,
+    input             MemRead,
+    input      [31:0] addr,   
+    input      [31:0] write_data,   
+    output reg [31:0] read_data    
 );
 
     reg [31:0] ram [0:MEM_SIZE-1];
 
-    wire [29:0] word_addr = addr_i[31:2];
+    wire [29:0] word_addr = addr[31:2];
 
-    assign data_r = ram[word_addr];
+    assign read_data = ram[word_addr];
 
-    always @(posedge clk_i) begin
-        if (we_i) begin
-            ram[word_addr] <= data_w;
+    always @(posedge clk) begin
+        if (MemWrite) begin
+            ram[word_addr] <= write_data;
         end
     end
+        always @(*) begin
+        if (MemRead) read_data = ram[word_addr];
+        else read_data = 32'b0;
+        end
 
 endmodule
