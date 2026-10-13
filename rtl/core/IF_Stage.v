@@ -5,6 +5,10 @@ module IF_Stage(
     input         stall_IF,         // Dong bang PC
     input         flush_IF,         // Flush khi branch/jump resolve o EX
     input  [31:0] PCFlushTarget_EX, // Dia chi dich tu EX khi flush
+    
+    //ROM interface
+    input  [31:0] instr_rdata,
+    output [31:0] instr_addr,
 
     output [31:0] PC_IF_out,            // PC hien tai
     output [31:0] Instr_IF_out,         // Lenh hien tai
@@ -13,7 +17,9 @@ module IF_Stage(
 
 wire [31:0] PCNext_IF;
 
-assign PCNext_IF = PC_Plus_4_IF_out;
+assign PCNext_IF    = PC_Plus_4_IF_out;
+assign instr_addr   = PC_IF_out;
+assign Instr_IF_out = instr_rdata;
 
 PC u_PC(
     .clk            (clk),
@@ -28,13 +34,6 @@ PC u_PC(
 PC_Plus_4 u_PC_Plus_4(
     .PC            (PC_IF_out),
     .PCPlus4       (PC_Plus_4_IF_out)
-);
-
-Instruction_Memory #(
-    .MEM_SIZE      (1024)   
-) u_Instruction_Memory (
-    .addr_i        (PC_IF_out),
-    .inst_o        (Instr_IF_out)
 );
 
 endmodule

@@ -51,6 +51,8 @@ assign Rd_EX_out        = Rd_EX;
 wire [31:0] SrcA_EX;
 wire [31:0] SrcB_EX;
 wire Zero_EX;
+wire lt_EX;
+wire ltu_EX;
 
 assign SrcA_EX = (ForwardA_EX == 2'b10) ? ALUResult_MEM : (ForwardA_EX == 2'b01) ? Result_WB : RD1_EX;
 
@@ -68,6 +70,8 @@ ALU u_ALU(
     .B          (SrcB_EX),
     .ALUControl (ALUControl_EX),
     .Zero       (Zero_EX),
+    .lt         (lt_EX),
+    .ltu        (ltu_EX),
     .Result     (ALUResult_EX_out)
 );
 
@@ -79,7 +83,7 @@ PC_Target u_PC_Target(
     .PCTarget (PCTarget_Calc_EX)
 );
 
-assign PCTarget_EX_out = (Jalr_EX) ? ALUResult_EX_out : PCTarget_Calc_EX;
+assign PCTarget_EX_out = (Jalr_EX) ? (ALUResult_EX_out & 32'hFFFFFFFE) : PCTarget_Calc_EX;
 
 Branch_Unit u_Branch_Unit(
     .Branch (Branch_EX),
@@ -87,6 +91,8 @@ Branch_Unit u_Branch_Unit(
     .Jalr   (Jalr_EX),
     .funct3 (funct3_EX),
     .Zero   (Zero_EX),
+    .lt     (lt_EX),
+    .ltu    (ltu_EX),
     .PCSrc  (PCSrc_EX)
 );
 

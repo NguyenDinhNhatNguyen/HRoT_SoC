@@ -13,10 +13,16 @@ module MEM_Stage(
     input  [31:0] PC_Plus_4_MEM,
     input  [31:0] PCTarget_MEM,
     input  [4:0]  Rd_MEM,
+    //AXI interface
+    input  [31:0] data_rdata,
+
+    output [31:0] data_addr,
+    output [31:0] data_wdata,
+    output        data_we,
+    output        data_re,
     //Outputs den MEM_WB_Reg
     output        RegWrite_MEM_out,
     output [1:0]  ResultSrc_MEM_out,
- 
     output [31:0] ALUResult_MEM_out,
     output [31:0] ReadData_MEM_out,
     output [31:0] PC_Plus_4_MEM_out,
@@ -24,22 +30,19 @@ module MEM_Stage(
     output [4:0]  Rd_MEM_out
 );
 
+//MEM -> MEM/WB pass-through
 assign RegWrite_MEM_out  = RegWrite_MEM;
 assign ResultSrc_MEM_out = ResultSrc_MEM;
- 
 assign ALUResult_MEM_out = ALUResult_MEM;
+assign ReadData_MEM_out  = data_rdata;
 assign PC_Plus_4_MEM_out = PC_Plus_4_MEM;
 assign PCTarget_MEM_out  = PCTarget_MEM;
 assign Rd_MEM_out        = Rd_MEM;
 
-Data_Memory #(
-    .MEM_SIZE(1024)
-) u_Data_Memory(
-    .clk_i  (clk),
-    .we_i   (MemWrite_MEM),
-    .addr_i (ALUResult_MEM),
-    .data_w (WriteData_MEM),
-    .data_r (ReadData_MEM_out)
-);
+//Data Memory interface
+assign data_addr  = ALUResult_MEM;
+assign data_wdata = WriteData_MEM;
+assign data_we    = MemWrite_MEM;
+assign data_re    = MemRead_MEM;
 
 endmodule

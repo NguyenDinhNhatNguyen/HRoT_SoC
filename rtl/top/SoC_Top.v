@@ -7,7 +7,7 @@ module SoC_Top (
 
     RISCV_Core master_core (
         .clk(clk), 
-        .reset(reset_system),
+        .rst(reset_system),
         .bus_stall(~master_req_ready),    // Stall CPU nếu AXI Master đang bận xử lý
         .instr_addr(rom_addrB),
         .instr_rdata(rom_dataB),
@@ -15,15 +15,12 @@ module SoC_Top (
         .data_we(master_data_we),
         .data_re(master_data_re),
         .data_rdata(master_data_rdata),
-        .ForwardA_EX(2'b00),
-        .ForwardB_EX(2'b00),
         .data_addr(master_data_addr)    // Nối dây ALUResult_MEM ra port này
-        
     );
 
     RISCV_Core app_core (
         .clk(clk), 
-        .reset(~app_core_reset_n),
+        .rst(~app_core_reset_n),
         // Lõi này chỉ được cấp quyền đọc Port A của ROM
         .bus_stall(1'b0),
         .instr_addr(rom_addrA),
@@ -31,9 +28,7 @@ module SoC_Top (
         .data_wdata(),
         .data_we(),
         .data_re(),
-        .data_rdata(32'b0),
-        .ForwardA_EX(2'b00),
-        .ForwardB_EX(2'b00)
+        .data_rdata(32'b0)
     );
 
     AXI4_Lite_Master axi_master (

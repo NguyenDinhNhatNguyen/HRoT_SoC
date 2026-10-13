@@ -7,7 +7,7 @@ module Hazard_Detection (
 );
     always @(*) begin
         // Load (MemRead_EX) + Write vào Reg mà lệnh hiện tại đang đọc (Rs1_ID hoặc Rs2_ID) => Stall
-        if (MemRead_EX && ((Rd_EX == Rs1_ID) || (Rd_EX == Rs2_ID)))
+        if (MemRead_EX && (Rd_EX != 5'd0) && ((Rd_EX == Rs1_ID) || (Rd_EX == Rs2_ID)))
             Stall = 1'b1; // Kích hoạt Stall (khóa PC, khóa IF/ID và chèn lệnh NOP vào ID/EX)
         else 
             Stall = 1'b0;

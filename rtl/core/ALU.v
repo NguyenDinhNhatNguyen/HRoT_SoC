@@ -6,6 +6,8 @@ module ALU(
     input  wire [3:0]  ALUControl,
 
     output wire        Zero,
+    output wire        lt,
+    output wire        ltu,
     output wire [31:0] Result
 );
 
@@ -53,8 +55,9 @@ always @(*) begin
 end
 
 // Zero Flag
-
 assign Zero   = (ResultReg == 32'b0);
+assign lt     = slt;
+assign ltu    = sltu;
 assign Result = ResultReg;
 
 endmodule
