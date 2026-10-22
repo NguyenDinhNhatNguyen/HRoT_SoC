@@ -10,15 +10,20 @@ set(CMAKE_ASM_COMPILER "${TOOLCHAIN_PREFIX}gcc")
 set(OBJCOPY "${TOOLCHAIN_PREFIX}objcopy")
 set(OBJDUMP "${TOOLCHAIN_PREFIX}objdump")
 
-set(RISCV_FLAGS "-march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib")
+set(RISCV_FLAGS "-march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib -fno-tree-loop-distribute-patterns")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${RISCV_FLAGS}" CACHE STRING "" FORCE)
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${RISCV_FLAGS}" CACHE STRING "" FORCE)
 
 # Target cho Master Core
+# HAL SHA-256 (Tuần 6): thư viện tĩnh dùng chung cho firmware Master Core
+add_library(hal_sha256 STATIC hal/sha256_hal.c)
+target_include_directories(hal_sha256 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hal)
+
 set(SECURE_BOOT_SRC 
     secure_boot/main.c
 )
 add_executable(secure_boot.elf ${SECURE_BOOT_SRC})
+target_link_libraries(secure_boot.elf PRIVATE hal_sha256)
 
 # Ép Linker Script (Bỏ comment dòng dưới nếu bạn có file linker.ld định tuyến bộ nhớ)
 # target_link_options(secure_boot.elf PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld)
