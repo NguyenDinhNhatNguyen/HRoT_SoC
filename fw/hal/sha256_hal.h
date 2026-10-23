@@ -77,7 +77,8 @@ sha256_status_t sha256_digest(const void *data, uint32_t len, uint8_t out[SHA256
 sha256_status_t sha256_digest_mem(uintptr_t addr, uint32_t len, uint8_t out[SHA256_DIGEST_SIZE]);
 
 /* ---- Tiện ích ---- */
-/* So sánh thời gian hằng (chống rò rỉ timing). Trả 0 nếu bằng nhau, khác 0 nếu khác. */
+/* So sánh thời gian hằng (chống rò rỉ timing). Trả 0 nếu bằng nhau, khác 0 nếu khác.
+ * a/b NULL hoặc len = 0 luôn trả khác 0 (fail-safe cho Secure Boot). */
 int sha256_compare(const uint8_t *a, const uint8_t *b, uint32_t len);
 
 /* Tự kiểm tra phần cứng bằng vector NIST (rỗng, "abc", 56 byte hai khối).

@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 module Forwarding_Unit (
     input      [4:0] Rs1_EX,
     input      [4:0] Rs2_EX,

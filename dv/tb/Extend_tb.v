@@ -1,63 +1,64 @@
 `timescale 1ns / 1ps
 
+// ============================================================
+// Extend_tb - Testbench tu kiem tra mo rong immediate (I/S/B/J/U)
+// ============================================================
 module Extend_tb;
 
-    // Khai bao tin hieu
     reg  [31:0] Instr;
     reg  [1:0]  ImmSrc;
     wire [31:0] ImmExt;
 
-    // Instantiate module Extend
-    Extend u_Extend (
-        .Instr(Instr),
-        .ImmSrc(ImmSrc),
-        .ImmExt(ImmExt)
-    );
+    integer pass_count = 0, fail_count = 0;
+
+    Extend u_Extend (.Instr(Instr), .ImmSrc(ImmSrc), .ImmExt(ImmExt));
+
+    task check;
+        input [31:0]   instr;
+        input [1:0]    src;
+        input [31:0]   e_imm;
+        input [8*24:1] name;
+        begin
+            Instr = instr; ImmSrc = src; #10;
+            if (ImmExt === e_imm) begin
+                pass_count = pass_count + 1;
+                $display("[PASS] %0s : ImmExt=%h", name, ImmExt);
+            end else begin
+                fail_count = fail_count + 1;
+                $display("[FAIL] %0s : ImmExt=%h (expect %h)", name, ImmExt, e_imm);
+            end
+        end
+    endtask
 
     initial begin
-        $display("===============================================================");
-        $display("                     BAT DAU TEST EXTEND                       ");
-        $display("===============================================================");
-        $display("Loai Lenh | ImmSrc | Instr (Hex) | ImmExt (Hex)  | Ghi chu");
-        $display("---------------------------------------------------------------");
+        $display("\n=== EXTEND TESTBENCH ===");
 
-        // 1. U-Type (LUI) - Opcode = 0110111
-        // Lay 20 bit cao, dien 12 bit 0 vao cuoi. ImmSrc khong quan trong.
-        Instr = 32'h1234_5037; ImmSrc = 2'bxx; #10;
-        $display("U-Type    |   %b   |  %h   |  %h   | LUI (0x12345000)", ImmSrc, Instr, ImmExt);
+        // U-type: opcode quyet dinh, ImmSrc bo qua
+        check(32'h1234_5037, 2'b00, 32'h1234_5000, "LUI 0x12345");
+        check(32'hABCD_E017, 2'b11, 32'hABCD_E000, "AUIPC 0xABCDE");
 
-        // 2. U-Type (AUIPC) - Opcode = 0010111
-        Instr = 32'hABCD_E017; ImmSrc = 2'bxx; #10;
-        $display("U-Type    |   %b   |  %h   |  %h   | AUIPC (0xABCDE000)", ImmSrc, Instr, ImmExt);
+        // I-type: imm = Instr[31:20]
+        check(32'h00F0_0013, 2'b00, 32'h0000_000F, "I  +15");
+        check(32'hFFF0_0013, 2'b00, 32'hFFFF_FFFF, "I  -1");
+        check(32'h8000_0013, 2'b00, 32'hFFFF_F800, "I  -2048");
 
-        // 3. I-Type (ADDI) - ImmSrc = 00
-        // So duong: Imm[31:20] = 0x00F
-        Instr = 32'h00F0_0000; ImmSrc = 2'b00; #10;
-        $display("I-Type (+)  |   %b   |  %h   |  %h   | Imm = 15 (0x00F)", ImmSrc, Instr, ImmExt);
+        // S-type: imm = {Instr[31:25], Instr[11:7]}
+        check(32'hFE00_0FA3, 2'b01, 32'hFFFF_FFFF, "S  -1");
+        check(32'h0200_04A3, 2'b01, 32'h0000_0029, "S  +41");
 
-        // So am: Imm[31:20] = 0xFFF (-1) -> Mo rong dau thanh 0xFFFFFFFF
-        Instr = 32'hFFF0_0000; ImmSrc = 2'b00; #10;
-        $display("I-Type (-)  |   %b   |  %h   |  %h   | Imm = -1 (0xFFF)", ImmSrc, Instr, ImmExt);
+        // B-type: imm = {Instr[31], Instr[7], Instr[30:25], Instr[11:8], 0}
+        check(32'hFE00_0FE3, 2'b10, 32'hFFFF_FFFE, "B  -2");
+        check(32'h0000_0463, 2'b10, 32'h0000_0008, "B  +8");
+        check(32'h0000_00E3, 2'b10, 32'h0000_0800, "B  +2048 (bit 11)");
 
-        // 4. S-Type (SW) - ImmSrc = 01
-        // Imm = 0xFFF (-1): Instr[31:25] = 0x7F, Instr[11:7] = 0x1F
-        Instr = 32'hFE00_0F80; ImmSrc = 2'b01; #10;
-        $display("S-Type (-)  |   %b   |  %h   |  %h   | Imm = -1", ImmSrc, Instr, ImmExt);
+        // J-type: imm = {Instr[31], Instr[19:12], Instr[20], Instr[30:21], 0}
+        check(32'h8000_006F, 2'b11, 32'hFFF0_0000, "J  -1048576");
+        check(32'h00C0_006F, 2'b11, 32'h0000_000C, "J  +12");
+        check(32'h0010_006F, 2'b11, 32'h0000_0800, "J  +2048 (bit 11)");
+        check(32'h0000_106F, 2'b11, 32'h0000_1000, "J  +4096 (bit 12)");
 
-        // 5. B-Type (BEQ) - ImmSrc = 10
-        // Imm = -2 (0xFFFFFFFE): Bit0 luon = 0, cac bit con lai la 1
-        Instr = 32'hFE00_0F80; ImmSrc = 2'b10; #10;
-        $display("B-Type (-)  |   %b   |  %h   |  %h   | Imm = -2", ImmSrc, Instr, ImmExt);
-
-        // 6. J-Type (JAL) - ImmSrc = 11
-        // Kiem tra mo rong dau cho buoc nhay xa (J-type)
-        Instr = 32'h8000_0000; ImmSrc = 2'b11; #10;
-        $display("J-Type (-)  |   %b   |  %h   |  %h   | Mo rong bit dau", ImmSrc, Instr, ImmExt);
-
-        $display("===============================================================");
-        $display("                       KET THUC TEST                           ");
-        $display("===============================================================");
-        $stop;
+        $display("\nSUMMARY EXTEND: PASS = %0d | FAIL = %0d", pass_count, fail_count);
+        $finish;
     end
 
 endmodule

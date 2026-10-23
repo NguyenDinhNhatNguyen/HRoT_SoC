@@ -7,8 +7,10 @@
 // - Branch/Jump resolved at EX and flushes IF/ID, ID/EX
 // - bus_stall freezes the global pipeline
 // - Forwarding_Unit and Hazard_Detection are integrated inside RISCV_Core
-// - Instruction/Data Memory are currently internal
-// - AXI4-Lite integration will be added later
+// - Instruction/Data Memory nam ngoai core:
+//     instr_rdata phai co trong CUNG chu ky voi instr_addr (bo nho doc to hop)
+//     data_rdata phai co trong CUNG chu ky voi data_addr, neu chua co thi giu bus_stall = 1
+// - Load/Store byte/half: data_wstrb chon byte lane, load duoc mo rong dau/0 trong MEM_Stage
 //
 // Integration notes:
 // - Keep ALUResult_MEM declared only once
@@ -26,6 +28,7 @@ module RISCV_Core(
     input  [31:0] data_rdata,
     output [31:0] data_addr,
     output [31:0] data_wdata,
+    output [3:0]  data_wstrb,
     output        data_we,
     output        data_re,
 
@@ -271,6 +274,7 @@ wire        RegWrite_MEM, MemWrite_MEM, MemRead_MEM;
 wire [1:0]  ResultSrc_MEM;
 wire [31:0] WriteData_MEM, PC_Plus_4_MEM, PCTarget_MEM;
 wire [4:0]  Rd_MEM;
+wire [2:0]  funct3_MEM;
 
 EX_MEM_Reg u_EX_MEM_Reg(
     .clk            (clk),
@@ -288,6 +292,7 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .PC_Plus_4_EX   (PC_Plus_4_EX_out),
     .PCTarget_EX    (PCTarget_EX_out),
     .Rd_EX          (Rd_EX_out),
+    .funct3_EX      (funct3_EX),
         
     // Drive MEM Wires
     .RegWrite_MEM   (RegWrite_MEM),
@@ -299,7 +304,8 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .WriteData_MEM  (WriteData_MEM),
     .PC_Plus_4_MEM  (PC_Plus_4_MEM),
     .PCTarget_MEM   (PCTarget_MEM),
-    .Rd_MEM         (Rd_MEM)
+    .Rd_MEM         (Rd_MEM),
+    .funct3_MEM     (funct3_MEM)
 );
 
 // Forwarding Unit: MEM has priority over WB
@@ -314,6 +320,12 @@ Forwarding_Unit u_Forwarding_Unit(
     .ForwardB     (ForwardB_EX_internal)
 );
 
+// MEM stage outputs (khai bao truoc khi dung trong mux forwarding ben duoi)
+wire        RegWrite_MEM_out;
+wire [1:0]  ResultSrc_MEM_out;
+wire [31:0] ALUResult_MEM_out, ReadData_MEM_out, PC_Plus_4_MEM_out, PCTarget_MEM_out;
+wire [4:0]  Rd_MEM_out;
+
 always @(*) begin
     case (ResultSrc_MEM_out)
         2'b00: ForwardResult_MEM = ALUResult_MEM_out;
@@ -325,11 +337,6 @@ always @(*) begin
 end
 
 // Stage 4: MEM
-wire        RegWrite_MEM_out;
-wire [1:0]  ResultSrc_MEM_out;
-wire [31:0] ALUResult_MEM_out, ReadData_MEM_out, PC_Plus_4_MEM_out, PCTarget_MEM_out;
-wire [4:0]  Rd_MEM_out;
-
 MEM_Stage u_MEM_Stage(
     .clk                (clk),
     .RegWrite_MEM       (RegWrite_MEM),
@@ -342,10 +349,12 @@ MEM_Stage u_MEM_Stage(
     .PC_Plus_4_MEM      (PC_Plus_4_MEM),
     .PCTarget_MEM       (PCTarget_MEM),
     .Rd_MEM             (Rd_MEM),
+    .funct3_MEM         (funct3_MEM),
     //AXI
     .data_rdata         (data_rdata),
     .data_addr          (data_addr),
     .data_wdata         (data_wdata),
+    .data_wstrb         (data_wstrb),
     .data_we            (data_we),
     .data_re            (data_re),
     // MEM Outputs

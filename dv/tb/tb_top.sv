@@ -23,10 +23,18 @@ module tb_top;
     .rvalid(axi_if.rvalid), .rready(axi_if.rready)
   );
 
-  // Reset giữ 5 chu kỳ, nhả ở cạnh xuống để tránh race với các process lấy mẫu cạnh lên
+  // Reset giữ 5 chu kỳ, nhả ở cạnh xuống để tránh race với các process lấy mẫu cạnh lên.
+  // +RESET_AT_NS=<t>: thêm một xung reset 5 chu kỳ sau t ns (kiểm tra reset giữa giao dịch).
   initial begin
+    int unsigned reset_at_ns;
     repeat (5) @(negedge clk);
     rst_n = 1'b1;
+    if ($value$plusargs("RESET_AT_NS=%d", reset_at_ns)) begin
+      #(real'(reset_at_ns) * 1ns);
+      @(negedge clk) rst_n = 1'b0;
+      repeat (5) @(negedge clk);
+      rst_n = 1'b1;
+    end
   end
 
   initial begin

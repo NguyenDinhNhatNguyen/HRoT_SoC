@@ -53,7 +53,7 @@ void sha256_ref(const uint8_t *msg, size_t len, uint8_t out[32])
     if (rem) memcpy(blk, msg + 64*full, rem);
     blk[rem] = 0x80;
     nblk = (rem < 56) ? 1 : 2;
-    for (int j = 0; j < 8; j++) blk[64*nblk - 1 - j] = (uint8_t)(bits >> (8*j));
+    for (size_t j = 0; j < 8; j++) blk[64*nblk - 1 - j] = (uint8_t)(bits >> (8*j));
     for (i = 0; i < nblk; i++) {
         for (int j = 0; j < 16; j++) {
             const uint8_t *p = blk + 64*i + 4*j;

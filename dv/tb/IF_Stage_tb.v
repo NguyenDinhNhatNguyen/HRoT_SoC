@@ -14,6 +14,13 @@ module IF_Stage_tb;
     wire [31:0] Instr_IF;
     wire [31:0] PC_Plus_4_IF;
 
+    // ROM mo phong (doc to hop) - Instruction Memory nam ngoai IF_Stage
+    reg  [31:0] rom [0:63];
+    wire [31:0] instr_addr;
+    wire [31:0] instr_rdata = rom[instr_addr[7:2]];
+    integer     k;
+    integer     pass_count = 0, fail_count = 0;
+
     // Khoi tao DUT (Device Under Test)
     IF_Stage dut (
         .clk               (clk),
@@ -21,9 +28,11 @@ module IF_Stage_tb;
         .stall_IF          (stall_IF),
         .flush_IF          (flush_IF),
         .PCFlushTarget_EX  (PCFlushTarget_EX),
-        .PC_IF             (PC_IF),
-        .Instr_IF          (Instr_IF),
-        .PC_Plus_4_IF      (PC_Plus_4_IF)
+        .instr_rdata       (instr_rdata),
+        .instr_addr        (instr_addr),
+        .PC_IF_out         (PC_IF),
+        .Instr_IF_out      (Instr_IF),
+        .PC_Plus_4_IF_out  (PC_Plus_4_IF)
     );
 
     // Tao Clock chu ky 10ns (100MHz)
@@ -31,23 +40,6 @@ module IF_Stage_tb;
         clk = 1'b0;
         forever #5 clk = ~clk;
     end
-
-    // Task kiem tra ket qua ngo ra gon nhe, dung %0s tranh khoang trang thua
-    task check_output;
-        input [31:0] exp_PC;
-        input [31:0] exp_PC4;
-        input [1023:0] test_name;
-        begin
-            #1; // Cho on dinh sau suon len xung clock
-            if ((PC_IF === exp_PC) && (PC_Plus_4_IF === exp_PC4)) begin
-                $display("[PASS] %0s | PC_IF = 32'h%h | Instr_IF = 32'h%h", test_name, PC_IF, Instr_IF);
-            end else begin
-                $display("[FAIL] %0s", test_name);
-                $display("  Expected: PC = %h | PC+4 = %h", exp_PC, exp_PC4);
-                $display("  Actual  : PC = %h | PC+4 = %h", PC_IF, PC_Plus_4_IF);
-            end
-        end
-    endtask
 
     // Task kiem tra PC, PC+4 và Instruction
     task check_output_with_instr;
@@ -61,10 +53,12 @@ module IF_Stage_tb;
                 (PC_Plus_4_IF === exp_PC4) &&
                 (Instr_IF === exp_Instr)) begin
 
+                pass_count = pass_count + 1;
                 $display("[PASS] %0s | PC_IF = 32'h%h | PC+4 = 32'h%h | Instr_IF = 32'h%h",
                          test_name, PC_IF, PC_Plus_4_IF, Instr_IF);
 
             end else begin
+                fail_count = fail_count + 1;
                 $display("[FAIL] %0s", test_name);
                 $display("  Expected: PC = %h | PC+4 = %h | Instr = %h",
                          exp_PC, exp_PC4, exp_Instr);
@@ -77,11 +71,12 @@ module IF_Stage_tb;
     // Main Test Sequence
     initial begin
         // Nap thu du lieu mau vao ROM mo phong
-        dut.u_Instruction_Memory.rom[0]  = 32'h00100093; // addi x1, x0, 1 (PC = 0x00)
-        dut.u_Instruction_Memory.rom[1]  = 32'h00200113; // addi x2, x0, 2 (PC = 0x04)
-        dut.u_Instruction_Memory.rom[2]  = 32'h00300193; // addi x3, x0, 3 (PC = 0x08)
-        dut.u_Instruction_Memory.rom[3]  = 32'h00400213; // addi x4, x0, 4 (PC = 0x0C)
-        dut.u_Instruction_Memory.rom[10] = 32'h00A00513; // addi x10, x0, 10 (PC = 0x28)
+        for (k = 0; k < 64; k = k + 1) rom[k] = 32'h00000013;
+        rom[0]  = 32'h00100093; // addi x1, x0, 1 (PC = 0x00)
+        rom[1]  = 32'h00200113; // addi x2, x0, 2 (PC = 0x04)
+        rom[2]  = 32'h00300193; // addi x3, x0, 3 (PC = 0x08)
+        rom[3]  = 32'h00400213; // addi x4, x0, 4 (PC = 0x0C)
+        rom[10] = 32'h00A00513; // addi x10, x0, 10 (PC = 0x28)
 
         // Tin hieu ban dau
         rst              = 1'b0;
@@ -192,9 +187,7 @@ module IF_Stage_tb;
             "10. Final Normal -> Chay binh thuong tu 0x8"
         );
 
-        $display("==================================================");
-        $display("          KET THUC TESTBENCH TANG IF             ");
-        $display("==================================================\n");
+        $display("\nSUMMARY IF_STAGE: PASS = %0d | FAIL = %0d", pass_count, fail_count);
 
         #10 $finish;
     end

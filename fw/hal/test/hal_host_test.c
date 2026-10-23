@@ -19,22 +19,24 @@ static uint32_t rnd(void) { static uint32_t s = 0x1234567u; s ^= s << 13; s ^= s
 /* ---- T1: vector chuẩn NIST + self-test ---- */
 static void t_kat(void)
 {
-    uint8_t h[32], e[32];
-    char a[65], b[65];
+    uint8_t h[32];
+    char a[65];
     uint8_t *m = malloc(1000000);
     sha256_ctx_t c;
+    int upd_fail = 0;
     printf("[T1] KAT\n");
     sha256_mock_reset();
     CHECK(sha256_selftest() == SHA256_OK, "selftest");
 
+    if (m == NULL) { CHECK(0, "malloc 1MB"); return; }
     memset(m, 'a', 1000000);                          /* 1 triệu chữ 'a', nạp theo mảnh 1000 byte */
     CHECK(sha256_init(&c) == SHA256_OK, "init");
-    for (int i = 0; i < 1000; i++) CHECK(sha256_update(&c, m + 1000*i, 1000) == SHA256_OK, "upd");
+    for (int i = 0; i < 1000; i++) upd_fail += (sha256_update(&c, m + 1000*i, 1000) != SHA256_OK);
+    CHECK(upd_fail == 0, "1000 lần update: %d lỗi", upd_fail);
     CHECK(sha256_final(&c, h) == SHA256_OK, "final");
     hex(h, a);
     CHECK(!strcmp(a, "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0"), "1M 'a' = %s", a);
     free(m);
-    (void)e; (void)b;
 }
 
 /* ---- T2: mọi độ dài 0..300 (quanh các biên 55/56/63/64/119/120) khớp mô hình tham chiếu ---- */
@@ -160,6 +162,7 @@ static void t_compare(void)
     CHECK(sha256_compare(a, b, 32) == 0, "bằng nhau");
     for (int i = 0; i < 32; i++) { b[i] ^= 0x80; CHECK(sha256_compare(a, b, 32) != 0, "khác ở byte %d", i); b[i] ^= 0x80; }
     CHECK(sha256_compare(NULL, b, 32) != 0, "NULL -> khác");
+    CHECK(sha256_compare(a, b, 0) != 0, "len = 0 -> khác (không được coi là khớp)");
 }
 
 /* ---- T8: tham số sai ở hàm one-shot không được làm rò phiên (regression) ---- */
@@ -221,13 +224,21 @@ static void t_rom_bounds(void)
 /* Chế độ --file: in digest HAL của file (cross-check với sha256sum) */
 static int file_mode(const char *path)
 {
-    FILE *f = fopen(path, "rb"); long n; uint8_t *d, h[32]; char s[65];
+    FILE *f = fopen(path, "rb"); long n; uint8_t *d, h[32]; char s[65]; int rc = 0;
     if (!f) { perror("open"); return 2; }
-    fseek(f, 0, SEEK_END); n = ftell(f); fseek(f, 0, SEEK_SET);
-    d = malloc(n ? n : 1); if (n && fread(d, 1, n, f) != (size_t)n) return 2; fclose(f);
-    sha256_mock_reset();
-    if (sha256_digest(d, (uint32_t)n, h) != SHA256_OK) return 3;
-    hex(h, s); printf("%s\n", s); free(d); return 0;
+    if (fseek(f, 0, SEEK_END) != 0 || (n = ftell(f)) < 0 || n > 0xFFFFFFFFL || fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f); return 2;
+    }
+    d = malloc(n ? (size_t)n : 1u);
+    if (d == NULL || (n && fread(d, 1, (size_t)n, f) != (size_t)n)) rc = 2;
+    fclose(f);
+    if (rc == 0) {
+        sha256_mock_reset();
+        if (sha256_digest(d, (uint32_t)n, h) != SHA256_OK) rc = 3;
+        else { hex(h, s); printf("%s\n", s); }
+    }
+    free(d);
+    return rc;
 }
 
 int main(int argc, char **argv)

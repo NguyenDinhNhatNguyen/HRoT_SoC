@@ -15,6 +15,7 @@ class axi4_lite_item extends uvm_sequence_item;
   bit [31:0]        rdata;
   bit [1:0]         bresp;
   bit [1:0]         rresp;
+  bit               aborted;      // 1: bị hủy do reset giữa giao dịch (rdata/resp không hợp lệ)
 
   `uvm_object_utils(axi4_lite_item)
 
@@ -40,14 +41,17 @@ class axi4_lite_item extends uvm_sequence_item;
     rdata      = r.rdata;
     bresp      = r.bresp;
     rresp      = r.rresp;
+    aborted    = r.aborted;
   endfunction
 
   virtual function string convert2string();
+    string s;
     if (is_write)
-      return $sformatf("WR addr=0x%08h data=0x%08h strb=%04b bresp=%0d",
-                       addr, data, wstrb, bresp);
+      s = $sformatf("WR addr=0x%08h data=0x%08h strb=%04b bresp=%0d",
+                    addr, data, wstrb, bresp);
     else
-      return $sformatf("RD addr=0x%08h data=0x%08h rresp=%0d",
-                       addr, rdata, rresp);
+      s = $sformatf("RD addr=0x%08h data=0x%08h rresp=%0d",
+                    addr, rdata, rresp);
+    return aborted ? {s, " [ABORTED]"} : s;
   endfunction
 endclass

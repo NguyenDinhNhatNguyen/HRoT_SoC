@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/HRoT_SoC/fw"
+    "cmake.sourceDirectory": "D:/HRoT_SoC/fw",
+    "editor.renderFinalNewline": "off"
 }

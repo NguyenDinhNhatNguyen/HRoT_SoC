@@ -260,7 +260,7 @@ int sha256_compare(const uint8_t *a, const uint8_t *b, uint32_t len)
 {
     uint8_t diff = 0u;
     uint32_t i;
-    if (a == NULL || b == NULL) return 1;
+    if (a == NULL || b == NULL || len == 0u) return 1;   /* so 0 byte không được coi là khớp */
     for (i = 0u; i < len; i++) diff |= (uint8_t)(a[i] ^ b[i]);
     return diff != 0u;
 }

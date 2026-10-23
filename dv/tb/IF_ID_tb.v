@@ -10,6 +10,8 @@ module IF_ID_Reg_tb;
     // Lenh NOP (ADDI x0, x0, 0)
     localparam [31:0] NOP = 32'h00000013;
 
+    integer pass_count = 0, fail_count = 0;
+
     // Khoi tao DUT
     IF_ID_Reg dut (
         .clk(clk), .rst(rst), .stall(stall), .flush(flush),
@@ -30,9 +32,11 @@ module IF_ID_Reg_tb;
         begin
             #1; // Loi tin hieu on dinh sau suon clock
             if ((PC_ID === exp_PC) && (Instr_ID === exp_Instr) && (PC_Plus_4_ID === exp_PC_Plus_4)) begin
-                $display("[PASS] %0s", test_name); // Thay %s bang %0s
+                pass_count = pass_count + 1;
+                $display("[PASS] %0s", test_name);
             end else begin
-                $display("[FAIL] %0s", test_name); // Thay %s bang %0s
+                fail_count = fail_count + 1;
+                $display("[FAIL] %0s", test_name);
                 $display("       Expected: PC=%h | Instr=%h | PC+4=%h", exp_PC, exp_Instr, exp_PC_Plus_4);
                 $display("       Actual  : PC=%h | Instr=%h | PC+4=%h", PC_ID, Instr_ID, PC_Plus_4_ID);
             end
@@ -92,7 +96,7 @@ module IF_ID_Reg_tb;
         @(posedge clk);
         check_output(32'h70, 32'h00700393, 32'h74, "9. Final Normal -> Data transferred");
 
-        $display("--- KET THUC TESTBENCH ---\n");
+        $display("\nSUMMARY IF_ID: PASS = %0d | FAIL = %0d", pass_count, fail_count);
         #10 $finish;
     end
 

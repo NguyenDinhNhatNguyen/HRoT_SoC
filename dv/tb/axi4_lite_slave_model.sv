@@ -6,6 +6,7 @@
 //  - AW và W được nhận độc lập, ở thứ tự bất kỳ; BVALID chỉ lên sau khi có đủ cả hai.
 //  - BVALID/RVALID được giữ cho tới khi master đưa BREADY/RREADY.
 //  - Mỗi lúc chỉ có 1 giao dịch ghi và 1 giao dịch đọc đang xử lý.
+//  - Reset xóa toàn bộ bộ nhớ (scoreboard cũng xóa mô hình khi reset).
 // ============================================================================
 module axi4_lite_slave_model #(
   parameter int unsigned DEFAULT_MAX_DELAY = 3
@@ -80,6 +81,7 @@ module axi4_lite_slave_model #(
       bvalid  <= 1'b0;  bresp  <= 2'b00;
       have_aw <= 1'b0;  have_w <= 1'b0;
       b_pend  <= 1'b0;  b_cnt  <= 0;
+      mem.delete();
     end else begin
       // 1) hoàn tất handshake AW / W
       if (awvalid && awready) begin

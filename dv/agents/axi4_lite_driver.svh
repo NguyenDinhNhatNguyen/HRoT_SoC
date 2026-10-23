@@ -14,17 +14,45 @@ class axi4_lite_driver extends uvm_driver #(axi4_lite_item);
       `uvm_fatal("NO_CFG", "axi4_lite_driver: cfg chua duoc gan")
   endfunction
 
+  bit in_flight;                        // đã lấy item nhưng chưa item_done
+
+  // Mỗi vòng ngoài = một khoảng không reset. Reset giữa chừng: hủy giao dịch đang
+  // chạy, trả item cho sequence với aborted = 1, đưa bus về idle rồi chờ hết reset.
   task run_phase(uvm_phase phase);
     vif = cfg.vif;
-    drive_idle();
-    wait (vif.rst_n === 1'b1);          // level-sensitive: không bỏ lỡ cạnh reset
     forever begin
-      seq_item_port.get_next_item(req);
-      @(vif.drv_cb);                    // căn theo cạnh clock trước khi lái
+      drive_idle();
+      wait (vif.rst_n === 1'b1);        // level-sensitive: không bỏ lỡ cạnh reset
+      @(vif.drv_cb);                    // căn theo cạnh clock
+      fork
+        drive_items();
+        @(negedge vif.rst_n);
+      join_any
+      disable fork;
+      if (in_flight) begin
+        req.aborted = 1'b1;
+        `uvm_info("DRV", {"Reset giua giao dich, huy: ", req.convert2string()}, UVM_LOW)
+        seq_item_port.item_done();
+        in_flight = 1'b0;
+      end
+    end
+  endtask
+
+  // Luôn đứng ở cạnh clock khi bắt đầu giao dịch. Có item sẵn thì lái ngay
+  // (back-to-back, không chèn chu kỳ rảnh); không có thì chờ 1 chu kỳ rồi hỏi lại.
+  task drive_items();
+    forever begin
+      seq_item_port.try_next_item(req);
+      if (req == null) begin
+        @(vif.drv_cb);
+        continue;
+      end
+      in_flight = 1'b1;
       if (req.is_write) do_write(req);
       else              do_read(req);
       `uvm_info("DRV", req.convert2string(), UVM_HIGH)
       seq_item_port.item_done();
+      in_flight = 1'b0;
     end
   endtask
 

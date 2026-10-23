@@ -5,8 +5,8 @@ module RISCV_Core_tb;
     reg clk = 0, rst, bus_stall;
     reg [31:0] instr_rdata = 0, data_rdata = 0, imem_word, dmem_rdata_force, pc_before_stall;
     reg [31:0] instr_before_stall;
-    reg [1:0]  ForwardA_EX = 0, ForwardB_EX = 0; 
     wire [31:0] instr_addr, data_wdata, PC_debug, Instr_debug, Result_WB_debug;
+    wire [3:0]  data_wstrb;
     wire        data_we, data_re, RegWrite_WB_debug;
     wire [4:0]  Rd_WB_debug;
 
@@ -16,8 +16,7 @@ module RISCV_Core_tb;
     RISCV_Core dut (
         .clk(clk), .rst(rst), .bus_stall(bus_stall),
         .instr_rdata(instr_rdata), .data_rdata(data_rdata),
-        .ForwardA_EX(ForwardA_EX), .ForwardB_EX(ForwardB_EX), 
-        .instr_addr(instr_addr), .data_wdata(data_wdata),
+        .instr_addr(instr_addr), .data_wdata(data_wdata), .data_wstrb(data_wstrb),
         .data_we(data_we), .data_re(data_re),
         .PC_debug(PC_debug), .Instr_debug(Instr_debug),
         .RegWrite_WB_debug(RegWrite_WB_debug), .Rd_WB_debug(Rd_WB_debug), .Result_WB_debug(Result_WB_debug)
@@ -133,7 +132,7 @@ module RISCV_Core_tb;
 
     task automatic pulse_reset;
         begin
-            rst = 1'b1; bus_stall = 1'b0; ForwardA_EX = 2'b00; ForwardB_EX = 2'b00; 
+            rst = 1'b1; bus_stall = 1'b0;
             repeat (3) @(posedge clk); #1; rst = 1'b0;
         end
     endtask
@@ -204,19 +203,19 @@ module RISCV_Core_tb;
         force dut.u_EX_Stage.ALUSrc_EX = 1'b0;
 
         // ---------------- Forward = 00 ----------------
-        ForwardA_EX = 2'b00;
+        force dut.u_EX_Stage.ForwardA_EX = 2'b00;
         force dut.u_EX_Stage.ForwardB_EX = 2'b00; #1;
         check_equal32(dut.u_EX_Stage.SrcA_EX, 32'h1111_1111, "FwdA=00 -> RD1");
         check_equal32(dut.u_EX_Stage.SrcB_EX, 32'h2222_2222, "FwdB=00 -> RD2");
 
         // ---------------- Forward = 10 ----------------
-        ForwardA_EX = 2'b10;
+        force dut.u_EX_Stage.ForwardA_EX = 2'b10;
         force dut.u_EX_Stage.ForwardB_EX = 2'b10; #1;
         check_equal32(dut.u_EX_Stage.SrcA_EX, 32'hAAAA_AAAA, "FwdA=10 -> MEM");
         check_equal32(dut.u_EX_Stage.SrcB_EX, 32'hAAAA_AAAA, "FwdB=10 -> MEM");
 
         // ---------------- Forward = 01 ----------------
-        ForwardA_EX = 2'b01;
+        force dut.u_EX_Stage.ForwardA_EX = 2'b01;
         force dut.u_EX_Stage.ForwardB_EX = 2'b01; #1;
         check_equal32(dut.u_EX_Stage.SrcA_EX, 32'hBBBB_BBBB, "FwdA=01 -> WB");
         check_equal32(dut.u_EX_Stage.SrcB_EX, 32'hBBBB_BBBB, "FwdB=01 -> WB");
@@ -226,10 +225,9 @@ module RISCV_Core_tb;
         release dut.u_EX_Stage.RD2_EX;
         release dut.u_EX_Stage.ALUResult_MEM;
         release dut.u_EX_Stage.Result_WB;
+        release dut.u_EX_Stage.ForwardA_EX;
         release dut.u_EX_Stage.ForwardB_EX;
         release dut.u_EX_Stage.ALUSrc_EX;
-        
-        ForwardA_EX = 2'b00; ForwardB_EX = 2'b00;
 
         // ============================================================
         // 5. TEST ALUSrc = 1 (Xác nhận ALU_Mux chọn Immediate thay vì ForwardB)
@@ -276,20 +274,6 @@ module RISCV_Core_tb;
         if (!rst) $display("[%0t] PC=%h Instr=%h Stall=%b Flush=%b | WB=%b Rd=%0d Result=%h", $time, PC_debug, Instr_debug, bus_stall, dut.PCSrc_EX, RegWrite_WB_debug, Rd_WB_debug, Result_WB_debug);
     end
 
-    // ============================================================
-    // 8. KIEM TRA GIAO THUC AXI4-LITE (CHUAN BI CHO TUAN 5)
-    // ============================================================
-    // Lưu ý: Các tín hiệu S_AXI_* này phải được khai báo trong module AXI4_Lite_Slave 
-    // và được đấu nối với CPU. Đoạn SVA này sẽ hoạt động khi module đó được tích hợp.
+    // SVA giao thuc AXI4-Lite nam o dv/agents/axi4_lite_if.sv (dung cho UVM).
 
-    property p_axi_aw_handshake;
-        @(posedge clk) disable iff (rst)
-        // Cần đảm bảo các đường dẫn (ví dụ: dut.u_AXI_Slave.S_AXI_AWVALID) là chính xác khi ghép code
-        // (Tạm thời comment lại hoặc dùng tín hiệu giả lập nếu module AXI chưa được tích hợp)
-        
-        // (dut.u_AXI_Slave.S_AXI_AWVALID && !dut.u_AXI_Slave.S_AXI_AWREADY) |=> dut.u_AXI_Slave.S_AXI_AWVALID;
-        1'b1 |=> 1'b1; // Tạm thời để luôn đúng cho đến khi code xong AXI
-    endproperty
-
-    assert property (p_axi_aw_handshake) 
-        else $error("Lỗi AXI4-Lite: Tín hiệu AWVALID bị ngắt trước khi Slave phản hồi READY!");
+endmodule

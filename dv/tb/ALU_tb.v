@@ -1,114 +1,102 @@
 `timescale 1ns / 1ps
 
+// ============================================================
+// ALU_tb - Testbench tu kiem tra cho ALU (Result, Zero, lt, ltu)
+// ============================================================
 module ALU_tb;
 
-    // Khai bao tin hieu
-    reg  [31:0] A;
-    reg  [31:0] B;
+    reg  [31:0] A, B;
     reg  [3:0]  ALUControl;
-    
-    wire        Zero;
+
+    wire        Zero, lt, ltu;
     wire [31:0] Result;
 
-    // Instantiate (goi) module ALU
+    integer pass_count = 0, fail_count = 0;
+
     ALU u_ALU (
-        .A(A),
-        .B(B),
-        .ALUControl(ALUControl),
-        .Zero(Zero),
-        .Result(Result)
+        .A(A), .B(B), .ALUControl(ALUControl),
+        .Zero(Zero), .lt(lt), .ltu(ltu), .Result(Result)
     );
 
-    // Block khoi tao va cap gia tri test
+    // Dat dau vao, doi to hop on dinh, so Result va Zero
+    task check;
+        input [31:0]   a, b;
+        input [3:0]    ctrl;
+        input [31:0]   e_result;
+        input [8*24:1] name;
+        begin
+            A = a; B = b; ALUControl = ctrl; #10;
+            if ((Result === e_result) && (Zero === (e_result == 32'b0))) begin
+                pass_count = pass_count + 1;
+                $display("[PASS] %0s : Result=%h", name, Result);
+            end else begin
+                fail_count = fail_count + 1;
+                $display("[FAIL] %0s : Result=%h Zero=%b (expect %h)", name, Result, Zero, e_result);
+            end
+        end
+    endtask
+
+    // Co so sanh lt/ltu (dung cho BLT/BGE/BLTU/BGEU), doc lap voi ALUControl
+    task check_cmp;
+        input [31:0]   a, b;
+        input          e_lt, e_ltu;
+        input [8*24:1] name;
+        begin
+            A = a; B = b; ALUControl = 4'b0001; #10;
+            if ((lt === e_lt) && (ltu === e_ltu)) begin
+                pass_count = pass_count + 1;
+                $display("[PASS] %0s : lt=%b ltu=%b", name, lt, ltu);
+            end else begin
+                fail_count = fail_count + 1;
+                $display("[FAIL] %0s : lt=%b ltu=%b (expect %b %b)", name, lt, ltu, e_lt, e_ltu);
+            end
+        end
+    endtask
+
     initial begin
-        $display("==================================================");
-        $display("          BAT DAU TEST TOAN DIEN ALU              ");
-        $display("==================================================");
+        $display("\n=== ALU TESTBENCH ===");
 
-        // --------------------------------------------------------
-        // 1. Nhom so hoc: ADD (0000), SUB (0001), AUIPC (1000)
-        // --------------------------------------------------------
-        $display("\n--- 1. Nhom Toan Hoc (ADD, SUB, AUIPC) ---");
-        
-        A = 32'd150; B = 32'd50; ALUControl = 4'b0000; #10; // ADD
-        $display("ADD   : %d + %d = %d | Zero: %b", A, B, Result, Zero);
+        // So hoc
+        check(32'd150,        32'd50,         4'b0000, 32'd200,        "ADD");
+        check(32'hFFFF_FFFF,  32'd1,          4'b0000, 32'h0,          "ADD tran -> Zero");
+        check(32'd150,        32'd50,         4'b0001, 32'd100,        "SUB");
+        check(32'd50,         32'd50,         4'b0001, 32'h0,          "SUB bang nhau -> Zero");
+        check(32'd5,          32'd7,          4'b0001, 32'hFFFF_FFFE,  "SUB am");
+        check(32'h0040_0000,  32'h0000_1234,  4'b1000, 32'h0040_1234,  "AUIPC (A+B)");
 
-        A = 32'd150; B = 32'd50; ALUControl = 4'b0001; #10; // SUB
-        $display("SUB   : %d - %d = %d | Zero: %b", A, B, Result, Zero);
+        // Logic
+        check(32'hFFFF_0000,  32'h0F0F_0F0F,  4'b0010, 32'h0F0F_0000,  "AND");
+        check(32'hFFFF_0000,  32'h0F0F_0F0F,  4'b0011, 32'hFFFF_0F0F,  "OR");
+        check(32'hFFFF_0000,  32'h0F0F_0F0F,  4'b0100, 32'hF0F0_0F0F,  "XOR");
 
-        A = 32'd50;  B = 32'd50; ALUControl = 4'b0001; #10; // SUB (Check Zero flag)
-        $display("SUB   : %d - %d = %d | Zero: %b (Ky vong Zero = 1)", A, B, Result, Zero);
+        // LUI: bo qua A
+        check(32'h1234_5678,  32'hABCD_E000,  4'b1001, 32'hABCD_E000,  "LUI");
 
-        A = 32'h0040_0000; B = 32'h0000_1234; ALUControl = 4'b1000; #10; // AUIPC
-        $display("AUIPC : %h + %h = %h", A, B, Result);
+        // So sanh ghi ket qua
+        check(-32'd10,        32'd5,          4'b0101, 32'd1,          "SLT  -10 < 5");
+        check(32'd5,          -32'd10,        4'b0101, 32'd0,          "SLT  5 < -10");
+        check(-32'd10,        32'd5,          4'b0110, 32'd0,          "SLTU 0xFFFFFFF6 < 5");
+        check(32'd5,          -32'd10,        4'b0110, 32'd1,          "SLTU 5 < 0xFFFFFFF6");
 
-        // --------------------------------------------------------
-        // 2. Nhom logic: AND (0010), OR (0011), XOR (0100)
-        // --------------------------------------------------------
-        $display("\n--- 2. Nhom Logic (AND, OR, XOR) ---");
-        A = 32'hFFFF_0000; B = 32'h0F0F_0F0F; 
-        
-        ALUControl = 4'b0010; #10; // AND
-        $display("AND   : %h & %h = %h", A, B, Result);
-        
-        ALUControl = 4'b0011; #10; // OR
-        $display("OR    : %h | %h = %h", A, B, Result);
-        
-        ALUControl = 4'b0100; #10; // XOR
-        $display("XOR   : %h ^ %h = %h", A, B, Result);
+        // Dich bit (chi dung B[4:0])
+        check(32'h0000_0001,  32'd4,          4'b1010, 32'h0000_0010,  "SLL 4");
+        check(32'h0000_0001,  32'd36,         4'b1010, 32'h0000_0010,  "SLL 36 -> 4");
+        check(32'h0000_0001,  32'd31,         4'b1010, 32'h8000_0000,  "SLL 31");
+        check(32'hF000_0000,  32'd4,          4'b1100, 32'h0F00_0000,  "SRL 4");
+        check(32'hF000_0000,  32'd4,          4'b1011, 32'hFF00_0000,  "SRA 4 (giu dau)");
+        check(32'h7000_0000,  32'd4,          4'b1011, 32'h0700_0000,  "SRA 4 (so duong)");
 
-        // --------------------------------------------------------
-        // 3. Nhom lenh dac biet: LUI (1001)
-        // --------------------------------------------------------
-        $display("\n--- 3. LUI (Load Upper Immediate) ---");
-        A = 32'h1234_5678; B = 32'hABCD_E000; ALUControl = 4'b1001; #10; 
-        $display("LUI   : Bo qua A, truyen thang B. Result = %h", Result);
+        // ALUControl khong dinh nghia -> 0
+        check(32'd100,        32'd200,        4'b1111, 32'h0,          "Default -> 0");
 
-        // --------------------------------------------------------
-        // 4. Nhom so sanh: SLT (0101), SLTU (0110)
-        // --------------------------------------------------------
-        $display("\n--- 4. Nhom So Sanh (SLT, SLTU) ---");
-        
-        // SLT (So sanh co dau: -10 < 5 -> Dung)
-        A = -32'd10; B = 32'd5; ALUControl = 4'b0101; #10;
-        $display("SLT   : %d < %d -> Result = %d (Co dau)", $signed(A), $signed(B), Result);
+        // Co lt/ltu cho lenh re nhanh
+        check_cmp(32'd3,         32'd3,         1'b0, 1'b0, "cmp 3 vs 3");
+        check_cmp(-32'd1,        32'd1,         1'b1, 1'b0, "cmp -1 vs 1");
+        check_cmp(32'd1,         -32'd1,        1'b0, 1'b1, "cmp 1 vs -1");
+        check_cmp(32'h8000_0000, 32'h7FFF_FFFF, 1'b1, 1'b0, "cmp INT_MIN vs MAX");
 
-        // SLTU (So sanh khong dau: -10 thanh so duong rat lon > 5 -> Sai)
-        A = -32'd10; B = 32'd5; ALUControl = 4'b0110; #10;
-        $display("SLTU  : %d < %d -> Result = %d (Khong dau)", A, B, Result);
-
-        // --------------------------------------------------------
-        // 5. Nhom dich bit: SLL (1010), SRL (1100), SRA (1011)
-        // --------------------------------------------------------
-        $display("\n--- 5. Nhom Dich Bit (SLL, SRL, SRA) ---");
-        
-        // SLL: Dich trai logic
-        A = 32'h0000_0001; B = 32'd4; ALUControl = 4'b1010; #10; 
-        $display("SLL   : %h << 4 = %h", A, Result);
-
-        // Gioi han 5-bit (Test shift amount = 36 -> B[4:0] = 4)
-        A = 32'h0000_0001; B = 32'd36; ALUControl = 4'b1010; #10; 
-        $display("SLL   : %h << 36 (gioi han con 4) = %h", A, Result);
-
-        // SRL: Dich phai logic (Chen bit 0)
-        A = 32'hF000_0000; B = 32'd4; ALUControl = 4'b1100; #10; 
-        $display("SRL   : %h >> 4 = %h", A, Result);
-
-        // SRA: Dich phai so hoc (Bao toan bit dau)
-        A = 32'hF000_0000; B = 32'd4; ALUControl = 4'b1011; #10; 
-        $display("SRA   : %h >>> 4 = %h (Bao toan dau)", A, Result);
-
-        // --------------------------------------------------------
-        // 6. Truong hop Default
-        // --------------------------------------------------------
-        $display("\n--- 6. Default (Truong hop khong xac dinh) ---");
-        A = 32'd100; B = 32'd200; ALUControl = 4'b1111; #10;
-        $display("Undef : ALUControl = %b -> Result = %h", ALUControl, Result);
-
-        $display("\n==================================================");
-        $display("                KET THUC TEST                     ");
-        $display("==================================================");
-        $stop; // Dung mo phong ModelSim tai day
+        $display("\nSUMMARY ALU: PASS = %0d | FAIL = %0d", pass_count, fail_count);
+        $finish;
     end
 
 endmodule

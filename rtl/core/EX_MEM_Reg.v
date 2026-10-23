@@ -14,6 +14,7 @@ module EX_MEM_Reg(
     input [31:0] PC_Plus_4_EX, // Can cho cac lenh JAL/JALR khi ghi gia tri vao rd.
     input [31:0] PCTarget_EX, // Dia chi dich = PC + Immediate. Co the dung cho Branch/JAL/JALR va tuy thiet ke. Co the lam ket qua cho AUIPC.
     input [4:0]  Rd_EX, // Thanh ghi dich
+    input [2:0]  funct3_EX, // Kich thuoc truy cap bo nho (LB/LH/LW/LBU/LHU, SB/SH/SW)
 
     // Control signals 
     output reg         RegWrite_MEM,
@@ -25,7 +26,8 @@ module EX_MEM_Reg(
     output reg  [31:0] WriteData_MEM,
     output reg  [31:0] PC_Plus_4_MEM,
     output reg  [31:0] PCTarget_MEM,
-    output reg  [4:0]  Rd_MEM
+    output reg  [4:0]  Rd_MEM,
+    output reg  [2:0]  funct3_MEM
 );
 
 always @(posedge clk or posedge rst) begin
@@ -40,6 +42,7 @@ always @(posedge clk or posedge rst) begin
         PC_Plus_4_MEM <= 32'b0;
         PCTarget_MEM  <= 32'b0;
         Rd_MEM        <= 5'b0;   
+        funct3_MEM    <= 3'b0;
     end
     else if (stall) begin
             // HOLD current EX/MEM values
@@ -56,6 +59,7 @@ always @(posedge clk or posedge rst) begin
         WriteData_MEM <= WriteData_EX;
         PC_Plus_4_MEM <= PC_Plus_4_EX;
         Rd_MEM        <= Rd_EX;
+        funct3_MEM    <= funct3_EX;
         
         PCTarget_MEM  <= PCTarget_EX;
     end

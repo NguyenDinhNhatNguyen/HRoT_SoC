@@ -58,6 +58,15 @@ class axi4_lite_scoreboard extends uvm_scoreboard;
     end
   endfunction
 
+  // Reset xóa bộ nhớ của slave -> xóa mô hình theo (khớp axi4_lite_slave_model)
+  task run_phase(uvm_phase phase);
+    forever begin
+      @(negedge cfg.vif.rst_n);
+      mem.delete();
+      `uvm_info("SCB", "Reset: xoa mo hinh bo nho", UVM_LOW)
+    end
+  endtask
+
   function void check_phase(uvm_phase phase);
     super.check_phase(phase);
     if (n_wr + n_rd == 0)

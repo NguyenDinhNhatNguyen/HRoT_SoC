@@ -30,7 +30,7 @@ class base_test extends uvm_test;
     time         tmo;
     if ($value$plusargs("NUM_TRANS=%d", n_trans)) tmo_us = 1000 + 2 * n_trans;
     void'($value$plusargs("TEST_TIMEOUT_US=%d", tmo_us));
-    tmo = tmo_us * 1000ns;
+    tmo = time'(real'(tmo_us) * 1us);
     uvm_top.set_timeout(tmo, 0);
   endfunction
 
@@ -41,7 +41,9 @@ class base_test extends uvm_test;
 
   task run_phase(uvm_phase phase);
     phase.raise_objection(this, "stimulus");
-    phase.phase_done.set_drain_time(this, 100ns);   // chờ monitor/scoreboard xử lý xong
+    // chờ monitor/scoreboard xử lý xong (get_objection: chạy được cả UVM 1.2 và IEEE 1800.2,
+    // phase_done đã bị bỏ trong 1800.2)
+    phase.get_objection().set_drain_time(this, 100ns);
     `uvm_info("TEST", "Bat dau kich thich AXI4-Lite", UVM_LOW)
     run_stimulus();
     phase.drop_objection(this, "stimulus");

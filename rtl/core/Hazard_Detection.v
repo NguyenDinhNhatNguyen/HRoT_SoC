@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 module Hazard_Detection (
     input             MemRead_EX,
     input      [4:0] Rd_EX, 
