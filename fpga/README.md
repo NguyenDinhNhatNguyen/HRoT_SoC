@@ -11,4 +11,4 @@ Cùng một RTL trong `rtl/`, mỗi hãng chỉ khác top bọc chân và constr
 Mặc định cả hai bản nạp firmware thử từ `dv/sw/mkhex.py` (UART 115200 baud @ 50 MHz). Muốn nạp firmware thật:
 `make de2 BOOT_HEX=fw/build/firmware_imem.hex RAM_HEX=fw/build/firmware_dmem.hex APP_HEX=...`.
 
-Trước khi nạp board DE2, đối chiếu `de2_pins.tcl` với file chân của Terasic (việc N-18).
+`de2_pins.tcl` đã được đối chiếu ngày 25/10/2026 (N-18): 52/52 chân khớp bảng chân trong DE2 User Manual v1.3. Terasic đã có bản manual 1.6, nên xem lại bảng chân trong bản đó trước khi nạp board.
