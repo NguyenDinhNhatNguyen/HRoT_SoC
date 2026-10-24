@@ -6,6 +6,9 @@
 # (--tamper, App kept in reset).
 set -e
 SYSTEMC_HOME="${SYSTEMC_HOME:-/usr/local/systemc-2.3.3}"
+# 2.3.3 builds install into lib-linux64, 2.3.4 into lib
+SC_LIB="$SYSTEMC_HOME/lib-linux64"
+[ -d "$SC_LIB" ] || SC_LIB="$SYSTEMC_HOME/lib"
 B=../vp/build
 mkdir -p "$B"
 
@@ -13,12 +16,12 @@ gcc -std=c11 -O1 -Wall -DHAL_HOST_MODEL -I../fw/hal -I../fw/hal/test -c ../fw/ha
 gcc -std=c11 -O1 -Wall                  -I../fw/hal/test             -c ../fw/hal/test/sha256_ref.c -o "$B/sha256_ref.o"
 g++ -std=c++17 -O1 -Wall -Wno-overloaded-virtual -DHAL_HOST_MODEL -I"$SYSTEMC_HOME/include" -I../fw/hal -I../fw/hal/test \
     ../vp/src/*.cpp "$B/sha256_hal.o" "$B/sha256_ref.o" \
-    -L"$SYSTEMC_HOME/lib-linux64" -lsystemc -lm -o "$B/vp_sim"
+    -L"$SC_LIB" -lsystemc -lm -o "$B/vp_sim"
 
 APP_HEX="${1:-$B/app.hex}"
 [ -f "$APP_HEX" ] || python3 ../dv/sw/mkhex.py "$B"
 
-export LD_LIBRARY_PATH="$SYSTEMC_HOME/lib-linux64:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$SC_LIB:$LD_LIBRARY_PATH"
 export SC_COPYRIGHT_MESSAGE=DISABLE
 echo "===== Case 1: good image ====="
 "$B/vp_sim" "$APP_HEX"
