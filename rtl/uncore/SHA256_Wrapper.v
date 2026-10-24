@@ -42,7 +42,10 @@ module SHA256_Wrapper (
     reg  [511:0] block_in;
     wire         busy, done;
     wire [255:0] hash_out;
-    wire         start = reg_wen && (reg_waddr[7:0] == 8'h40) && reg_wdata[0];
+    // Cua so SHA trong SoC la 64 KB: offset >= 0x100 la trong (doc 0, ghi bo qua), khong alias (I-05)
+    wire         wen   = reg_wen && (reg_waddr[15:8] == 8'h00);
+    wire         ren   = (reg_raddr[15:8] == 8'h00);
+    wire         start = wen && (reg_waddr[7:0] == 8'h40) && reg_wdata[0];
     wire         init  = reg_wdata[1];
 
     SHA256_Core core_inst (
@@ -58,16 +61,16 @@ module SHA256_Wrapper (
 
     // Ghi W0..W15 (khong cho ghi khi dang bam de block_in khong doi giua chung)
     always @(posedge clk) begin
-        if (reg_wen && !busy && reg_waddr[7:6] == 2'b00)
+        if (wen && !busy && reg_waddr[7:6] == 2'b00)
             block_in[511 - 32*reg_waddr[5:2] -: 32] <= reg_wdata;
     end
 
     wire [2:0] hash_idx = reg_raddr[4:2] + 3'd4;   // 0x50 -> 0 ... 0x6C -> 7
 
     always @(*) begin
-        if (reg_raddr[7:0] == 8'h44)
+        if (ren && reg_raddr[7:0] == 8'h44)
             reg_rdata = {30'b0, busy, done};
-        else if (reg_raddr[7:0] >= 8'h50 && reg_raddr[7:0] <= 8'h6C)
+        else if (ren && reg_raddr[7:0] >= 8'h50 && reg_raddr[7:0] <= 8'h6C)
             reg_rdata = hash_out[255 - 32*hash_idx -: 32];
         else
             reg_rdata = 32'b0;
