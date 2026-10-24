@@ -38,8 +38,8 @@ vlog -sv -work work {*}$UVM_FLAGS $DV/agents/axi4_lite_if.sv
 vlog -sv -work work {*}$UVM_FLAGS +incdir+$DV/agents +incdir+$DV/env +incdir+$DV/tests \
      $DV/hrot_dv_pkg.sv
 if {$DUT eq "sha256"} {
-  vlog -sv -work work ../rtl/uncore/AXI4_Lite_Slave_Template.v ../rtl/uncore/SHA256_Core.v \
-       ../rtl/uncore/SHA256_Wrapper.v
+  vlog -sv -work work ../rtl/bus/AXI4_Lite_Slave_Template.v ../rtl/crypto/SHA256_Core.v \
+       ../rtl/crypto/SHA256_Wrapper.v
   vlog -sv -work work {*}$UVM_FLAGS $DV/tb/tb_sha256_top.sv
   set TOP tb_sha256_top
 } else {

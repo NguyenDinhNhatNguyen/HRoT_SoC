@@ -1,7 +1,7 @@
 /*
  * sha256_hal.c -- Cài đặt HAL SHA-256 (xem sha256_hal.h)
  *
- * Quy ước phần cứng (phải khớp RTL, xem doc/SHA256_Register_Map.md):
+ * Quy ước phần cứng (phải khớp RTL, xem docs/spec/SHA256_Register_Map.md):
  *  - Ghi BLOCK[0..15] rồi ghi CTRL (START | INIT cho khối đầu).
  *  - START xóa DONE và đặt BUSY; xong thì DONE=1 (sticky), BUSY=0.
  *  - Khối không có INIT nén tiếp từ trạng thái H của khối trước.

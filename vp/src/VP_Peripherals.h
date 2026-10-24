@@ -1,7 +1,7 @@
 #ifndef VP_PERIPHERALS_H
 #define VP_PERIPHERALS_H
 
-// Mo hinh TLM don gian cho bo nho va SYSCSR (khop RTL, xem doc/SoC_Memory_Map.md)
+// Mo hinh TLM don gian cho bo nho va SYSCSR (khop RTL, xem docs/spec/SoC_Memory_Map.md)
 #include <systemc.h>
 #include <tlm.h>
 #include <tlm_utils/simple_target_socket.h>

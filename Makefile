@@ -21,7 +21,7 @@ TB      ?= RISCV_Core_prog_tb
 TEST    ?= axi4_lite_full_test
 SEED    ?= 1
 
-# Firmware nap vao FPGA: mac dinh dung firmware thu (dv/tests/mkhex.py, UART 115200 @ 50 MHz)
+# Firmware nap vao FPGA: mac dinh dung firmware thu (dv/sw/mkhex.py, UART 115200 @ 50 MHz)
 # cho toi khi co firmware that; doi bang: make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
 HEX_DIR  := build/hex
 BOOT_HEX ?= $(HEX_DIR)/boot.hex
@@ -44,7 +44,7 @@ sim-uvm:
 	cd sim && $(QUESTA) -c -do "set TEST $(TEST); set SEED $(SEED); do run_uvm.do"
 
 sim-soc:
-	python3 dv/tests/mkhex.py sim
+	python3 dv/sw/mkhex.py sim
 	cd sim && $(QUESTA) -c -do run_soc.do
 
 sim-ip:
@@ -58,14 +58,14 @@ fw:
 
 hex:
 	mkdir -p $(HEX_DIR)
-	python3 dv/tests/mkhex.py $(HEX_DIR) --baud-div 26
+	python3 dv/sw/mkhex.py $(HEX_DIR) --baud-div 26
 	echo 00000000 > $(HEX_DIR)/zero.hex
 
 de2: hex
-	cd syn/intel_de2 && $(QUARTUS) -t build.tcl $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))
+	cd fpga/intel_de2 && $(QUARTUS) -t build.tcl $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))
 
 xilinx: hex
-	cd syn/xilinx && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
+	cd fpga/xilinx && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
 
 clean:
-	rm -rf build fw/build syn/intel_de2/build syn/xilinx/build vp/build sim/work sim/transcript sim/*.wlf sim/*.hex sim/labels.vh
+	rm -rf build fw/build fpga/intel_de2/build fpga/xilinx/build vp/build sim/work sim/transcript sim/*.wlf sim/*.hex sim/labels.vh

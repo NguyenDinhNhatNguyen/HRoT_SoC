@@ -1,4 +1,4 @@
-# Build Vivado (non-project), chay tu thu muc syn/xilinx:
+# Build Vivado (non-project), chay tu thu muc fpga/xilinx:
 #   vivado -mode batch -source build.tcl -tclargs <part> [boot_hex] [ram_hex] [app_hex]
 # Chua chot kit: chi chay tong hop + P&R de lay bao cao (khong ghi bitstream neu chua gan chan).
 set here [file normalize [file dirname [info script]]]
@@ -11,7 +11,7 @@ set app_hex  [expr {[llength $argv] > 3 ? [lindex $argv 3] : "$root/fw/build/app
 file mkdir "$here/build"
 cd "$here/build"
 
-read_verilog [concat [glob $root/rtl/core/*.v] [glob $root/rtl/uncore/*.v] \
+read_verilog [concat [glob $root/rtl/{core,bus,periph,mem,crypto}/*.v] \
                      [list $root/rtl/top/RISCV_Core.v $root/rtl/top/SoC_Top.v $here/Xilinx_Top.v]]
 read_xdc $here/constraints.xdc
 

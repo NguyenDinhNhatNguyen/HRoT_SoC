@@ -46,7 +46,7 @@ else
 fi
 (cd sim && "$QUESTA" -c -do run_ip.do)                                  > $LOG/ip.log 2>&1
 check "Ngoai vi APB"            $LOG/ip.log        "FAIL = 0"
-python3 dv/tests/mkhex.py sim > /dev/null
+python3 dv/sw/mkhex.py sim > /dev/null
 (cd sim && "$QUESTA" -c -do run_soc.do)                                 > $LOG/soc.log 2>&1
 check "SoC secure boot"         $LOG/soc.log       "SOC RESULT: PASS"
 (cd sim && bash run_vp.sh)                                              > $LOG/vp.log 2>&1

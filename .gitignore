@@ -1,8 +1,6 @@
 # Thu muc build / ket qua sinh ra (khong commit)
 fw/build/
 vp/build/
-syn/intel_de2/build/
-syn/xilinx/build/
 sim/work/
 sim/transcript
 sim/*.wlf

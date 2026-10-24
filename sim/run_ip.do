@@ -5,8 +5,8 @@
 if {[file exists work]} {vdel -all -lib work}
 vlib work
 
-vlog -sv ../rtl/uncore/*.v
-vlog -sv ../dv/tb/APB_Periph_tb.sv
+vlog -sv ../rtl/periph/*.v
+vlog -sv ../dv/tb/soc/APB_Periph_tb.sv
 
 vsim -voptargs="+acc" work.APB_Periph_tb
 run -all

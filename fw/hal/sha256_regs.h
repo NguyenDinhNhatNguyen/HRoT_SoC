@@ -7,7 +7,7 @@
  * Địa chỉ nền 0x5000_0000 và các offset 0x40 (CTRL) / 0x44 (STATUS) / 0x50
  * (HASH[0]) trùng với RTL hiện tại (SHA256_Wrapper.v) và VP
  * (SHA256_VP_Wrapper.h). Các offset còn lại là phần mở rộng ĐỀ XUẤT cho đủ
- * khối 512-bit và digest 256-bit -- cần Nguyên xác nhận (xem doc/SHA256_Register_Map.md).
+ * khối 512-bit và digest 256-bit -- cần Nguyên xác nhận (xem docs/spec/SHA256_Register_Map.md).
  *
  *   Offset      Tên           Truy cập  Mô tả
  *   0x00-0x3C   BLOCK[0..15]  W         Khối message 512-bit. BLOCK[0] = W0 (word

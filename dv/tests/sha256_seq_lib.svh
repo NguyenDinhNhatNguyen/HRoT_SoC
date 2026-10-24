@@ -1,7 +1,7 @@
 // Sequence AXI4-Lite cho SHA256_Wrapper (P-08): bam message theo dung luong cua HAL, them do tre
-// AXI ngau nhien va cac corner case trong doc/SHA256_UVM_TestPlan.md. Moi sequence tu kiem tra
+// AXI ngau nhien va cac corner case trong docs/verification/SHA256_UVM_TestPlan.md. Moi sequence tu kiem tra
 // ket qua bang sha256_ref (SV); scoreboard SHA dung DPI la viec P-17.
-// Ban do thanh ghi: doc/SHA256_Register_Map.md, I-05 (offset trong trong 0x00-0xFF: OKAY, doc 0).
+// Ban do thanh ghi: docs/spec/SHA256_Register_Map.md, I-05 (offset trong trong 0x00-0xFF: OKAY, doc 0).
 
 class sha256_base_seq extends axi4_lite_base_seq;
   `uvm_object_utils(sha256_base_seq)

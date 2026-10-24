@@ -15,7 +15,7 @@ g++ -std=c++17 -O1 -Wall -Wno-overloaded-virtual -DHAL_HOST_MODEL -I"$SYSTEMC_HO
     -L"$SYSTEMC_HOME/lib-linux64" -lsystemc -lm -o "$B/vp_sim"
 
 APP_HEX="${1:-$B/app.hex}"
-[ -f "$APP_HEX" ] || python3 ../dv/tests/mkhex.py "$B"
+[ -f "$APP_HEX" ] || python3 ../dv/sw/mkhex.py "$B"
 
 export LD_LIBRARY_PATH="$SYSTEMC_HOME/lib-linux64:$LD_LIBRARY_PATH"
 export SC_COPYRIGHT_MESSAGE=DISABLE
