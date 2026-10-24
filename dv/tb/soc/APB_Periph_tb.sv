@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 
-// Testbench ngoai vi APB: SYSCSR, GPIO, UART (loopback TX -> RX)
+// Self-checking testbench for the APB peripherals: SYSCSR, GPIO, UART (TX looped back to RX),
+// TIMER and WDT. Ends with "APB_Periph_tb RESULT: PASS|FAIL", which sim/regress.sh looks for.
 module APB_Periph_tb;
     reg clk = 0, por = 1;
     always #5 clk = ~clk;
@@ -15,7 +16,7 @@ module APB_Periph_tb;
     wire [7:0]  gpio_o;
     reg  [7:0]  gpio_i = 0;
     reg         rx_force = 0, rx_val = 1;
-    wire        uart_rx = rx_force ? rx_val : uart_tx;   // loopback, hoac tb tu lai chan RX
+    wire        uart_rx = rx_force ? rx_val : uart_tx;   // loopback, or the tb drives RX itself
 
     SYSCSR #(.RST_HOLD(3)) u_sys (
         .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA),
@@ -55,14 +56,13 @@ module APB_Periph_tb;
             @(posedge clk); sel <= 0; PENABLE <= 0;
         end
     endtask
-    task chk(input [31:0] got, input [31:0] exp, input [255:0] name);
-        if (got !== exp) begin 
-            fail = fail + 1; 
-            $display("[FAIL] %0s: got %h exp %h", name, got, exp); 
-            end
-        else begin 
-            pass = pass + 1; 
-            $display("[PASS] %0s", name); 
+    task chk(input [31:0] got, input [31:0] exp, input [8*48-1:0] name);
+        if (got !== exp) begin
+            fail = fail + 1;
+            $display("[FAIL] %0s: got %h, expected %h", name, got, exp);
+        end else begin
+            pass = pass + 1;
+            $display("[PASS] %0s", name);
         end
     endtask
 
@@ -78,82 +78,83 @@ module APB_Periph_tb;
         // ---------------- SYSCSR ----------------
         apb_rd(1, 12'h004, r); chk(r, 32'h48524F54, "SYSCSR CHIP_ID");
         apb_rd(1, 12'h008, r); chk(r, 32'h00020000, "SYSCSR VERSION");
-        apb_rd(1, 12'h00C, r); chk(r, 32'hA, "SYSCSR BOOT_STRAP chot luc reset");
+        apb_rd(1, 12'h00C, r); chk(r, 32'hA, "SYSCSR BOOT_STRAP latched at reset");
         apb_rd(1, 12'h010, r); chk(r, 32'h1, "SYSCSR RST_CAUSE = POR");
-        chk(app_rst, 1, "App bi giu reset sau POR");
-        apb_wr(1, 12'h000, 32'h1); chk(app_rst, 0, "APP_CTRL=1 nha reset App");
-        apb_wr(1, 12'h014, 32'h12345678); chk(sys_rst, 0, "SW_RESET sai khoa -> khong reset");
+        chk(app_rst, 1, "App held in reset after POR");
+        apb_wr(1, 12'h000, 32'h1); chk(app_rst, 0, "APP_CTRL=1 releases the App");
+        apb_wr(1, 12'h014, 32'h12345678); chk(sys_rst, 0, "SW_RESET with a wrong key is ignored");
         apb_wr(1, 12'h014, 32'h5A5A0001);
-        chk(sys_rst, 1, "SW_RESET dung khoa -> sys_rst");
+        chk(sys_rst, 1, "SW_RESET with the right key resets");
         wait (!sys_rst); @(posedge clk);
-        chk(app_rst, 1, "Sau SW reset App bi giu reset lai");
-        apb_rd(1, 12'h010, r); chk(r, 32'h5, "RST_CAUSE = POR|SW (song qua SW reset)");
+        chk(app_rst, 1, "App held in reset again after SW reset");
+        apb_rd(1, 12'h010, r); chk(r, 32'h5, "RST_CAUSE = POR|SW, survives SW reset");
         apb_wr(1, 12'h010, 32'h5);
         apb_rd(1, 12'h010, r); chk(r, 32'h0, "RST_CAUSE W1C");
 
         // ---------------- GPIO ----------------
-        apb_wr(2, 12'h000, 32'hA5); chk(gpio_o, 8'hA5, "GPIO DATA_OUT -> chan");
+        apb_wr(2, 12'h000, 32'hA5); chk(gpio_o, 8'hA5, "GPIO DATA_OUT drives the pins");
         gpio_i = 8'h3C; repeat (4) @(posedge clk);
-        apb_rd(2, 12'h004, r); chk(r, 32'h3C, "GPIO DATA_IN (dong bo 2 tang)");
-        apb_rd(2, 12'h00C, r); chk(r, 32'h3C, "GPIO IRQ_STAT bat canh len");
-        chk(gpio_irq, 0, "GPIO irq tat khi IRQ_EN = 0");
-        apb_wr(2, 12'h008, 32'h04); chk(gpio_irq, 1, "GPIO irq bat khi IRQ_EN chan 2");
-        apb_wr(2, 12'h00C, 32'h04); chk(gpio_irq, 0, "GPIO W1C xoa ngat");
-        apb_rd(2, 12'h00C, r); chk(r, 32'h38, "GPIO W1C chi xoa bit duoc ghi");
+        apb_rd(2, 12'h004, r); chk(r, 32'h3C, "GPIO DATA_IN through the synchronizer");
+        apb_rd(2, 12'h00C, r); chk(r, 32'h3C, "GPIO IRQ_STAT catches rising edges");
+        chk(gpio_irq, 0, "GPIO irq stays low with IRQ_EN = 0");
+        apb_wr(2, 12'h008, 32'h04); chk(gpio_irq, 1, "GPIO irq fires once pin 2 is enabled");
+        apb_wr(2, 12'h00C, 32'h04); chk(gpio_irq, 0, "GPIO W1C clears the interrupt");
+        apb_rd(2, 12'h00C, r); chk(r, 32'h38, "GPIO W1C clears only the written bits");
 
         // ---------------- UART (loopback) ----------------
         apb_wr(3, 12'h00C, 32'h1);      // 2 clk / tick -> 32 clk / bit
-        apb_rd(3, 12'h008, r); chk(r[1], 1, "UART TX_IDLE luc dau");
-        apb_rd(3, 12'h004, r); chk(r[31], 1, "UART RXDATA bit31 = rong");
-        apb_wr(3, 12'h010, 32'h1);      // ngat khi RX_VALID
+        apb_rd(3, 12'h008, r); chk(r[1], 1, "UART TX_IDLE after reset");
+        apb_rd(3, 12'h004, r); chk(r[31], 1, "UART RXDATA bit31 flags empty");
+        apb_wr(3, 12'h010, 32'h1);      // interrupt on RX_VALID
         apb_wr(3, 12'h000, 32'h55); apb_wr(3, 12'h000, 32'hA3); apb_wr(3, 12'h000, 32'h0F);
         wait (u_uart.tx_idle); repeat (200) @(posedge clk);
         chk(uart_irq, 1, "UART irq RX_VALID");
         apb_rd(3, 12'h004, r); chk(r, 32'h55, "UART loopback byte 1");
         apb_rd(3, 12'h004, r); chk(r, 32'hA3, "UART loopback byte 2");
         apb_rd(3, 12'h004, r); chk(r, 32'h0F, "UART loopback byte 3");
-        apb_rd(3, 12'h008, r); chk(r[2], 0, "UART RX het du lieu");
-        // overrun: 9 byte vao FIFO RX 8 cho
+        apb_rd(3, 12'h008, r); chk(r[2], 0, "UART RX drained");
+        // overrun: 9 bytes into an 8-entry RX FIFO
         for (i = 0; i < 9; i = i + 1) apb_wr(3, 12'h000, i);
         wait (u_uart.tx_idle); repeat (200) @(posedge clk);
-        apb_rd(3, 12'h008, r); chk(r[3], 1, "UART RX_OVERRUN khi FIFO day");
+        apb_rd(3, 12'h008, r); chk(r[3], 1, "UART RX_OVERRUN when the FIFO is full");
         apb_wr(3, 12'h008, 32'h8);
-        apb_rd(3, 12'h008, r); chk(r[3], 0, "UART W1C xoa OVERRUN");
+        apb_rd(3, 12'h008, r); chk(r[3], 0, "UART W1C clears OVERRUN");
         for (i = 0; i < 8; i = i + 1) apb_rd(3, 12'h004, r);
-        // frame error: tb giu RX = 0 qua ca bit stop
+        // frame error: the tb holds RX low through the stop bit
         rx_force = 1; rx_val = 0; repeat (32 * 12) @(posedge clk); rx_val = 1; repeat (64) @(posedge clk);
-        apb_rd(3, 12'h008, r); chk(r[4], 1, "UART FRAME_ERR khi stop bit = 0");
+        apb_rd(3, 12'h008, r); chk(r[4], 1, "UART FRAME_ERR on a zero stop bit");
 
         // ---------------- TIMER ----------------
-        apb_rd(4, 12'h00C, r); chk(r, 32'hFFFFFFFF, "TIMER MTIMECMP_HI reset = toan 1");
-        chk(timer_irq, 0, "TIMER khong ngat sau reset");
-        apb_rd(4, 12'h000, r); apb_rd(4, 12'h000, r2); chk(r2 > r, 1, "TIMER mtime dang dem");
-        apb_wr(4, 12'h000, 32'h0);              // mtime ~ 0 (HI van = 0 vi moi reset)
+        apb_rd(4, 12'h00C, r); chk(r, 32'hFFFFFFFF, "TIMER MTIMECMP_HI resets to all ones");
+        chk(timer_irq, 0, "TIMER no interrupt after reset");
+        apb_rd(4, 12'h000, r); apb_rd(4, 12'h000, r2); chk(r2 > r, 1, "TIMER mtime is counting");
+        apb_wr(4, 12'h000, 32'h0);              // mtime ~ 0 (HI is still 0 this soon after reset)
         apb_wr(4, 12'h00C, 32'h0);
         apb_wr(4, 12'h008, 32'd200);
-        chk(timer_irq, 0, "TIMER chua ngat khi mtime < mtimecmp");
+        chk(timer_irq, 0, "TIMER quiet while mtime < mtimecmp");
         repeat (250) @(posedge clk);
-        chk(timer_irq, 1, "TIMER ngat khi mtime >= mtimecmp");
+        chk(timer_irq, 1, "TIMER fires once mtime >= mtimecmp");
         apb_wr(4, 12'h008, 32'hFFFFFFFF); repeat (2) @(posedge clk); #1;
-        chk(timer_irq, 0, "TIMER ghi mtimecmp lon -> het ngat");
+        chk(timer_irq, 0, "TIMER raising mtimecmp clears the irq");
 
         // ---------------- WDT ----------------
         apb_rd(5, 12'h004, r); chk(r, 32'd1000, "WDT LOAD reset");
-        apb_rd(5, 12'h000, r); chk(r, 32'h0, "WDT tat sau reset");
+        apb_rd(5, 12'h000, r); chk(r, 32'h0, "WDT disabled after reset");
         apb_wr(5, 12'h004, 32'd200);
         apb_wr(5, 12'h000, 32'h1);
-        apb_wr(5, 12'h004, 32'd5);  apb_rd(5, 12'h004, r); chk(r, 32'd200, "WDT LOAD khoa khi EN = 1");
-        apb_wr(5, 12'h000, 32'h0);  apb_rd(5, 12'h000, r); chk(r, 32'h1, "WDT phan mem khong tat duoc");        repeat (20) @(posedge clk);
+        apb_wr(5, 12'h004, 32'd5);  apb_rd(5, 12'h004, r); chk(r, 32'd200, "WDT LOAD locked while enabled");
+        apb_wr(5, 12'h000, 32'h0);  apb_rd(5, 12'h000, r); chk(r, 32'h1, "WDT cannot be disabled by software");
+        repeat (20) @(posedge clk);
         apb_wr(5, 12'h00C, 32'h5A5A0002); apb_rd(5, 12'h008, r);
-        chk(r > 32'd190, 1, "WDT KICK dung khoa nap lai COUNT");
+        chk(r > 32'd190, 1, "WDT KICK with the key reloads COUNT");
         apb_wr(5, 12'h00C, 32'h12345678); apb_rd(5, 12'h008, r2);
-        chk(r2 < r, 1, "WDT KICK sai khoa bi bo qua");
+        chk(r2 < r, 1, "WDT KICK with a wrong key is ignored");
         repeat (250) @(posedge clk);
         wait (!sys_rst); @(posedge clk);
-        apb_rd(1, 12'h010, r); chk(r[1], 1, "WDT het gio -> reset, RST_CAUSE.WDT");
-        apb_rd(5, 12'h000, r); chk(r, 32'h0, "WDT tat lai sau reset");
+        apb_rd(1, 12'h010, r); chk(r[1], 1, "WDT timeout resets, sets RST_CAUSE.WDT");
+        apb_rd(5, 12'h000, r); chk(r, 32'h0, "WDT disabled again after its reset");
 
-        $display("APB PERIPH RESULT: PASS = %0d, FAIL = %0d", pass, fail);
+        $display("APB_Periph_tb RESULT: %s (%0d of %0d checks passed)", fail ? "FAIL" : "PASS", pass, pass + fail);
         $finish;
     end
 endmodule

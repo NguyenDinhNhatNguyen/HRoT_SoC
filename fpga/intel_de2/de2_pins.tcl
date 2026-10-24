@@ -1,5 +1,5 @@
-# Gan chan DE2 (EP2C35F672C6) cho cac cong cua DE2_Top
-# Doi chieu voi DE2_pin_assignments.csv / DE2 User Manual cua Terasic truoc khi nap board.
+# DE2 (EP2C35F672C6) pin assignments for DE2_Top's ports.
+# Check against Terasic's DE2_pin_assignments.csv / DE2 User Manual before programming a board.
 set_location_assignment PIN_N2  -to CLOCK_50
 set_location_assignment PIN_G26 -to KEY[0]
 set_location_assignment PIN_N23 -to KEY[1]

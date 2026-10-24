@@ -1,15 +1,15 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-// Top boc chan cho kit Xilinx (kit chua chot). Logic SoC nam o rtl/ (dung chung voi DE2).
-// Khi chot kit: sua ten/so chan o day va constraints.xdc, khong sua rtl/.
+// Board wrapper for a Xilinx kit (not chosen yet). The SoC itself lives in rtl/, shared with the DE2.
+// Once the kit is picked, change the ports here and in constraints.xdc, never rtl/.
 module Xilinx_Top #(
     parameter BOOT_HEX = "firmware_imem.hex",
     parameter RAM_HEX  = "firmware_dmem.hex",
     parameter APP_HEX  = "app_firmware.hex"
 )(
-    input  wire       clk,           // clock board (constraints.xdc dat chu ky)
-    input  wire       btn_rst,       // nut reset, muc cao khi nhan
+    input  wire       clk,           // board clock (period set in constraints.xdc)
+    input  wire       btn_rst,       // reset button, active high
     input  wire [7:0] sw,
     input  wire [3:0] sw_boot,
     output wire [7:0] led,

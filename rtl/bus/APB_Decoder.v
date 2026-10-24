@@ -1,14 +1,14 @@
 `timescale 1ns / 1ps
 
-// APB decoder 1 master -> NUM_SLV slave, moi slave 1 cua so 4 KB (PADDR[15:12] = so slave)
-// Cua so khong co slave: PREADY = 1, PSLVERR = 1
+// APB decoder, 1 master to NUM_SLV slaves, one 4 KB window each (PADDR[15:12] = slave index)
+// A window with no slave answers at once with PSLVERR
 module APB_Decoder #(
     parameter NUM_SLV = 8
 )(
     input  [31:0]          PADDR,
     input                  PSEL,
-    output [NUM_SLV-1:0]   PSEL_S,     // PSEL cho tung slave
-    input  [32*NUM_SLV-1:0] PRDATA_S,  // slave i: bit [32*i+31:32*i]
+    output [NUM_SLV-1:0]   PSEL_S,     // per-slave PSEL
+    input  [32*NUM_SLV-1:0] PRDATA_S,  // slave i on bits [32*i+31:32*i]
     input  [NUM_SLV-1:0]   PREADY_S,
     input  [NUM_SLV-1:0]   PSLVERR_S,
     output [31:0]          PRDATA,

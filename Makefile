@@ -1,17 +1,17 @@
-# HRoT_SoC - tram dieu khien chung. CHAY TRONG WSL (Ubuntu), tai thu muc goc repo:
-#   make test        regression toan bo (lop, IP, SoC, VP) bang QuestaSim -> PASS/FAIL
-#   make sim-unit    11 testbench don vi cua loi (sim/run_unit.do)
-#   make sim-core    mo phong loi (sim/run_rtl.do), TB=RISCV_Core_prog_tb | RISCV_Core_tb | RISCV_Core_hazard_tb
+# HRoT_SoC entry points. Run inside WSL (Ubuntu) from the repo root:
+#   make test        full regression (core, IP, SoC, VP) on QuestaSim, prints PASS/FAIL per check
+#   make sim-unit    the 11 core unit testbenches (sim/run_unit.do)
+#   make sim-core    core simulation (sim/run_rtl.do), TB=RISCV_Core_prog_tb | RISCV_Core_tb | RISCV_Core_hazard_tb
 #   make sim-uvm     UVM AXI4-Lite (sim/run_uvm.do), TEST=axi4_lite_full_test SEED=1
-#   make sim-soc     mo phong toan SoC (sim/run_soc.do)
-#   make sim-ip      testbench ngoai vi APB (sim/run_ip.do)
-#   make vp          Virtual Platform SystemC (sim/run_vp.sh)
-#   make fw          build firmware Master (CMake + riscv64-unknown-elf)
-#   make de2         tong hop + P&R cho DE2 (Quartus II 13.0sp1)
-#   make xilinx      tong hop + P&R cho kit Xilinx (Vivado 2025.2), PART=...
-#   make clean       xoa thu muc build
-# Cong cu Windows goi qua WSL interop bang duong dan tuyet doi (khong phu thuoc PATH):
-# mo phong chi dung QuestaSim, khong dung ModelSim.
+#   make sim-soc     whole-SoC simulation (sim/run_soc.do)
+#   make sim-ip      APB peripheral testbench (sim/run_ip.do)
+#   make vp          SystemC virtual platform (sim/run_vp.sh)
+#   make fw          build the Master firmware (CMake + riscv64-unknown-elf)
+#   make de2         synthesis + P&R for the DE2 (Quartus II 13.0sp1)
+#   make xilinx      synthesis + P&R for a Xilinx part (Vivado 2025.2), PART=...
+#   make clean       remove build output
+# Windows tools are called through WSL interop by absolute path, so PATH doesn't matter.
+# Simulation uses QuestaSim only, never ModelSim.
 
 QUESTA  ?= /mnt/c/questasim64_10.2c/win64/vsim.exe
 QUARTUS ?= /mnt/c/altera/13.0sp1/quartus/bin64/quartus_sh.exe
@@ -21,8 +21,8 @@ TB      ?= RISCV_Core_prog_tb
 TEST    ?= axi4_lite_full_test
 SEED    ?= 1
 
-# Firmware nap vao FPGA: mac dinh dung firmware thu (dv/sw/mkhex.py, UART 115200 @ 50 MHz)
-# cho toi khi co firmware that; doi bang: make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
+# FPGA builds load the test firmware (dv/sw/mkhex.py, UART at 115200 baud / 50 MHz) until the real
+# firmware is ready. Override with: make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
 HEX_DIR  := build/hex
 BOOT_HEX ?= $(HEX_DIR)/boot.hex
 RAM_HEX  ?= $(HEX_DIR)/zero.hex

@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
-// FIFO dong bo, DEPTH = 2^AW, doc to hop (dout = phan tu dau hang doi)
-// full/empty bang so sanh con tro co them 1 bit vong
+// Synchronous FIFO, DEPTH = 2^AW, combinational read (dout is the head of the queue).
+// full/empty come from comparing pointers that carry one extra wrap bit.
 module Sync_FIFO #(
     parameter DW = 8,
     parameter AW = 3

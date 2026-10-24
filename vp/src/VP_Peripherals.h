@@ -1,7 +1,7 @@
 #ifndef VP_PERIPHERALS_H
 #define VP_PERIPHERALS_H
 
-// Mo hinh TLM don gian cho bo nho va SYSCSR (khop RTL, xem docs/spec/SoC_Memory_Map.md)
+// Simple TLM models of memory and SYSCSR (match the RTL, see docs/spec/SoC_Memory_Map.md)
 #include <systemc.h>
 #include <tlm.h>
 #include <tlm_utils/simple_target_socket.h>
@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-// Bo nho word 32-bit, luu theo byte little-endian (giong RISC-V). read_only: ghi -> loi (SLVERR)
+// 32-bit word memory stored as little-endian bytes (like RISC-V). read_only: writes fail (SLVERR)
 SC_MODULE(Memory_VP) {
     tlm_utils::simple_target_socket<Memory_VP> target_socket;
     std::vector<uint8_t> mem;
@@ -21,7 +21,7 @@ SC_MODULE(Memory_VP) {
         target_socket.register_b_transport(this, &Memory_VP::b_transport);
     }
 
-    // Nap file hex $readmemh (moi dong 1 word, bo qua dong '@'), tra ve so byte da nap
+    // Load a $readmemh-style hex file (one word per line, '@' lines skipped) and return the byte count
     size_t load_hex(const std::string& path) {
         std::ifstream f(path);
         std::string tok;
@@ -51,7 +51,7 @@ SC_MODULE(Memory_VP) {
     }
 };
 
-// SYSCSR: APP_CTRL (0x00, bit0 nha reset App), CHIP_ID (0x04), VERSION (0x08)
+// SYSCSR: APP_CTRL (0x00, bit0 releases the App), CHIP_ID (0x04), VERSION (0x08)
 SC_MODULE(SYSCSR_VP) {
     tlm_utils::simple_target_socket<SYSCSR_VP> target_socket;
     uint32_t app_ctrl = 0;
@@ -69,7 +69,7 @@ SC_MODULE(SYSCSR_VP) {
             if (off == 0x00) {
                 app_ctrl = *p & 1;
                 std::cout << "[" << sc_time_stamp() + delay << "] SYSCSR: App Core "
-                          << (app_running() ? "DUOC NHA RESET" : "bi giu reset") << std::endl;
+                          << (app_running() ? "released from reset" : "held in reset") << std::endl;
             }
         } else {
             *p = off == 0x00 ? app_ctrl : off == 0x04 ? 0x48524F54u : off == 0x08 ? 0x00020000u : 0u;

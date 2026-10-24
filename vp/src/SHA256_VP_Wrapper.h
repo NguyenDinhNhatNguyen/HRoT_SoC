@@ -1,10 +1,10 @@
 #ifndef SHA256_VP_WRAPPER_H
 #define SHA256_VP_WRAPPER_H
 
-// Mo hinh TLM cua SHA256_Wrapper (RTL). Ban do thanh ghi giong RTL / fw/hal/sha256_regs.h:
+// TLM model of SHA256_Wrapper. Same register map as the RTL and fw/hal/sha256_regs.h:
 //   0x00-0x3C BLOCK (W), 0x40 CTRL (bit0 START, bit1 INIT), 0x44 STATUS (bit0 DONE, bit1 BUSY),
-//   0x50-0x6C HASH (R). Offset khac: doc 0, ghi bo qua.
-// Thoi gian: 1 block = 66 chu ky clock (giong RTL), BUSY=1 trong khoang do.
+//   0x50-0x6C HASH (R). Other offsets read 0, writes ignored.
+// Timing: one block takes 66 clocks like the RTL, with BUSY=1 meanwhile.
 #include <systemc.h>
 #include <tlm.h>
 #include <tlm_utils/simple_target_socket.h>
@@ -32,7 +32,7 @@ SC_MODULE(SHA256_VP_Wrapper) {
 
     bool busy(const sc_time& now) const { return now < busy_until; }
 
-    // Ket qua chi "hien" ra khi het BUSY, giong RTL
+    // The result only shows up once BUSY drops, as on the RTL
     void settle(const sc_time& now) {
         if (!done && busy_until != SC_ZERO_TIME && !busy(now)) {
             std::memcpy(h, h_next, sizeof h);
@@ -67,7 +67,7 @@ SC_MODULE(SHA256_VP_Wrapper) {
             else if (off >= 0x50 && off <= 0x6C) v = h[(off - 0x50) >> 2];
             *ptr = v;
         }
-        delay += clk_period * 4;   // ~ do tre 1 giao dich AXI4-Lite tren RTL
+        delay += clk_period * 4;   // roughly one AXI4-Lite transaction on the RTL
         trans.set_response_status(tlm::TLM_OK_RESPONSE);
     }
 };

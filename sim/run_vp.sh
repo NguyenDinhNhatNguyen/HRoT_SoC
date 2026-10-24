@@ -1,8 +1,9 @@
 #!/bin/bash
-# Virtual Platform secure boot (SystemC/TLM-2.0), chay trong WSL tu thu muc sim/:
+# Secure boot on the SystemC/TLM-2.0 virtual platform. Run in WSL from sim/:
 #   bash run_vp.sh [app.hex]
-# Build: vp/src/*.cpp + HAL that cua firmware (fw/hal, che do HAL_HOST_MODEL) + SHA-256 tham chieu.
-# Chay 2 kich ban: image dung (App duoc nha reset) va image bi sua (--tamper, App bi giu reset).
+# Builds vp/src/*.cpp together with the firmware's real HAL (fw/hal, HAL_HOST_MODEL) and the
+# reference SHA-256, then runs two cases: a good image (App released) and a tampered one
+# (--tamper, App kept in reset).
 set -e
 SYSTEMC_HOME="${SYSTEMC_HOME:-/usr/local/systemc-2.3.3}"
 B=../vp/build
@@ -19,7 +20,7 @@ APP_HEX="${1:-$B/app.hex}"
 
 export LD_LIBRARY_PATH="$SYSTEMC_HOME/lib-linux64:$LD_LIBRARY_PATH"
 export SC_COPYRIGHT_MESSAGE=DISABLE
-echo "===== Kich ban 1: image dung ====="
+echo "===== Case 1: good image ====="
 "$B/vp_sim" "$APP_HEX"
-echo "===== Kich ban 2: image bi sua ====="
+echo "===== Case 2: tampered image ====="
 "$B/vp_sim" "$APP_HEX" --tamper

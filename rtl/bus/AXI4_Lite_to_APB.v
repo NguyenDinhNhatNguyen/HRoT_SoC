@@ -1,9 +1,9 @@
 `timescale 1ns / 1ps
 
-// Cau AXI4-Lite (slave) -> APB4 (master)
-// - Moi lan 1 giao dich, ghi uu tien hon doc
-// - APB: SETUP (PSEL=1, PENABLE=0) -> ACCESS (PENABLE=1) cho den khi PREADY
-// - PSLVERR -> BRESP/RRESP = SLVERR
+// AXI4-Lite (slave) to APB4 (master) bridge
+// - One transaction at a time, and a pending write wins over a pending read
+// - APB: SETUP (PSEL=1, PENABLE=0), then ACCESS (PENABLE=1) until PREADY
+// - PSLVERR is returned as SLVERR on BRESP/RRESP
 module AXI4_Lite_to_APB (
     input             clk, reset,
 
@@ -46,7 +46,7 @@ module AXI4_Lite_to_APB (
     wire take_w = (state == IDLE) && S_AXI_AWVALID && S_AXI_WVALID;
     wire take_r = (state == IDLE) && S_AXI_ARVALID && !(S_AXI_AWVALID && S_AXI_WVALID);
 
-    // READY phu thuoc VALID la hop le AXI (VALID khong phu thuoc READY)
+    // READY may depend on VALID in AXI (the reverse is what's forbidden)
     assign S_AXI_AWREADY = take_w;
     assign S_AXI_WREADY  = take_w;
     assign S_AXI_ARREADY = take_r;
@@ -62,7 +62,7 @@ module AXI4_Lite_to_APB (
     assign PENABLE = (state == ACCESS);
     assign PWRITE  = write_q;
     assign PWDATA  = wdata_q;
-    assign PSTRB   = write_q ? strb_q : 4'b0000;   // APB4: PSTRB = 0 khi doc
+    assign PSTRB   = write_q ? strb_q : 4'b0000;   // APB4: PSTRB must be 0 on reads
 
     always @(posedge clk) begin
         if (reset) begin

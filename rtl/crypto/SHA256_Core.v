@@ -1,19 +1,19 @@
-// 1 round / 1 clock cycle: 64 chu ky round + 1 chu ky cong don H = 65 chu ky / block
-// - start (xung 1 chu ky): bat dau bam block_in; init=1 thi bat dau tu gia tri khoi tao H0-H7 (block dau tien)
-//   init=0 thi bam noi tiep tu hash cua block truoc (message nhieu block)
-// - Padding message do firmware lam
-// - block_in[511:480] = W0 (big-endian theo chuan SHA-256)
+// SHA-256 compression, one round per clock: 64 rounds + 1 cycle to fold into H = 65 cycles per block
+// - start (1-cycle pulse) hashes block_in. init=1 starts from the standard H0-H7 (first block),
+//   init=0 chains from the previous block's hash (multi-block messages)
+// - Message padding is done by firmware
+// - block_in[511:480] = W0 (big-endian, as in FIPS 180-4)
 module SHA256_Core (
     input              clk, reset, start, init,
     input      [511:0] block_in,
     output reg         busy,
-    output reg         done,      // = 1 khi hash_out hop le, xoa khi start block moi
+    output reg         done,      // high while hash_out is valid, cleared by the next start
     output     [255:0] hash_out
 );
     localparam [255:0] IV = {32'h6a09e667, 32'hbb67ae85, 32'h3c6ef372, 32'ha54ff53a,
                              32'h510e527f, 32'h9b05688c, 32'h1f83d9ab, 32'h5be0cd19};
 
-    // 64 hằng số K của SHA-256, K[0] nam o bit cao nhat
+    // The 64 SHA-256 round constants, K[0] in the top bits
     localparam [2047:0] K_ALL = {
         32'h428a2f98, 32'h71374491, 32'hb5c0fbcf, 32'he9b5dba5, 32'h3956c25b, 32'h59f111f1, 32'h923f82a4, 32'hab1c5ed5,
         32'hd807aa98, 32'h12835b01, 32'h243185be, 32'h550c7dc3, 32'h72be5d74, 32'h80deb1fe, 32'h9bdc06a7, 32'hc19bf174,
@@ -28,10 +28,10 @@ module SHA256_Core (
         rotr = (x >> n) | (x << (32 - n));
     endfunction
 
-    reg [255:0] H;                      // hash state H0..H7 (H0 o bit cao)
+    reg [255:0] H;                      // hash state H0..H7 (H0 in the top bits)
     reg [31:0]  a, b, c, d, e, f, g, h;
-    reg [31:0]  W [0:15];               // cua so truot 16 word cua message schedule: W[0] = W_t
-    reg [6:0]   round;                  // 0..63: round, 64: cong don H
+    reg [31:0]  W [0:15];               // 16-word sliding window of the message schedule: W[0] = W_t
+    reg [6:0]   round;                  // 0..63: rounds, 64: fold into H
 
     assign hash_out = H;
 
@@ -72,7 +72,7 @@ module SHA256_Core (
                 W[15] <= W_new;
                 round <= round + 7'd1;
             end else begin
-                // Ghép: H_i = H_i + a..h
+                // H_i = H_i + a..h
                 H <= {H[255:224] + a, H[223:192] + b, H[191:160] + c, H[159:128] + d,
                       H[127:96]  + e, H[95:64]    + f, H[63:32]    + g, H[31:0]    + h};
                 busy <= 1'b0;

@@ -1,6 +1,6 @@
-# Build Quartus II 13.0sp1 cho DE2, chay tu thu muc fpga/intel_de2:
+# Quartus II 13.0sp1 build for the DE2, run from fpga/intel_de2 (or just `make de2`):
 #   quartus_sh -t build.tcl [boot_hex] [ram_hex] [app_hex]
-# Ket qua: build/ (project, .sof, bao cao) - khong commit thu muc nay.
+# Output goes to build/ (project, .sof, reports), which is not committed.
 load_package flow
 
 set here     [file normalize [file dirname [info script]]]
@@ -19,7 +19,7 @@ set_global_assignment -name TOP_LEVEL_ENTITY DE2_Top
 set_global_assignment -name VERILOG_INPUT_VERSION VERILOG_2001
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 
-# RTL dung chung (rtl/core, rtl/uncore, rtl/top) + top boc chan cua board
+# Shared RTL plus the board wrapper
 foreach f [concat [glob $root/rtl/{core,bus,periph,mem,crypto}/*.v] \
                   [list $root/rtl/top/RISCV_Core.v $root/rtl/top/SoC_Top.v $here/DE2_Top.v]] {
     set_global_assignment -name VERILOG_FILE $f

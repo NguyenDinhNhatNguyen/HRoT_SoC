@@ -1,4 +1,4 @@
-// Boot ROM rieng cua Master Core (chua firmware secure_boot)
+// Master Core boot ROM (holds the secure boot firmware)
 module Instruction_Memory #(
     parameter MEM_SIZE  = 1024, // 4KB
     parameter INIT_FILE = "../fw/build/firmware_imem.hex"
@@ -14,9 +14,10 @@ module Instruction_Memory #(
         $readmemh(INIT_FILE, rom);
     end
 
-    // CPU gui address byte (+4), ROM save word (+1) => chia 4 (>> 2 bit)
-    // Doc dong bo o canh xuong: PC on dinh sau canh len, lenh co truoc canh len ke tiep
-    // -> core van thay "doc trong cung chu ky", nhung suy ra duoc M4K (Cyclone II) / BRAM (Xilinx)
+    // The CPU sends byte addresses and the ROM stores words, hence the >> 2.
+    // Falling-edge synchronous read: PC is stable after the rising edge and the instruction is ready
+    // before the next one, so the core still sees a same-cycle read, yet this infers M4K (Cyclone II)
+    // or BRAM (Xilinx).
     always @(negedge clk)
         instr <= rom[pc[$clog2(MEM_SIZE)+1:2]];
 

@@ -1,4 +1,6 @@
 `timescale 1ns/1ps
+// Back-to-back dependent instructions with no NOPs in between: exercises forwarding from MEM and WB,
+// store-data forwarding, load-use stalls and JAL link forwarding. Ends with "... RESULT: PASS|FAIL".
 module RISCV_Core_hazard_tb;
   reg clk=0, rst=1; always #5 clk=~clk;
   reg [31:0] imem[0:63], dmem[0:63];
@@ -9,7 +11,7 @@ module RISCV_Core_hazard_tb;
   always @(posedge clk) if (we) dmem[da[7:2]] <= dw;
   reg [31:0] x[0:31]; always @(posedge clk) if (rw && rd!=0) x[rd] <= res;
   integer i, f=0;
-  task chk(input [4:0] r, input [31:0] e); if (x[r]!==e) begin f=f+1; $display("FAIL x%0d=%h exp %h",r,x[r],e); end endtask
+  task chk(input [4:0] r, input [31:0] e); if (x[r]!==e) begin f=f+1; $display("[FAIL] x%0d = %h, expected %h",r,x[r],e); end endtask
   initial begin
     for (i=0;i<64;i=i+1) begin imem[i]=32'h13; dmem[i]=0; end
     imem[0]=32'h00500093; // addi x1,x0,5
@@ -27,7 +29,7 @@ module RISCV_Core_hazard_tb;
     x[7]=0;
     repeat(2) @(posedge clk); #1 rst=0; repeat(40) @(posedge clk);
     chk(1,5); chk(2,8); chk(3,13); chk(4,13); chk(5,14); chk(6,32'h1c); chk(7,0); chk(8,32'h1c); chk(9,14); chk(10,28);
-    if (dmem[0]!==13) begin f=f+1; $display("FAIL dmem0=%h",dmem[0]); end
-    $display("HAZ RESULT: %0d fail", f); $finish;
+    if (dmem[0]!==13) begin f=f+1; $display("[FAIL] dmem[0] = %h, expected 0000000d",dmem[0]); end
+    $display("RISCV_Core_hazard_tb RESULT: %s (%0d of 11 checks failed)", f ? "FAIL" : "PASS", f); $finish;
   end
 endmodule

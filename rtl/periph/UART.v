@@ -1,15 +1,15 @@
 `timescale 1ns / 1ps
 
-// UART 8N1, lay mau 16x, FIFO TX/RX 8 byte (APB slave, 0 wait state)
+// UART 8N1, 16x oversampling, 8-byte TX/RX FIFOs (APB slave, zero wait states)
 //
-// Ban do thanh ghi (offset):
-//   0x00 TXDATA   WO  [7:0] day vao FIFO TX (bo qua neu day)
-//   0x04 RXDATA   RO  [7:0] lay ra tu FIFO RX (doc la pop); bit31 = 1 neu FIFO RX rong
-//   0x08 STATUS   RO  bit0 TX_FULL, bit1 TX_IDLE (FIFO rong va khong dang phat),
+// Registers (offset):
+//   0x00 TXDATA   WO  [7:0] push into the TX FIFO (dropped if full)
+//   0x04 RXDATA   RO  [7:0] pop from the RX FIFO, bit31 = 1 when the RX FIFO is empty
+//   0x08 STATUS   RO  bit0 TX_FULL, bit1 TX_IDLE (FIFO empty and nothing on the wire),
 //                     bit2 RX_VALID, bit3 RX_OVERRUN, bit4 FRAME_ERR
 //                 W1C bit3, bit4
-//   0x0C BAUD_DIV RW  [15:0] = f_clk / (16 * baud) - 1   (mac dinh 26: 115200 baud @ 50 MHz)
-//   0x10 IRQ_EN   RW  bit0 ngat khi RX_VALID, bit1 ngat khi TX_IDLE
+//   0x0C BAUD_DIV RW  [15:0] = f_clk / (16 * baud) - 1   (default 26: 115200 baud at 50 MHz)
+//   0x10 IRQ_EN   RW  bit0 interrupt on RX_VALID, bit1 interrupt on TX_IDLE
 module UART #(
     parameter [15:0] BAUD_DIV_RST = 16'd26
 )(
@@ -39,13 +39,13 @@ module UART #(
     reg [1:0]  irq_en;
     reg        overrun, frame_err;
 
-    // ---- Xung tick 16x baud ----
+    // ---- 16x baud tick ----
     reg [15:0] tick_cnt;
     wire       tick = (tick_cnt == 16'd0);
     wire baud_wr = wr && (PADDR == 12'h00C);
     always @(posedge clk) begin
         if (reset)        tick_cnt <= BAUD_DIV_RST;
-        else if (baud_wr) tick_cnt <= PWDATA[15:0];   // doi baud co hieu luc ngay, khong doi het chu ky cu
+        else if (baud_wr) tick_cnt <= PWDATA[15:0];   // a new divisor applies at once, no waiting out the old period
         else if (tick)    tick_cnt <= baud_div;
         else              tick_cnt <= tick_cnt - 16'd1;
     end
@@ -67,10 +67,10 @@ module UART #(
         .pop(rd && PADDR == 12'h004), .dout(rx_dout), .full(rx_full), .empty(rx_empty)
     );
 
-    // ---- TX: khung 10 bit {stop, data[7:0], start} ----
+    // ---- TX: 10-bit frame {stop, data[7:0], start} ----
     reg [9:0] tx_shift;
-    reg [3:0] tx_bits;      // so bit con lai, 0 = ranh
-    reg [3:0] tx_sub;       // dem 16 tick / bit
+    reg [3:0] tx_bits;      // bits left to send, 0 = idle
+    reg [3:0] tx_sub;       // 16 ticks per bit
     always @(posedge clk) begin
         tx_pop <= 1'b0;
         if (reset) begin
@@ -95,13 +95,13 @@ module UART #(
     assign uart_tx = tx_shift[0];
     wire tx_idle = tx_empty && (tx_bits == 4'd0);
 
-    // ---- RX: dong bo 2 tang, lay mau giua bit ----
+    // ---- RX: 2-flop synchronizer, sample in the middle of each bit ----
     reg [1:0] rx_sync;
     always @(posedge clk) rx_sync <= reset ? 2'b11 : {rx_sync[0], uart_rx};
     wire rx_in = rx_sync[1];
 
     reg [3:0] rx_sub;
-    reg [3:0] rx_bits;      // 0 = cho start, 1..8 data, 9 stop
+    reg [3:0] rx_bits;      // 0 = waiting for start, 1..8 data, 9 stop
     reg [7:0] rx_shift;
     always @(posedge clk) begin
         rx_push <= 1'b0;
@@ -119,7 +119,7 @@ module UART #(
             end
             if (tick) begin
                 if (rx_bits == 4'd0) begin
-                    // cho canh xuong, kiem lai o giua start bit
+                    // wait for a falling edge, then re-check it mid start bit
                     if (!rx_in) begin
                         if (rx_sub == 4'd7) begin
                             rx_sub  <= 4'd0;
@@ -150,7 +150,7 @@ module UART #(
         end
     end
 
-    // ---- Thanh ghi cau hinh ----
+    // ---- Config registers ----
     always @(posedge clk) begin
         if (reset) begin
             baud_div <= BAUD_DIV_RST;

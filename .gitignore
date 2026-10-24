@@ -1,12 +1,13 @@
-# Thu muc build / ket qua sinh ra (khong commit)
-fw/build/
-vp/build/
+# Build output and generated files (never committed). "build/" matches any build directory,
+# including fw/build, vp/build and fpga/*/build.
+build/
 sim/work/
 sim/transcript
 sim/*.wlf
 sim/*.hex
 sim/labels.vh
+sim/modelsim.ini
+fw/hal/test/hal_host_test
 *.jou
 *.log
 .Xil/
-build/

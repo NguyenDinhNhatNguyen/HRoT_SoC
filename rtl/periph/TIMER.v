@@ -1,14 +1,15 @@
 `timescale 1ns / 1ps
 
-// TIMER kieu CLINT: mtime 64-bit dem moi chu ky clk, ngat khi mtime >= mtimecmp (APB slave, 0 wait state)
+// CLINT-style timer: 64-bit mtime counts every clk, interrupt while mtime >= mtimecmp
+// (APB slave, zero wait states)
 //
-// Ban do thanh ghi (offset), chi ghi ca word 32-bit:
-//   0x00 MTIME_LO    RW  [31:0]  cua mtime
-//   0x04 MTIME_HI    RW  [63:32] cua mtime (doc 64-bit: HI, LO, HI lai neu HI doi)
-//   0x08 MTIMECMP_LO RW  [31:0]  cua mtimecmp
-//   0x0C MTIMECMP_HI RW  [63:32] cua mtimecmp (reset = toan 1 -> khong ngat sau reset)
-//   offset khac: doc 0, ghi bo qua
-// irq muc cao, tre 1 chu ky (thanh ghi hoa so sanh 64-bit de khong vao duong gang)
+// Registers (offset), full 32-bit writes only:
+//   0x00 MTIME_LO    RW  mtime[31:0]
+//   0x04 MTIME_HI    RW  mtime[63:32] (for a 64-bit read: HI, LO, then HI again, retry if HI moved)
+//   0x08 MTIMECMP_LO RW  mtimecmp[31:0]
+//   0x0C MTIMECMP_HI RW  mtimecmp[63:32] (resets to all ones, so no interrupt after reset)
+//   other offsets: read 0, writes ignored
+// irq is active high and one cycle late: the 64-bit compare is registered to keep it off the critical path
 module TIMER (
     input             clk, reset,
     output reg        irq,
@@ -37,7 +38,7 @@ module TIMER (
             mtimecmp <= {64{1'b1}};
             irq      <= 1'b0;
         end else begin
-            // ghi tu bus thang phep dem trong cung chu ky
+            // a bus write beats the increment in the same cycle
             if (wr && PADDR == 12'h000)      mtime[31:0]  <= PWDATA;
             else if (wr && PADDR == 12'h004) mtime[63:32] <= PWDATA;
             else                             mtime        <= mtime + 64'd1;

@@ -1,27 +1,28 @@
 module Data_Memory #(
     parameter MEM_SIZE  = 1024, // 4KB
-    parameter INIT_FILE = ""    // vd: firmware_dmem.hex (.rodata/.data), rong = khong nap
+    parameter INIT_FILE = ""    // e.g. firmware_dmem.hex (.rodata/.data), empty = no preload
 )(
     input             clk,
     input             MemWrite,
     input             MemRead,
     input      [31:0] addr,
     input      [31:0] write_data,
-    input      [3:0]  wstrb,        // byte lane ghi (SB/SH/SW)
+    input      [3:0]  wstrb,        // write byte lanes (SB/SH/SW)
     output reg [31:0] read_data
 );
 
     reg [31:0] ram [0:MEM_SIZE-1];
 
-    // Chi lay so bit vua MEM_SIZE, tranh index vuot mang (ra X khi mo phong)
+    // Use only as many address bits as MEM_SIZE needs, so the index never runs past the array (X in sim)
     wire [$clog2(MEM_SIZE)-1:0] word_addr = addr[$clog2(MEM_SIZE)+1:2];
 
     initial begin
         if (INIT_FILE != "") $readmemh(INIT_FILE, ram);
     end
 
-    // Ghi va doc dong bo o canh xuong: dia chi/du lieu tu thanh ghi canh len da on dinh,
-    // ket qua doc co truoc canh len ke tiep -> suy ra M4K/BRAM ma loi khong can doi.
+    // Read and write on the falling edge: address and data from the rising-edge pipeline registers
+    // are stable by then, and read data is ready before the next rising edge. This infers M4K/BRAM
+    // without touching the core.
     reg [31:0] q;
     always @(negedge clk) begin
         q <= ram[word_addr];

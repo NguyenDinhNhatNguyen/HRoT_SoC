@@ -1,3 +1,5 @@
+// AXI4-Lite master: turns one load/store request from the core into a single AXI transaction.
+// One transaction in flight at a time. resp_valid pulses for one cycle when it completes.
 module AXI4_Lite_Master (
     input             clk, reset,
     
@@ -5,7 +7,7 @@ module AXI4_Lite_Master (
     input             req_write,
     input      [31:0] req_addr,
     input      [31:0] req_wdata,
-    input      [3:0]  req_wstrb,     // byte lane ghi (tu data_wstrb cua core)
+    input      [3:0]  req_wstrb,     // write byte lanes (core's data_wstrb)
     output reg        req_ready,
     output reg        resp_valid,
     output reg [31:0] resp_rdata,
@@ -38,7 +40,7 @@ module AXI4_Lite_Master (
     input      [1:0]  M_AXI_RRESP
 );
 
-    // FSM điều khiển luồng Master
+    // Master FSM
     localparam IDLE = 0, WRITE_ADDR_DATA = 1, WRITE_RESP = 2, READ_ADDR = 3, READ_DATA = 4;
     reg [2:0] state;
 
@@ -57,7 +59,7 @@ module AXI4_Lite_Master (
             case (state)
                 IDLE: begin
                     resp_valid <= 0;
-                    // !resp_valid: chu ky tra ket qua, lenh cu van con o MEM -> khong phat lai request
+                    // While resp_valid is high the old instruction is still in MEM, so don't reissue it
                     if (req_valid && req_ready && !resp_valid) begin
                         req_ready <= 0;
                         if (req_write) begin
@@ -75,7 +77,7 @@ module AXI4_Lite_Master (
                     end
                 end
                 
-                // Xử lý luồng Write
+                // Write: AW and W can be accepted in either order
                 WRITE_ADDR_DATA: begin
                     if (M_AXI_AWREADY) M_AXI_AWVALID <= 0;
                     if (M_AXI_WREADY)  M_AXI_WVALID  <= 0;
@@ -95,7 +97,7 @@ module AXI4_Lite_Master (
                     end
                 end
                 
-                // Xử lý luồng READ
+                // Read
                 READ_ADDR: begin
                     if (M_AXI_ARREADY) begin
                         M_AXI_ARVALID <= 0; 

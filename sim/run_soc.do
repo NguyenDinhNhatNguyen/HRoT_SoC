@@ -1,7 +1,7 @@
 # ============================================================================
-# sim/run_soc.do -- mo phong toan SoC (2 loi + uncore), chay tu thu muc sim/
+# sim/run_soc.do -- whole SoC (both cores + bus + peripherals). Run from sim/:
 #   vsim -c -do run_soc.do
-# Sinh firmware thu truoc: python ../dv/sw/mkhex.py .   (tao boot.hex, app.hex, labels.vh)
+# Needs the test firmware first: python3 ../dv/sw/mkhex.py .   (writes boot.hex, app.hex, labels.vh)
 # ============================================================================
 if {![file exists boot.hex]} {exec python ../dv/sw/mkhex.py .}
 

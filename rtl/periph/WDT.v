@@ -1,14 +1,15 @@
 `timescale 1ns / 1ps
 
-// Watchdog cua the gioi Secure (APB slave, 0 wait state)
-// Dem xuong tu LOAD; ve 0 khi dang bat -> xung rst_req 1 chu ky sang SYSCSR (reset he thong, RST_CAUSE.WDT)
+// Secure-world watchdog (APB slave, zero wait states).
+// Counts down from LOAD. Reaching 0 while enabled sends rst_req to SYSCSR, which resets the
+// Secure world and sets RST_CAUSE.WDT.
 //
-// Ban do thanh ghi (offset):
-//   0x00 CTRL  RW  bit0 EN: ghi 1 de bat (nap COUNT = LOAD); da bat thi chi reset moi tat
-//   0x04 LOAD  RW  so chu ky toi han; khoa (ghi bo qua) khi EN = 1. Reset = 50_000_000 (1 s @ 50 MHz)
-//   0x08 COUNT RO  gia tri dem hien tai
-//   0x0C KICK  WO  ghi 0x5A5A_0002 -> nap lai COUNT = LOAD; gia tri khac bi bo qua
-//   offset khac: doc 0, ghi bo qua
+// Registers (offset):
+//   0x00 CTRL  RW  bit0 EN: write 1 to start (COUNT = LOAD). Once on, only a reset turns it off
+//   0x04 LOAD  RW  timeout in cycles, locked (writes ignored) while EN = 1. Reset value 50_000_000 (1 s at 50 MHz)
+//   0x08 COUNT RO  current count
+//   0x0C KICK  WO  write 0x5A5A_0002 to reload COUNT = LOAD, any other value is ignored
+//   other offsets: read 0, writes ignored
 module WDT #(
     parameter [31:0] LOAD_RST = 32'd50_000_000
 )(
@@ -52,7 +53,7 @@ module WDT #(
         end
     end
 
-    // giu 1 khi count = 0, nhung SYSCSR reset ca WDT ngay chu ky sau nen thuc te la 1 xung
+    // Level while count == 0, but SYSCSR resets the WDT on the next cycle, so in practice it's a pulse
     assign rst_req = en && (count == 0);
 
     always @(*) begin

@@ -1,6 +1,7 @@
-# Build Vivado (non-project), chay tu thu muc fpga/xilinx:
+# Vivado non-project build, run from fpga/xilinx (or `make xilinx PART=...`):
 #   vivado -mode batch -source build.tcl -tclargs <part> [boot_hex] [ram_hex] [app_hex]
-# Chua chot kit: chi chay tong hop + P&R de lay bao cao (khong ghi bitstream neu chua gan chan).
+# The board isn't chosen yet, so this stops after place & route and the reports (no bitstream
+# without pin assignments).
 set here [file normalize [file dirname [info script]]]
 set root [file normalize "$here/../.."]
 set part     [expr {[llength $argv] > 0 ? [lindex $argv 0] : "xc7a35tcpg236-1"}]

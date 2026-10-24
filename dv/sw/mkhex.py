@@ -1,7 +1,10 @@
-# Sinh boot.hex / app.hex cho soc_tb (mini assembler RV32I)
+"""Build boot.hex / app.hex / labels.vh for the SoC testbench with a tiny RV32I assembler.
+
+Usage: python3 dv/sw/mkhex.py <out_dir> [--baud-div N]
+"""
 import sys, os
 out = sys.argv[1]
-# --baud-div N: gia tri UART BAUD_DIV (0 = 16 clk/bit cho mo phong nhanh; 26 = 115200 baud @ 50 MHz cho board)
+# --baud-div N: UART BAUD_DIV value (0 = 16 clocks/bit for fast sim, 26 = 115200 baud at 50 MHz on a board)
 baud_div = int(sys.argv[sys.argv.index('--baud-div') + 1]) if '--baud-div' in sys.argv else 0
 
 def r(v, n): 
@@ -39,7 +42,7 @@ def br(kind, f3, rs1, rs2, label): fix.append((len(prog), kind, f3, rs1, rs2, la
 
 # RAM 0x1000_0000
 emit(LUI(10, 0x10000), ADDI(11, 0, 0x55), SW(11, 10, 0), LW(12, 10, 0)); br('b', 1, 12, 11, 'fail')
-# SB qua AXI: chi doi byte 1 cua word (kiem WSTRB toi RAM)
+# SB over AXI must change only byte 1 of the word (checks WSTRB all the way to RAM)
 emit(*LI(15, 0x11223344), SW(15, 10, 4), ADDI(16, 0, 0xAA), S(16, 10, 5, f3=0), LW(17, 10, 4), *LI(18, 0x1122AA44)); br('b', 1, 17, 18, 'fail')
 # SHA-256("abc")
 emit(LUI(1, 0x50000), *LI(2, 0x61626380), SW(2, 1, 0))
@@ -53,26 +56,26 @@ emit(LW(4, 1, 0x50), *LI(5, 0xba7816bf));
 br('b', 1, 4, 5, 'fail')
 emit(LW(4, 1, 0x6C), *LI(5, 0xf20015ad)); 
 br('b', 1, 4, 5, 'fail')
-# Ghi vao ROM App -> SLVERR, ROM khong doi (kiem o buoc doc ben duoi)
+# A write to the App ROM gets SLVERR and leaves the ROM alone (checked by the read below)
 emit(LUI(9, 0x60000), SW(0, 9, 4))
-# Dia chi khong ton tai 0x7000_0000 -> DECERR, bus khong treo, doc ra 0
+# 0x7000_0000 maps to nothing: DECERR, the bus doesn't hang, reads return 0
 emit(LUI(14, 0x70000), LW(13, 14, 0), SW(13, 14, 0)); 
 br('b', 1, 13, 0, 'fail')
 # App ROM port B 0x6000_0000
 emit(LUI(9, 0x60000), LW(8, 9, 4), *LI(5, APP[1])); 
 br('b', 1, 8, 5, 'fail')
-# APB qua cau AXI->APB: SYSCSR CHIP_ID, UART0 gui "OK", GPIO0 bat LED, nhan 1 byte UART -> LED
+# APB through the bridge: SYSCSR CHIP_ID, UART0 sends "OK", GPIO0 lights the LEDs, one UART byte back -> LEDs
 emit(LUI(20, 0x40000), LW(21, 20, 4), *LI(22, 0x48524F54)); 
 br('b', 1, 21, 22, 'fail')
-emit(LUI(23, 0x40001), ADDI(31, 0, baud_div), SW(31, 23, 0xC))   # BAUD_DIV (mac dinh 0 cho mo phong)
+emit(LUI(23, 0x40001), ADDI(31, 0, baud_div), SW(31, 23, 0xC))   # BAUD_DIV (0 by default for sim)
 emit(ADDI(24, 0, ord('O')), SW(24, 23, 0), ADDI(24, 0, ord('K')), SW(24, 23, 0))
-emit(LUI(25, 0x40002), ADDI(26, 0, 0xA5), SW(26, 25, 0))       # LED = 0xA5: bao tb gui byte vao RX
+emit(LUI(25, 0x40002), ADDI(26, 0, 0xA5), SW(26, 25, 0))       # LED = 0xA5 tells the tb to send a byte on RX
 labels['rxwait'] = here()
 emit(LW(27, 23, 8), ANDI(27, 27, 4)); 
 br('b', 0, 27, 0, 'rxwait')
-emit(LW(28, 23, 4), ANDI(28, 28, 0xFF), SW(28, 25, 0))          # LED = byte nhan duoc
-emit(LUI(29, 0x40007), LW(30, 29, 0))                           # cua so APB trong -> SLVERR, khong treo
-# Nha reset App Core (SYSCSR APP_CTRL, offset 0 cua 0x4000_0000)
+emit(LW(28, 23, 4), ANDI(28, 28, 0xFF), SW(28, 25, 0))          # LED = the byte received
+emit(LUI(29, 0x40007), LW(30, 29, 0))                           # empty APB window -> SLVERR, no hang
+# Release the App Core (SYSCSR APP_CTRL at 0x4000_0000)
 emit(LUI(6, 0x40000), ADDI(7, 0, 1), SW(7, 6, 0))
 labels['pass'] = here(); emit(JAL(0, 0))
 labels['fail'] = here(); emit(JAL(0, 0))

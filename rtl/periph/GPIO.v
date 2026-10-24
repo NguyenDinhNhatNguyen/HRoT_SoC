@@ -1,12 +1,12 @@
 `timescale 1ns / 1ps
 
-// GPIO 8 ngo ra + 8 ngo vao, ngat canh len (APB slave, 0 wait state)
+// GPIO: 8 outputs, 8 inputs, rising-edge interrupts (APB slave, zero wait states)
 //
-// Ban do thanh ghi (offset):
-//   0x00 DATA_OUT RW  [7:0] -> gpio_o (LED)
-//   0x04 DATA_IN  RO  [7:0] <- gpio_i (switch/nut), da dong bo 2 tang
-//   0x08 IRQ_EN   RW  [7:0] bat ngat canh len theo tung chan
-//   0x0C IRQ_STAT W1C [7:0] chan da co canh len (ghi 1 de xoa)
+// Registers (offset):
+//   0x00 DATA_OUT RW  [7:0] -> gpio_o (LEDs)
+//   0x04 DATA_IN  RO  [7:0] <- gpio_i (switches/keys), through a 2-flop synchronizer
+//   0x08 IRQ_EN   RW  [7:0] per-pin rising-edge interrupt enable
+//   0x0C IRQ_STAT W1C [7:0] pins that saw a rising edge (write 1 to clear)
 module GPIO (
     input             clk, reset,
     output     [7:0]  gpio_o,
@@ -30,7 +30,7 @@ module GPIO (
     wire wr = PSEL && PENABLE && PWRITE;
 
     reg [7:0] out_q, en_q, stat_q;
-    reg [7:0] s1, s2, s3;           // s1,s2: dong bo; s3: gia tri chu ky truoc de bat canh
+    reg [7:0] s1, s2, s3;           // s1,s2 synchronize, s3 holds the previous value for edge detect
 
     always @(posedge clk) begin
         if (reset) begin
@@ -50,7 +50,7 @@ module GPIO (
         end else begin
             if (wr && PADDR == 12'h000 && PSTRB[0]) out_q <= PWDATA[7:0];
             if (wr && PADDR == 12'h008 && PSTRB[0]) en_q  <= PWDATA[7:0];
-            // canh moi dat co, ghi 1 xoa co (canh trong cung chu ky duoc uu tien)
+            // an edge sets the flag, writing 1 clears it, and an edge in the same cycle wins
             stat_q <= (stat_q & ~((wr && PADDR == 12'h00C) ? PWDATA[7:0] : 8'b0)) | rise;
         end
     end

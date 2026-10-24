@@ -1,24 +1,24 @@
 `timescale 1ns / 1ps
 
-// SYSCSR - thanh ghi he thong cua the gioi Secure (APB slave, 0 wait state)
-// Kiem luon bo sinh reset he thong (sys_rst) va giu reset App Core (thay Reset_Controller cu)
+// SYSCSR: system registers of the Secure world (APB slave, zero wait states).
+// Also owns the system reset generator (sys_rst) and the App Core reset hold.
 //
-// Ban do thanh ghi (offset):
-//   0x00 APP_CTRL   RW  bit0 APP_RUN: 1 = nha reset App Core, 0 = giu reset (tuong thich 0x4000_0000 cu)
+// Registers (offset):
+//   0x00 APP_CTRL   RW  bit0 APP_RUN: 1 = release the App Core, 0 = hold it in reset
 //   0x04 CHIP_ID    RO  0x48524F54 ("HROT")
 //   0x08 VERSION    RO  0x0002_0000 (v2.0)
-//   0x0C BOOT_STRAP RO  [3:0] chan boot_strap chot luc reset
-//   0x10 RST_CAUSE  RW1C bit0 POR, bit1 WDT, bit2 SW (chi bi xoa boi POR hoac ghi 1)
-//   0x14 SW_RESET   WO  ghi 0x5A5A_0001 -> reset toan he thong
-//   offset khac: doc 0, ghi bo qua
+//   0x0C BOOT_STRAP RO  [3:0] boot_strap pins, latched during reset
+//   0x10 RST_CAUSE  RW1C bit0 POR, bit1 WDT, bit2 SW (only POR or a write of 1 clears a bit)
+//   0x14 SW_RESET   WO  write 0x5A5A_0001 to reset the whole Secure world
+//   other offsets: read 0, writes ignored
 module SYSCSR #(
-    parameter RST_HOLD = 4              // so chu ky giu sys_rst sau yeu cau reset
+    parameter RST_HOLD = 4              // cycles sys_rst stays high after a reset request
 )(
     input             clk,
-    input             por_rst,         // reset nguon / nut bam (bat dong bo phia ngoai da dong bo hoa)
-    input             wdt_rst_req,     // xung yeu cau reset tu WDT
-    output            sys_rst,         // reset cho phan con lai cua the gioi Secure
-    output            app_rst,         // reset App Core (1 = giu reset)
+    input             por_rst,         // power-on / push-button reset, already synchronized outside
+    input             wdt_rst_req,     // reset request pulse from the WDT
+    output            sys_rst,         // reset for the rest of the Secure world
+    output            app_rst,         // App Core reset (1 = held)
     input      [3:0]  boot_strap,
 
     // APB4 slave
@@ -41,7 +41,7 @@ module SYSCSR #(
 
     wire wr = PSEL && PENABLE && PWRITE;
 
-    // ---- Bo sinh reset he thong ----
+    // ---- System reset generator ----
     wire sw_req = wr && (PADDR == 12'h014) && (PWDATA == SW_KEY);
     reg  [3:0] hold_cnt;
     reg        sys_rst_q;
@@ -60,7 +60,7 @@ module SYSCSR #(
     end
     assign sys_rst = sys_rst_q;
 
-    // ---- Nguyen nhan reset: chi POR moi xoa ----
+    // ---- Reset cause: survives SW/WDT resets, cleared only by POR ----
     reg [2:0] rst_cause;
     always @(posedge clk) begin
         if (por_rst)
@@ -72,13 +72,13 @@ module SYSCSR #(
         end
     end
 
-    // ---- Thanh ghi reset theo sys_rst ----
+    // ---- Registers reset by sys_rst ----
     reg       app_run;
     reg [3:0] strap_q;
     always @(posedge clk) begin
         if (sys_rst_q) begin
             app_run <= 1'b0;
-            strap_q <= boot_strap;      // chot strap khi dang reset
+            strap_q <= boot_strap;      // latch the straps while in reset
         end else if (wr && PADDR == 12'h000 && PSTRB[0]) begin
             app_run <= PWDATA[0];
         end

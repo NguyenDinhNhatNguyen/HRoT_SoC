@@ -1,8 +1,8 @@
-// AXI4-Lite Slave dung chung: lo phan handshake AXI, phia sau chi la cong thanh ghi don gian
-// (reg_wen/reg_waddr/reg_wdata de ghi, reg_raddr/reg_rdata de doc to hop).
-// Moi ngoai vi (SHA-256, Reset Controller, ROM port B, RAM) chi can noi vao cong thanh ghi nay.
+// Generic AXI4-Lite slave. It handles the AXI handshakes and exposes a plain register port:
+// reg_wen/reg_waddr/reg_wdata for writes, reg_raddr/reg_rdata (combinational) for reads.
+// RAM, App ROM port B, SHA-256 and the default slave all sit behind one of these.
 module AXI4_Lite_Slave_Template #(
-    parameter [1:0] WRESP = 2'b00,  // 00 OKAY, 10 SLVERR (vd: ghi vao ROM), 11 DECERR (default slave)
+    parameter [1:0] WRESP = 2'b00,  // 00 OKAY, 10 SLVERR (e.g. write to ROM), 11 DECERR (default slave)
     parameter [1:0] RRESP = 2'b00
 )(
     input             clk, reset,
@@ -34,26 +34,26 @@ module AXI4_Lite_Slave_Template #(
     output reg [31:0] S_AXI_RDATA,
     output reg [1:0]  S_AXI_RRESP,
 
-    // Cong thanh ghi phia ngoai vi
-    output            reg_wen,      // 1 xung khi handshake ghi xong
+    // Register port towards the peripheral
+    output            reg_wen,      // one-cycle pulse when the write handshake completes
     output     [31:0] reg_waddr,
     output     [31:0] reg_wdata,
-    output     [3:0]  reg_wstrb,    // byte lane ghi
+    output     [3:0]  reg_wstrb,    // write byte lanes
     output     [31:0] reg_raddr,
-    input      [31:0] reg_rdata     // doc to hop theo reg_raddr
+    input      [31:0] reg_rdata     // combinational read of reg_raddr
 );
 
 localparam IDLE = 2'b00, ACTIVE = 2'b01, RESP = 2'b10;
     reg [1:0] w_state, r_state;
 
-    // Master giu AWADDR/WDATA/ARADDR on dinh suot giao dich
+    // The master holds AWADDR/WDATA/ARADDR stable for the whole transaction
     assign reg_wen   = S_AXI_AWVALID & S_AXI_AWREADY & S_AXI_WVALID & S_AXI_WREADY;
     assign reg_waddr = S_AXI_AWADDR;
     assign reg_wdata = S_AXI_WDATA;
     assign reg_wstrb = S_AXI_WSTRB;
     assign reg_raddr = S_AXI_ARADDR;
 
-    // Máy trạng thái luồng Write
+    // Write channel FSM
     always @(posedge clk) begin
         if (reset) begin
             w_state <= IDLE;
@@ -88,7 +88,7 @@ localparam IDLE = 2'b00, ACTIVE = 2'b01, RESP = 2'b10;
         end
     end
 
-    // Máy trạng thái luồng Read
+    // Read channel FSM
     always @(posedge clk) begin
         if (reset) begin
             r_state <= IDLE;

@@ -1,6 +1,6 @@
-# sim/run_unit.do -- chay lan luot 11 testbench don vi cua loi, tu thu muc sim/
+# sim/run_unit.do -- runs the 11 core unit testbenches one after another. Run from sim/:
 #   vsim -c -do run_unit.do
-# Moi TB in "SUMMARY <TEN>: PASS = x | FAIL = y"; regress.sh dem 11 dong FAIL = 0.
+# Each TB prints "SUMMARY <NAME>: PASS = x | FAIL = y" and regress.sh counts 11 lines with FAIL = 0.
 if {[file exists work]} {vdel -all -lib work}
 vlib work
 
@@ -24,7 +24,7 @@ set TBS {
 foreach tb $TBS {
     lassign $tb file top
     vlog -sv ../dv/tb/$file.v
-    # -onfinish stop: $finish chi dung mo phong, script chay tiep TB ke tiep
+    # -onfinish stop: $finish only stops this simulation so the script can move on to the next TB
     vsim -onfinish stop work.$top
     run -all
     quit -sim
