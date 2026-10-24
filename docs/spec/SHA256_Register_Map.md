@@ -6,7 +6,7 @@
 Slave AXI4-Lite, địa chỉ nền `0x5000_0000` (khớp `SHA256_VP_Wrapper.h`).
 
 | Offset | Tên | Truy cập | Mô tả |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 0x00–0x3C | `BLOCK[0..15]` | W | Khối message 512-bit. `BLOCK[0]` = W0, byte đầu của message nằm ở bit [31:24] |
 | 0x40 | `CTRL` | W | bit0 `START` (tự xóa), bit1 `INIT` |
 | 0x44 | `STATUS` | R | bit0 `DONE` (sticky), bit1 `BUSY` |
@@ -30,7 +30,7 @@ Offset `0x40`, `0x44`, `0x50` đã có trong RTL/VP hiện tại. Các offset c�
 Các điểm dưới đây làm HAL **chưa chạy được trên RTL**, cần Nguyên sửa ở `SHA256_Wrapper.v`/`SHA256_Core.v`:
 
 | # | Vấn đề | Hệ quả |
-|---|---|---|
+| --- | --- | --- |
 | 1 | Wrapper chỉ phát `start` 1 chu kỳ, còn Core chỉ chạy khi `start` đang ở mức 1 (`else if (start)`) | Core dừng sau vòng đầu. Cần cờ `busy` chốt lại đến khi xong |
 | 2 | Core đặt `done <= 0` ngay khi `start=0` | `DONE` chỉ là xung 1 chu kỳ, HAL polling sẽ bỏ lỡ. Cần `DONE` sticky |
 | 3 | Core chưa có logic vòng (K, W, Ch/Maj/Σ) và chưa cộng H cũ vào kết quả | Chưa tính ra hash (Tuần 6 của Nguyên) |

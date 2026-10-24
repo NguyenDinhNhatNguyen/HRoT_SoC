@@ -1,7 +1,7 @@
 # Test Plan UVM — SHA-256 AXI4-Lite Slave
 
 > Phiên bản: Tuần 6 · Người viết: Phát (DV) · Phục vụ: Tuần 7 (sequence ngẫu nhiên), Tuần 10 (nhiễu), Tuần 11 (coverage)
-> Register map & hợp đồng: `doc/SHA256_Register_Map.md`
+> Register map & hợp đồng: `docs/spec/SHA256_Register_Map.md`
 
 ## 1. Phạm vi và mục tiêu
 
@@ -14,7 +14,7 @@
 ## 2. Giả định (cần Nguyên xác nhận)
 
 | # | Giả định | Nếu sai thì |
-|---|---|---|
+| --- | --- | --- |
 | A1 | Truy cập địa chỉ ngoài map: `OKAY`, đọc 0, ghi bỏ qua | Đổi một cờ trong `sha256_cfg` (`unmapped_resp`) |
 | A2 | Độ trễ khối = 64 chu kỳ từ START đến DONE; ngưỡng kiểm tra đặt tham số `MAX_LATENCY` (mặc định 80) | Chỉnh `MAX_LATENCY` |
 | A3 | `DONE` sticky, xóa khi START; ghi lúc `BUSY` bị bỏ qua | Xem test `sha256_ctl_protocol_test` (mục 5) |
@@ -25,7 +25,7 @@
 Tái sử dụng agent AXI4-Lite đã có (driver, monitor, sequencer, SVA trong `axi4_lite_if`). Thay slave mô hình bằng DUT thật, thêm:
 
 | Thành phần mới | Vai trò |
-|---|---|
+| --- | --- |
 | `sha256_ref_dpi.c` | Golden model: bọc `fw/hal/test/sha256_ref.c` bằng DPI-C (`sha256_ref_compress`, độ dài tuỳ ý) |
 | `sha256_reg_model` | Mô hình thanh ghi: BLOCK (W), CTRL, STATUS, HASH (RO), quy tắc bỏ qua ghi khi BUSY |
 | `sha256_scoreboard` | Dựng lại khối từ các ghi BLOCK, mỗi START gọi golden (có/không INIT), so với HASH đọc ra; kiểm quy tắc STATUS |
@@ -40,7 +40,7 @@ Sequence cấp cao `sha256_hash_seq` (tham số: `msg_len`, nội dung, cờ INI
 ## 4. Danh sách tính năng cần kiểm (Verification Plan)
 
 | ID | Tính năng | Kiểm tra / Tiêu chí PASS | Cách kiểm | Ưu tiên |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | F-REG-01 | Giá trị sau reset | STATUS=0; BLOCK/CTRL đọc về 0; HASH đọc 0 hoặc IV (ghi rõ theo RTL) | SVA + test đọc | Cao |
 | F-REG-02 | BLOCK ghi/đọc đúng, theo WSTRB | Ghi từng byte lane, đọc lại khớp mô hình | Scoreboard | Cao |
 | F-REG-03 | Thanh ghi RO không bị ghi đè | Ghi vào STATUS/HASH không đổi giá trị | Scoreboard | Trung bình |
@@ -68,7 +68,7 @@ Sequence cấp cao `sha256_hash_seq` (tham số: `msg_len`, nội dung, cờ INI
 Chạy bằng `vsim -c -do "set TEST <tên>; do run_uvm.do"` (giống test AXI hiện có).
 
 | Test | Sequence | Feature | Tuần | Ghi chú |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `sha256_reg_reset_test` | đọc toàn map sau reset | F-REG-01 | 7 | Smoke, chạy đầu tiên |
 | `sha256_reg_rw_test` | ghi/đọc BLOCK có WSTRB, ghi RO, địa chỉ ngoài map | F-REG-02/03/04 | 7 | |
 | `sha256_kat_test` | `sha256_kat_seq`: các vector NIST | F-HASH-01/02 | 7 | Có đáp án cứng, không phụ thuộc DPI |
@@ -86,7 +86,7 @@ Chạy bằng `vsim -c -do "set TEST <tên>; do run_uvm.do"` (giống test AXI h
 ## 6. Kế hoạch Functional Coverage (Tuần 11)
 
 | Covergroup | Điểm lấy mẫu (bins) |
-|---|---|
+| --- | --- |
 | `cg_reg_access` | `addr` ∈ {BLOCK0..15, CTRL, STATUS, HASH0..7, reserved, out-of-map} × `is_write`; `wstrb` ∈ {F, 0, từng lane, lẻ} |
 | `cg_msg_len` | {0, 1–54, 55, 56, 57–62, 63, 64, 65–118, 119, 120, 121–127, 128, >128} |
 | `cg_block_count` | {1, 2, 3, 4+} |
@@ -107,7 +107,7 @@ Chạy bằng `vsim -c -do "set TEST <tên>; do run_uvm.do"` (giống test AXI h
 ## 8. Lộ trình triển khai
 
 | Tuần | Việc |
-|---|---|
+| --- | --- |
 | 6 (xong) | Test plan này + HAL (`fw/hal`) + golden C có sẵn |
 | 7 | Dựng `sha256_scoreboard`, `sha256_reg_model`, DPI golden, sequence và các test ở mục 5 (trừ noise); chạy rand với DUT Nguyên bàn giao |
 | 8 | Dùng chung vector KAT giữa UVM và firmware Secure Boot trên VP |
