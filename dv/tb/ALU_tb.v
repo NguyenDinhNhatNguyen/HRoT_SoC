@@ -1,8 +1,6 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // ALU_tb - Testbench tu kiem tra cho ALU (Result, Zero, lt, ltu)
-// ============================================================
 module ALU_tb;
 
     reg  [31:0] A, B;

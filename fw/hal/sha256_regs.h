@@ -1,4 +1,4 @@
-/* ============================================================================
+/*
  * sha256_regs.h -- Register map của SHA-256 AXI4-Lite Slave (SHA256_Wrapper)
  *
  * Đây là NGUỒN SỰ THẬT DUY NHẤT về địa chỉ/bit của ngoại vi SHA-256 phía phần
@@ -16,7 +16,7 @@
  *   0x44        STATUS        R         bit0 DONE (sticky), bit1 BUSY
  *   0x48-0x4C   (reserved)    -         Đọc 0, ghi bị bỏ qua
  *   0x50-0x6C   HASH[0..7]    R         Digest 256-bit. HASH[0] = H0 = bit [255:224]
- * ========================================================================== */
+ */
 #ifndef SHA256_REGS_H
 #define SHA256_REGS_H
 

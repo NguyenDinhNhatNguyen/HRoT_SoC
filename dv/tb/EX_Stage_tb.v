@@ -2,9 +2,7 @@
 
 module EX_Stage_tb;
 
-    // ============================================================
     // 1. Tin hieu dau vao (Inputs)
-    // ============================================================
     reg         RegWrite_EX, MemWrite_EX, MemRead_EX, Branch_EX, Jump_EX, Jalr_EX, ALUSrc_EX;
     reg  [1:0]  ResultSrc_EX, ForwardA_EX, ForwardB_EX;
     reg  [3:0]  ALUControl_EX;
@@ -12,17 +10,13 @@ module EX_Stage_tb;
     reg  [4:0]  Rd_EX;
     reg  [2:0]  funct3_EX;
 
-    // ============================================================
     // 2. Tin hieu dau ra (Outputs)
-    // ============================================================
     wire        RegWrite_EX_out, MemWrite_EX_out, MemRead_EX_out, PCSrc_EX;
     wire [1:0]  ResultSrc_EX_out;
     wire [31:0] ALUResult_EX_out, WriteData_EX_out, PC_Plus_4_EX_out, PCTarget_EX_out;
     wire [4:0]  Rd_EX_out;
 
-    // ============================================================
     // 3. Khoi tao DUT (Device Under Test)
-    // ============================================================
     EX_Stage dut (
         .RegWrite_EX(RegWrite_EX), .MemWrite_EX(MemWrite_EX), .MemRead_EX(MemRead_EX),
         .Branch_EX(Branch_EX), .Jump_EX(Jump_EX), .Jalr_EX(Jalr_EX), .ALUSrc_EX(ALUSrc_EX),
@@ -39,9 +33,7 @@ module EX_Stage_tb;
         .Rd_EX_out(Rd_EX_out), .PCSrc_EX(PCSrc_EX)
     );
 
-    // ============================================================
     // 4. Tasks Ho Tro Kiem Tra
-    // ============================================================
     integer pass_count = 0;
     integer fail_count = 0;
 
@@ -80,9 +72,7 @@ module EX_Stage_tb;
         end
     endtask
 
-    // ============================================================
     // 5. Chuoi Kich Ban Mo Phong
-    // ============================================================
     initial begin
         $display("\n==========================================================================");
         $display("                 BAT DAU TESTBENCH TANG EX_STAGE (100%% COVERAGE)         ");

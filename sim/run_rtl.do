@@ -1,9 +1,7 @@
-# ============================================================================
 # sim/run_rtl.do  -- mô phỏng lõi RISC-V (không cần uncore), chạy từ thư mục sim/
 #   vsim -c -do run_rtl.do                               (mặc định: RISCV_Core_prog_tb)
 #   vsim -c -do "set TB RISCV_Core_tb; do run_rtl.do"
 # TB có sẵn: RISCV_Core_prog_tb (chạy dv/tests/asm/core_isa_test.hex) | RISCV_Core_tb
-# ============================================================================
 if {![info exists TB]} {set TB RISCV_Core_prog_tb}
 
 if {[file exists work]} {vdel -all -lib work}

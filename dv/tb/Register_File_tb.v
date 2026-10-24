@@ -1,8 +1,6 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // Register_File_tb - Testbench tu kiem tra: ghi/doc, bypass ghi-doc cung chu ky, x0, 2 cong doc
-// ============================================================
 module Register_File_tb;
 
     reg         clk = 1'b0;

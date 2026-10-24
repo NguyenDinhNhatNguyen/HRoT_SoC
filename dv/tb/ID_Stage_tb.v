@@ -1,14 +1,10 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // ID_Stage_tb.v - Testbench toi uu cho tang ID RISC-V (Ban Fix Cuoi Cung)
-// ============================================================
 
 module ID_Stage_tb;
 
-    // ========================================================
     // 1. Tin hieu he thong
-    // ========================================================
     reg         clk;
 
     reg [31:0]  PC_ID, Instr_ID, PC_Plus_4_ID;
@@ -27,9 +23,7 @@ module ID_Stage_tb;
 
     integer pass_count, fail_count, i; 
 
-    // ========================================================
     // 2. Encoding hang so (Localparams)
-    // ========================================================
     localparam [1:0] SRC_ALU = 2'b00, SRC_MEM = 2'b01, SRC_PC4 = 2'b10, SRC_PCT = 2'b11;
     localparam [3:0] ALU_ADD = 4'b0000, ALU_SUB = 4'b0001, ALU_AND = 4'b0010, 
                      ALU_OR  = 4'b0011, ALU_XOR = 4'b0100, ALU_SLT = 4'b0101, 
@@ -59,9 +53,7 @@ module ID_Stage_tb;
         clk = 1'b0; forever #5 clk = ~clk;
     end
 
-    // ========================================================
     // 3. Task Kiem tra 
-    // ========================================================
     task check;
         input [31:0] exp_PC, exp_PC4, exp_RD1, exp_RD2, exp_Imm;
         input [4:0]  exp_Rs1, exp_Rs2, exp_Rd;
@@ -96,9 +88,7 @@ module ID_Stage_tb;
         end
     endtask
 
-    // ========================================================
     // 4. Luong Test Kich Ban
-    // ========================================================
     initial begin
         pass_count = 0; fail_count = 0;
 

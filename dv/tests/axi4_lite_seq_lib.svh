@@ -1,6 +1,4 @@
-// ============================================================================
 // Thư viện sequence AXI4-Lite
-// ============================================================================
 
 // Lớp cơ sở: cung cấp write_word / read_word để các sequence dùng lại
 class axi4_lite_base_seq extends uvm_sequence #(axi4_lite_item);

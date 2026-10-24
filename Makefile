@@ -1,6 +1,8 @@
 # HRoT_SoC - tram dieu khien chung. CHAY TRONG WSL (Ubuntu), tai thu muc goc repo:
 #   make test        regression toan bo (lop, IP, SoC, VP) bang QuestaSim -> PASS/FAIL
-#   make sim-core    mo phong loi (sim/run_rtl.do), TB=RISCV_Core_prog_tb | RISCV_Core_tb
+#   make sim-unit    11 testbench don vi cua loi (sim/run_unit.do)
+#   make sim-core    mo phong loi (sim/run_rtl.do), TB=RISCV_Core_prog_tb | RISCV_Core_tb | RISCV_Core_hazard_tb
+#   make sim-uvm     UVM AXI4-Lite (sim/run_uvm.do), TEST=axi4_lite_full_test SEED=1
 #   make sim-soc     mo phong toan SoC (sim/run_soc.do)
 #   make sim-ip      testbench ngoai vi APB (sim/run_ip.do)
 #   make vp          Virtual Platform SystemC (sim/run_vp.sh)
@@ -16,6 +18,8 @@ QUARTUS ?= /mnt/c/altera/13.0sp1/quartus/bin64/quartus_sh.exe
 VIVADO  ?= D:\AMDDesignTools\2025.2\Vivado\bin\vivado.bat
 PART    ?= xc7a35tcpg236-1
 TB      ?= RISCV_Core_prog_tb
+TEST    ?= axi4_lite_full_test
+SEED    ?= 1
 
 # Firmware nap vao FPGA: mac dinh dung firmware thu (dv/tests/mkhex.py, UART 115200 @ 50 MHz)
 # cho toi khi co firmware that; doi bang: make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
@@ -25,13 +29,19 @@ RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test sim-core sim-soc sim-ip vp fw hex de2 xilinx clean
+.PHONY: test sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx clean
 
 test:
 	bash sim/regress.sh
 
+sim-unit:
+	cd sim && $(QUESTA) -c -do run_unit.do
+
 sim-core:
 	cd sim && $(QUESTA) -c -do "set TB $(TB); do run_rtl.do"
+
+sim-uvm:
+	cd sim && $(QUESTA) -c -do "set TEST $(TEST); set SEED $(SEED); do run_uvm.do"
 
 sim-soc:
 	python3 dv/tests/mkhex.py sim

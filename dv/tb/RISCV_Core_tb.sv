@@ -191,9 +191,7 @@ module RISCV_Core_tb;
         
         bus_stall = 1'b0; repeat(3) @(posedge clk); #1;
 
-        // ============================================================
         // 4. CHECK FORWARDING
-        // ============================================================
         force dut.u_EX_Stage.RD1_EX       = 32'h1111_1111;
         force dut.u_EX_Stage.RD2_EX       = 32'h2222_2222;
         force dut.u_EX_Stage.ALUResult_MEM = 32'hAAAA_AAAA;
@@ -229,9 +227,7 @@ module RISCV_Core_tb;
         release dut.u_EX_Stage.ForwardB_EX;
         release dut.u_EX_Stage.ALUSrc_EX;
 
-        // ============================================================
         // 5. TEST ALUSrc = 1 (Xác nhận ALU_Mux chọn Immediate thay vì ForwardB)
-        // ============================================================
         force dut.u_EX_Stage.RD2_EX        = 32'h2222_2222;
         force dut.u_EX_Stage.ALUResult_MEM = 32'hAAAA_AAAA;
         force dut.u_EX_Stage.Result_WB     = 32'hBBBB_BBBB;
@@ -249,18 +245,14 @@ module RISCV_Core_tb;
         release dut.u_EX_Stage.ImmExt_EX;
         release dut.u_EX_Stage.ALUSrc_EX;
 
-        // ============================================================
         // 6. Test MID-RUN RESET
-        // ============================================================
         repeat(3) @(posedge clk);
         rst = 1'b1; #1;
         check_equal32(PC_debug, 32'h0000_0000, "Mid-run reset -> PC = 0");
         check_equal1(RegWrite_WB_debug, 1'b0, "Mid-run reset -> no WB write");
         @(posedge clk); #1; rst = 1'b0;
 
-        // ============================================================
         // 7. Check OUTPUT DEBUG
-        // ============================================================
         check_equal32(instr_addr, PC_debug, "instr_addr mirrors PC_debug");
         check_equal32(Instr_debug, imem_word, "Instr_debug matches instruction");
 

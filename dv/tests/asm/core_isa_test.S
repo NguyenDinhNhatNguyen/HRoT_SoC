@@ -1,4 +1,4 @@
-/* ============================================================================
+/*
  * core_isa_test.S -- Chuong trinh tu kiem tra RV32I cho RISCV_Core (5-stage)
  *
  * Kiem tra: forwarding MEM/WB, load-use stall, branch/jump flush, AUIPC/LUI,
@@ -16,7 +16,7 @@
  *       -o core_isa_test.elf core_isa_test.S
  *   riscv64-unknown-elf-objcopy -O verilog --verilog-data-width=4 -j .text \
  *       core_isa_test.elf core_isa_test.hex
- * ========================================================================== */
+ */
 #define TOHOST 0x3FC
 
 .macro CHECK reg, val

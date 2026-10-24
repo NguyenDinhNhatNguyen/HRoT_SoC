@@ -1,8 +1,6 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // Branch_Unit_tb - Testbench tu kiem tra: 6 lenh B-type x (taken/not taken), JAL, JALR
-// ============================================================
 module Branch_Unit_tb;
 
     reg       Branch, Jump, Jalr;

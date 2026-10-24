@@ -1,4 +1,4 @@
-/* ============================================================================
+/*
  * sha256_hal.h -- Hardware Abstraction Layer cho lõi gia tốc SHA-256
  *
  * Dùng cho Secure Boot trên Master Core (RV32I, không có lệnh nhân/chia, không
@@ -22,7 +22,7 @@
  *        để gọi lại; nếu bỏ cuộc, người gọi phải gọi sha256_abort(). Đừng để ctx
  *        ra khỏi phạm vi khi phiên còn mở.
  *  - Không thread-safe, không dùng trong ngắt.
- * ========================================================================== */
+ */
 #ifndef SHA256_HAL_H
 #define SHA256_HAL_H
 

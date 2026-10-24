@@ -1,5 +1,4 @@
 `timescale 1ns/1ps
-// ============================================================================
 // Slave AXI4-Lite mô hình hành vi (thuần SystemVerilog, không dùng UVM).
 //  - Bộ nhớ thưa (associative array), địa chỉ chưa ghi đọc ra 0, hỗ trợ WSTRB.
 //  - READY/phản hồi có độ trễ ngẫu nhiên: +SLAVE_MAX_DELAY=<n> (mặc định 3, 0 = không trễ).
@@ -7,7 +6,6 @@
 //  - BVALID/RVALID được giữ cho tới khi master đưa BREADY/RREADY.
 //  - Mỗi lúc chỉ có 1 giao dịch ghi và 1 giao dịch đọc đang xử lý.
 //  - Reset xóa toàn bộ bộ nhớ (scoreboard cũng xóa mô hình khi reset).
-// ============================================================================
 module axi4_lite_slave_model #(
   parameter int unsigned DEFAULT_MAX_DELAY = 3
 )(

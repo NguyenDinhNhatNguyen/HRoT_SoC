@@ -2,16 +2,12 @@
 
 module Control_Unit_tb;
 
-    // ============================================================
     // Inputs
-    // ============================================================
     reg [6:0] op;
     reg [2:0] funct3;
     reg       funct7b5;
 
-    // ============================================================
     // Outputs
-    // ============================================================
     wire [1:0] ResultSrc;
     wire       MemWrite;
     wire       MemRead;
@@ -23,9 +19,7 @@ module Control_Unit_tb;
     wire [3:0] ALUControl;
     wire       Jalr;
 
-    // ============================================================
     // Instantiate Control Unit
-    // ============================================================
     Control_Unit u_CU (
         .op         (op),
         .funct3     (funct3),
@@ -42,16 +36,12 @@ module Control_Unit_tb;
         .Jalr       (Jalr)
     );
 
-    // ============================================================
     // Test counters
-    // ============================================================
     integer test_count;
     integer pass_count;
     integer fail_count;
 
-    // ============================================================
     // Check task
-    // ============================================================
     task check_control;
         input [8*20:1] instr_name;
         input [1:0] exp_ResultSrc;
@@ -95,9 +85,7 @@ module Control_Unit_tb;
         end
     endtask
 
-    // ============================================================
     // Test sequence
-    // ============================================================
     initial begin
         test_count = 0;
         pass_count = 0;
@@ -171,6 +159,7 @@ module Control_Unit_tb;
             $display("*        CONTROL UNIT IS READY FOR INTEGRATION             *");
             $display("************************************************************\n");
         end
-        $stop;
+        $display("SUMMARY CONTROL_UNIT: PASS = %0d | FAIL = %0d", pass_count, fail_count);
+        $finish;
     end
 endmodule

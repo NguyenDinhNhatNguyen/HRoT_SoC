@@ -1,8 +1,8 @@
-/* ============================================================================
+/*
  * crt0.S -- Khởi động Master Core: đặt stack, xóa .bss, gọi main().
  * .rodata/.data đã được nạp sẵn vào RAM (xem linker.ld), không cần copy.
  * main() trả về thì dừng tại vòng lặp vô hạn.
- * ========================================================================== */
+ */
     .section .text.start, "ax"
     .globl _start
 _start:

@@ -1,53 +1,57 @@
 # Trạng thái dự án — HRoT SoC
 
-> Cập nhật: 2026-10-23 (cuối Tuần 6). Sửa file này mỗi khi xong một mốc hoặc chốt một quyết định.
+> Cập nhật: 2026-10-24 (Tuần 7, sau commit `bb8288a`). Tiến độ chi tiết theo từng việc nằm ở [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) (tab Tổng hợp / Tiến độ / Mốc & Giao diện) — sheet là nguồn chính thức, khi lệch thì theo sheet; file này tóm tắt trạng thái kỹ thuật. Sửa mỗi khi xong một mốc hoặc chốt một quyết định.
 
-## 1. Phần của Phát — Tuần 1–6
+## 1. Tổng quan
 
-| Tuần | Việc | Trạng thái |
-|---|---|---|
-| 1 | Sơ đồ khối datapath 5 tầng | ❌ Chưa có trong `doc/` |
-| 1–3 | 4 thanh ghi pipeline, RTL IF/ID/EX/MEM/WB, ghép lõi | ✅ TB đơn vị PASS hết |
-| 4 | Forwarding + Hazard tích hợp, test assembly | ✅ `core_isa_test.S` (40 CHECK), chạy cả khi `bus_stall` ngẫu nhiên |
-| 4 | Nghiệm thu lõi trên QuestaSim | ⚠️ Mới chạy iverilog, chưa chạy Questa |
-| 5 | Khung UVM AXI4-Lite | ✅ 15/15 PASS trên Verilator (kể cả reset giữa giao dịch) |
-| 6 | HAL SHA-256 + Test plan UVM | ✅ 9.692 test host PASS, khớp `sha256sum`, build rv32i sạch |
-| — | Toolchain firmware (CMake, linker, crt0) | ✅ Chương trình C thật chạy đúng trên lõi |
+- Toàn dự án 20/54 việc (37%): Nguyên 14/31, Phát 6/21. RTL FREEZE: **22/11/2026** (mốc M2).
+- SoC biên dịch và chạy được: Master boot từ Boot ROM riêng, dùng SHA-256 phần cứng, đọc ROM App qua cổng B, nhả reset App qua SYSCSR. `SoC_Top_tb` hiện chỉ băm chuỗi "abc" (firmware thử `dv/tests/mkhex.py`), **chưa băm image App và chưa có kịch bản image bị sửa trên RTL** (VP đã có cả hai kịch bản). FPGA: DE2 7.453 LE, Fmax 54,9 MHz @ 50 MHz; Artix-7 WNS > +3 ns.
+- Firmware Secure Boot thật **chưa có**: `SoC_Top_tb` đang chạy firmware thử viết tay (`dv/tests/mkhex.py`); `fw/secure_boot/main.c` là code giả (việc P-13).
 
-Kết quả kiểm tra gần nhất: TB đơn vị ALU 25 · Branch 16 · Control 28 · EX 8 · Extend 14 · ID 26 · IF_ID 9 · IF 10 · MEM 23 · RegFile 38 · WB 108 — tất cả FAIL = 0; `RISCV_Core_tb` 44/44; chương trình ISA PASS (có/không stall).
+Kết quả kiểm tra gần nhất (iverilog, 24/10): 11 TB đơn vị FAIL = 0 · `RISCV_Core_tb` 44/44 · chương trình ISA PASS (có/không stall) · hazard 0 lỗi · APB 28/28 · SoC secure boot PASS · HAL 9.692 PASS · build firmware OK. UVM 15/15 PASS trên Verilator (23/10). UVM SHA-256 trên DUT thật (25/10, Verilator): KAT, CTL (khoảng 960 check), RAND 40 message × 3 seed (khoảng 4.300–4.900 check), FULL, reset giữa message × 3 — tất cả PASS, 0 lỗi. VP: Nguyên báo PASS (cần SystemC).
 
-## 2. Đang chờ Nguyên (SoC chưa compile được)
+## 2. Phần của Phát
 
-1. `SoC_Top.v`: thiếu `endmodule`; các wire `master_data_*`, `M_AXI_*` chưa khai báo (thành 1-bit ngầm); instantiate `SHA256_Core` thay vì `SHA256_Wrapper`; không có cổng output (Vivado sẽ tối ưu bỏ hết).
-2. Master Core đang fetch lệnh từ cổng B của ROM App → Master chạy code của App. Cần ROM boot riêng cho Master; cổng B làm AXI slave (base ≠ 0, HAL từ chối địa chỉ 0).
-3. `Dual_Port_ROM` đọc đồng bộ, lõi cần đọc tổ hợp (xem `Dev_Guide.md` mục 2).
-4. `bus_stall = ~req_ready` trễ 1 chu kỳ → load nhận dữ liệu cũ. Cần stall tổ hợp: `(data_re | data_we) & ~resp_valid`.
-5. AXI master chưa có WSTRB (lõi đã xuất `data_wstrb`); `Data_Memory` cần ghi theo byte và đang compile lỗi (`read_data` gán 2 nơi).
-6. `SHA256_Core/Wrapper` mới là khung: chưa có vòng nén, `start` chỉ 1 xung, `DONE` không sticky, chỉ 1/16 word block và 1/8 word hash, thiếu kênh B và các READY. Danh sách chi tiết: `SHA256_Register_Map.md`.
-7. Reset Controller không trả `AWREADY` → ghi vào `0x4000_0000` treo Master.
-8. `AXI4_Lite_Slave_Template.v`: `S_AXI_BRESP/RRESP` chưa khai báo.
-9. RTL đọc `../fw/firmware.txt` và `app_firmware.hex`; build hiện xuất `firmware_imem.hex` + `firmware_dmem.hex`.
-10. VP: chỉ có 2 file `.h`, không có `sc_main` → `sim/run_vp.sh` không chạy được.
+| ID | Việc | Hạn | Trạng thái |
+|---|---|---|---|
+| P-01…P-06 | Lõi 5 tầng, hazard + test ISA, khung UVM, HAL + test plan, toolchain, load/store byte/half | ≤ 25/10 | ✅ Xong |
+| **P-07** | Sơ đồ khối datapath 5 tầng trong `doc/` | 13/09 | ❌ **Quá hạn** |
+| P-08 | UVM sequence ngẫu nhiên cho SHA-256 (corner case) | 25/10 | ✅ Xong 25/10 (chưa commit): `sha256_full_test` PASS, reset giữa message PASS (3 thời điểm). `sha256_alias_test` FAIL do lỗi RTL (mục 4) |
+| **P-09** | Zicsr + trap máy + cổng `irq_timer`/`irq_ext` | 01/11 | Chưa làm — **chặn N-15, N-19**, thuộc mốc M1 |
+| P-10 | Dọn `dv/tb` sang `dv/env`, `dv/agents` | 01/11 | Chưa làm |
+| P-11 | Driver UART/GPIO theo `SoC_Memory_Map.md` | 01/11 | Chưa làm (ngoại vi đã có) |
+| P-12 | Cập nhật tài liệu này + `Dev_Guide.md`; thêm test của Phát vào `make test` | 01/11 | ✅ Xong 24/10 |
+| P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | Chờ P-11, I-03 |
+| P-14 | Test assembly ngắt timer/external | 08/11 | Chờ P-09, N-15 |
+| P-15…P-17 | FW dùng Secure DMA · FW App + `app_firmware.hex` + sinh golden hash · UVM agent APB + scoreboard SHA (DPI) | 15/11 | Chưa làm |
+| P-18…P-21 | Test toàn SoC + regression UVM · coverage · Genus · Innovus + so sánh PPA | 22/11 → 13/12 | Chưa làm |
 
-## 3. Quyết định cần chốt với Nguyên
+## 3. Giao diện Nguyên ↔ Phát
 
-- Bản đồ bộ nhớ (đề xuất ở `Dev_Guide.md` mục 3), đặc biệt RAM `0x1000_0000` và base của ROM App trên bus Master.
-- Golden hash đặt ở đâu: hiện hằng số nằm trong RAM ghi được (lõi Harvard). Hướng: map boot ROM lên bus dữ liệu (chỉ đọc), hoặc nhúng hash vào lệnh.
-- Băm toàn bộ 4 KB ROM App (khuyến nghị) hay chỉ độ dài image.
-- Truy cập ngoài map SHA-256: `OKAY`+0 hay `SLVERR`; độ trễ một khối (64 hay 65–66 chu kỳ).
-- Full SoC: UVM chỉ theo dõi thụ động bus nội bộ, hay thêm cổng master để bơm nhiễu (Tuần 10).
+| ID | Nội dung | Hạn | Trạng thái |
+|---|---|---|---|
+| I-01 | Cổng ngắt của lõi (đề xuất `irq_timer`, `irq_ext` mức cao → `mip.MTIP`/`mip.MEIP`) | 01/11 | **Phát chủ trì**, chưa chốt |
+| I-02 | Header địa chỉ firmware theo `SoC_Memory_Map.md`; đổi map phải báo trước | 01/11 | Nguyên |
+| I-03 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó | 08/11 | Cả hai |
+| I-04 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm **cả 4 KB** ROM App) | 15/11 | Phát |
+| I-05 | SHA-256: 66 chu kỳ START→DONE; offset trống OKAY/0; ngoài slave DECERR | — | ✅ Đã chốt |
+| I-06 | UART `BAUD_DIV` mặc định 26 = 115200 baud @ 50 MHz | — | ✅ Đã chốt |
+| I-07 | Chỉ commit trên `main`, chạy trong WSL, mô phỏng Questa, `make test` PASS trước khi push | — | ✅ Đã chốt |
 
-## 4. Tuần 7 — làm được ngay khi chờ RTL SHA-256
+Các lỗi SoC/uncore liệt kê ở bản trước (SoC không compile, Master fetch ROM App, ROM đọc đồng bộ, `bus_stall` trễ, thiếu WSTRB, SHA chưa băm, Reset Controller treo, VP thiếu `sc_main`…) **đều đã được Nguyên sửa** trong các commit `459f4fe`…`bb8288a`.
 
-- [ ] Chạy `run_rtl.do` và `run_uvm.do` trên QuestaSim; vẽ sơ đồ datapath vào `doc/`.
-- [ ] Golden model DPI bọc `fw/hal/test/sha256_ref.c`; tách vector KAT ra header dùng chung UVM + firmware.
-- [ ] Slave SHA-256 mô hình hành vi đúng hợp đồng `SHA256_Register_Map.md` để chạy test trước khi có RTL.
-- [ ] `sha256_reg_model`, `sha256_scoreboard`, `sha256_hash_seq`, `sha256_rand_seq` theo test plan.
-- [ ] Monitor ghi thời điểm/thứ tự AW–W (cần cho coverage Tuần 11); script regression nhiều seed.
+## 4. Điểm cần lưu ý
 
-## 5. Lỗ hổng so với lộ trình Tuần 16 (chưa có trong plan)
+- **Lỗi RTL SHA-256 (P-08 phát hiện, chờ Nguyên):** `SHA256_Wrapper` chỉ giải mã `addr[7:0]` trong khi `SoC_Top` cấp cửa sổ 64 KB, nên offset ≥ `0x100` bị alias vào thanh ghi thật — đọc `0x144`/`0xFF44` ra STATUS, `0x150` ra HASH0, ghi `0x100+` làm hỏng BLOCK. Trái I-05 (offset trống OKAY/0). Tái hiện: `sha256_alias_test`.
 
-- Kiểm chứng Secure Boot mức SoC: image đúng → nhả reset App; ROM bị sửa → App bị giữ reset; lõi SHA hỏng → selftest bắt được.
-- Hạ tầng coverage: covergroup, `+cover`, `vcover merge`, báo cáo.
-- Build firmware App + bước sinh golden hash tự động trước khi build Master; `soc_map.h` làm nguồn địa chỉ duy nhất.
-- GLS (Tuần 13–14): `RISCV_Core_prog_tb` dùng lại được (bọc phần dump thanh ghi bằng `ifndef GLS`); `RISCV_Core_tb` chỉ chạy RTL.
+- **VP băm theo độ dài image** (`cpu.app_len`), còn I-04 chốt băm cả 4 KB ROM App — cần thống nhất trước P-13/P-16.
+- **Bộ nhớ đọc ở cạnh xuống** chạy tốt trên FPGA nhưng không hợp với SRAM macro khi làm ASIC (P-20/P-21): cần phương án (thêm 1 tầng chờ ở IF/MEM, hoặc dùng flip-flop cho bộ nhớ nhỏ).
+- **Golden hash đang nằm trong RAM ghi được** cho tới khi có cổng đọc dữ liệu Boot ROM (N-21, I-03).
+- **Xuống dòng:** `.gitattributes` mới ép LF cho `*.sh`, `Makefile`, `*.tcl`. Nên thêm `* text=auto eol=lf` để file `.v/.sv/.c/.md` không bị đổi qua lại LF↔CRLF giữa hai máy.
+- **WSL của Phát** chưa có `make`, `gcc`, toolchain RISC-V: cần cài trước khi chạy `make test` / `make fw`.
+
+## 5. Lỗ hổng so với lộ trình Tuần 16
+
+- Kiểm chứng secure boot mức SoC với firmware thật: image đúng → nhả App; ROM bị sửa → giữ reset; lõi SHA hỏng → selftest bắt được (hiện `SoC_Top_tb` mới kiểm image đúng; VP kiểm cả đúng và bị sửa).
+- Hạ tầng coverage (P-19): covergroup, `+cover`, `vcover merge`, báo cáo; monitor UVM cần ghi thời điểm/thứ tự AW–W.
+- GLS (P-20): `RISCV_Core_prog_tb` dùng lại được (bọc phần dump thanh ghi bằng `ifndef GLS`); `RISCV_Core_tb` chỉ chạy RTL.

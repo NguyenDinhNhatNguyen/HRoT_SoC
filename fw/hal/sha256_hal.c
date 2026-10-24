@@ -1,4 +1,4 @@
-/* ============================================================================
+/*
  * sha256_hal.c -- Cài đặt HAL SHA-256 (xem sha256_hal.h)
  *
  * Quy ước phần cứng (phải khớp RTL, xem doc/SHA256_Register_Map.md):
@@ -8,7 +8,7 @@
  *  - HASH[0..7] hợp lệ khi DONE=1.
  *
  * Không dùng libc, nhân/chia hay số 64-bit: chạy được trên rv32i thuần.
- * ========================================================================== */
+ */
 #include "sha256_hal.h"
 #include "sha256_regs.h"
 

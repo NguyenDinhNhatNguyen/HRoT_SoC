@@ -7,8 +7,10 @@ Master Core băm firmware của App Core bằng SHA-256 phần cứng; App Core 
 
 | Lệnh | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ bằng QuestaSim + SystemC (lõi, ngoại vi APB, SoC secure boot, VP) |
+| `make test` | Regression toàn bộ bằng QuestaSim + SystemC (TB đơn vị, lõi, UVM, HAL, ngoại vi APB, SoC secure boot, VP) |
+| `make sim-unit` | 11 testbench đơn vị của lõi |
 | `make sim-core TB=RISCV_Core_tb` | Mô phỏng lõi (mặc định `RISCV_Core_prog_tb`) |
+| `make sim-uvm TEST=<test> SEED=<n>` | UVM AXI4-Lite (mặc định `axi4_lite_full_test`) |
 | `make sim-soc` / `make sim-ip` | Mô phỏng toàn SoC / ngoại vi APB |
 | `make vp` | Virtual Platform SystemC chạy HAL thật (image đúng và image bị sửa) |
 | `make fw` | Build firmware Master (`fw/build/firmware_imem.hex`, `firmware_dmem.hex`) |

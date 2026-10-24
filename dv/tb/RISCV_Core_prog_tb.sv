@@ -1,13 +1,11 @@
 `timescale 1ns/1ps
 
-// ============================================================
 // RISCV_Core_prog_tb: chay chuong trinh tu kiem tra dv/tests/asm/core_isa_test.hex
 //  - ROM lenh va RAM du lieu doc to hop (dung giao uoc cua RISCV_Core)
 //  - RAM ghi theo byte lane (data_wstrb)
 //  - Chay 2 lan: khong stall, va bus_stall ngau nhien (pipeline phai dong bang dung)
 //  - Ket qua doc tu TOHOST (0x3FC): 1 = PASS, (n<<1)|1 = FAIL tai CHECK thu n
 // Tham so: +HEX=<duong dan .hex> (mac dinh tinh tu thu muc sim/)
-// ============================================================
 module RISCV_Core_prog_tb;
 
     localparam TOHOST    = 32'h3FC;

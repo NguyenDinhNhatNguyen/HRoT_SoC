@@ -1,8 +1,6 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // Extend_tb - Testbench tu kiem tra mo rong immediate (I/S/B/J/U)
-// ============================================================
 module Extend_tb;
 
     reg  [31:0] Instr;

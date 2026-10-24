@@ -1,7 +1,5 @@
-// ============================================================================
 // base_test : dựng env, cấu hình, drain time, tổng kết PASS/FAIL.
 //             Mặc định chạy axi4_lite_smoke_seq (1 ghi + 1 đọc).
-// ============================================================================
 class base_test extends uvm_test;
   `uvm_component_utils(base_test)
 
@@ -22,13 +20,17 @@ class base_test extends uvm_test;
     set_global_timeout();
   endfunction
 
-  // Chốt chặn toàn cục chống treo. Mặc định 1 ms + 2 us cho mỗi giao dịch (+NUM_TRANS);
+  // Chốt chặn toàn cục chống treo. Mặc định default_timeout_us() + 2 us cho mỗi giao dịch (+NUM_TRANS);
   // ghi đè bằng +TEST_TIMEOUT_US=<n>. Phải đặt trước run_phase nên làm ở build_phase.
+  virtual function int unsigned default_timeout_us();
+    return 1000;
+  endfunction
+
   function void set_global_timeout();
     int unsigned n_trans = 0;
-    int unsigned tmo_us  = 1000;
+    int unsigned tmo_us  = default_timeout_us();
     time         tmo;
-    if ($value$plusargs("NUM_TRANS=%d", n_trans)) tmo_us = 1000 + 2 * n_trans;
+    if ($value$plusargs("NUM_TRANS=%d", n_trans)) tmo_us = tmo_us + 2 * n_trans;
     void'($value$plusargs("TEST_TIMEOUT_US=%d", tmo_us));
     tmo = time'(real'(tmo_us) * 1us);
     uvm_top.set_timeout(tmo, 0);

@@ -15,6 +15,9 @@ package hrot_dv_pkg;
   `include "axi4_lite_agent.svh"
   `include "axi4_lite_scoreboard.svh"
   `include "hrot_env.svh"
+  `include "sha256_ref.svh"
   `include "axi4_lite_seq_lib.svh"
+  `include "sha256_seq_lib.svh"
   `include "base_test.svh"
+  `include "sha256_tests.svh"
 endpackage

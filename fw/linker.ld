@@ -1,4 +1,4 @@
-/* ============================================================================
+/*
  * linker.ld -- Ban do bo nho firmware Master Core (Secure Boot)
  *
  * Lõi RISC-V là Harvard: lệnh fetch từ ROM qua cổng lệnh, còn load/store đi
@@ -13,7 +13,7 @@
  * ĐỀ XUẤT, cần Nguyên xác nhận khi ghép SoC_Top: địa chỉ RAM 0x1000_0000 trên
  * bus dữ liệu của Master (ngoại vi: 0x4000_0000 Reset Controller,
  * 0x5000_0000 SHA-256). Kích thước khớp Instruction_Memory / Data_Memory (1024 word).
- * ========================================================================== */
+ */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 

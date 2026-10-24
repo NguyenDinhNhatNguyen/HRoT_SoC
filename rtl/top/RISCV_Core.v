@@ -1,6 +1,5 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // RISC-V 5-Stage Pipeline Core
 // IF -> ID -> EX -> MEM -> WB
 //
@@ -16,7 +15,6 @@
 // - Keep ALUResult_MEM declared only once
 // - Use exact port names (Verilog is case-sensitive)
 // - Current Top interface must match each Stage module
-// ============================================================
 
 module RISCV_Core(
     input         clk, rst,

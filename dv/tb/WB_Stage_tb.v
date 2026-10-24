@@ -1,15 +1,11 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // WB_Stage_tb.v
 // Functional Verification Testbench for WB_Stage & Result_Mux
-// ============================================================
 
 module WB_Stage_tb;
 
-    // ========================================================
     // 1. DUT INPUTS & OUTPUTS
-    // ========================================================
     reg         RegWrite_WB;
     reg  [1:0]  ResultSrc_WB;
     reg  [31:0] ALUResult_WB, ReadData_WB, PC_Plus_4_WB, PCTarget_WB;
@@ -19,18 +15,14 @@ module WB_Stage_tb;
     wire [4:0]  Rd_WB_out;
     wire [31:0] Result_WB;
 
-    // ========================================================
     // 2. TEST STATISTICS & VARIABLES
-    // ========================================================
     integer pass_count = 0;
     integer fail_count = 0;
     
     // Đã tách khai báo i, j ra ngoài để chuẩn hóa với Verilog-2001
     integer i, j; 
 
-    // ========================================================
     // 3. DUT INSTANTIATION
-    // ========================================================
     WB_Stage dut (
         .RegWrite_WB       (RegWrite_WB),
         .ResultSrc_WB      (ResultSrc_WB),
@@ -45,9 +37,7 @@ module WB_Stage_tb;
         .Result_WB         (Result_WB)
     );
 
-    // ========================================================
     // 4. CHECK TASK (Optimized Transcript Output)
-    // ========================================================
     task check_wb;
         input [8*60:1] test_name;
         input          expected_RegWrite;
@@ -72,9 +62,7 @@ module WB_Stage_tb;
         end
     endtask
 
-    // ========================================================
     // 5. MAIN TEST SEQUENCE
-    // ========================================================
     initial begin
         // INITIAL VALUES
         RegWrite_WB = 1'b0; ResultSrc_WB = 2'b00; Rd_WB = 5'd0;
@@ -232,6 +220,7 @@ module WB_Stage_tb;
         if (fail_count == 0) $display("\n>>> ALL WB_STAGE FUNCTIONAL TESTS PASSED <<<");
         else                 $display("\n>>> SOME WB_STAGE TESTS FAILED <<<");
         $display("============================================================\n");
+        $display("SUMMARY WB_STAGE: PASS = %0d | FAIL = %0d", pass_count, fail_count);
 
         #10;
         $finish;

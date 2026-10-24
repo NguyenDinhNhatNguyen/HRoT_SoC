@@ -1,14 +1,10 @@
 `timescale 1ns / 1ps
 
-// ============================================================
 // MEM_Stage_tb.v - Functional Testbench for MEM_Stage + Data RAM
-// ============================================================
 
 module MEM_Stage_tb;
 
-    // ========================================================
     // 1. Khai bao tin hieu (Signals)
-    // ========================================================
     reg         clk;
     reg         RegWrite_MEM, MemWrite_MEM, MemRead_MEM;
     reg  [1:0]  ResultSrc_MEM;
@@ -29,9 +25,7 @@ module MEM_Stage_tb;
     integer pass_count = 0;
     integer fail_count = 0;
 
-    // ========================================================
     // 2. Khoi tao DUT
-    // ========================================================
     MEM_Stage dut (
         .clk                (clk),
         .RegWrite_MEM       (RegWrite_MEM), .MemWrite_MEM     (MemWrite_MEM),
@@ -49,9 +43,7 @@ module MEM_Stage_tb;
         .Rd_MEM_out         (Rd_MEM_out)
     );
 
-    // ========================================================
     // Data RAM mo phong: doc to hop theo word, ghi dong bo theo byte lane (WSTRB)
-    // ========================================================
     reg [31:0] ram [0:63];
     integer    k;
     assign data_rdata = ram[data_addr[7:2]];
@@ -81,17 +73,13 @@ module MEM_Stage_tb;
         end
     endtask
 
-    // ========================================================
     // 3. Tao Clock 100MHz (Chu ky 10ns)
-    // ========================================================
     initial begin
         clk = 1'b0;
         forever #5 clk = ~clk;
     end
 
-    // ========================================================
     // 4. Task Kiem Tra (Dung %0s de triet tieu khoang trang)
-    // ========================================================
     task check_all;
         input [8*60:1] test_name; // Toi da 60 ky tu
         input [31:0]   e_ALURes, e_ReadData, e_PC4, e_PCTarget;
@@ -121,9 +109,7 @@ module MEM_Stage_tb;
         end
     endtask
 
-    // ========================================================
     // 5. Chuoi Kich Ban Mo Phong
-    // ========================================================
     initial begin
         // Khoi tao gia tri an toan
         RegWrite_MEM=0; MemWrite_MEM=0; MemRead_MEM=0; ResultSrc_MEM=2'b00; Rd_MEM=5'd0;
@@ -231,9 +217,7 @@ module MEM_Stage_tb;
         check_bus("11k. SW -> du 4 lane",          4'b1111, 32'hFFFF8001);
         MemWrite_MEM=0;
 
-        // ====================================================
         // TONG KET
-        // ====================================================
         $display("\n=========================================================================");
         $display("SUMMARY MEM_STAGE: PASS = %0d | FAIL = %0d", pass_count, fail_count);
         if (fail_count == 0) $display(">>> TAT CA CAC KICH BAN DA DUOC KIEM TRA THANH CONG! <<<");

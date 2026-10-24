@@ -2,13 +2,11 @@
 `define AXI4_LITE_IF_SV
 `timescale 1ns/1ps
 
-// ============================================================================
 // AXI4-Lite interface (reset active-low).
 //  - drv_cb : clocking block cho Driver (lái tín hiệu phía Master, lấy mẫu phía Slave)
 //  - mon_cb : clocking block cho Monitor (chỉ lấy mẫu)
 //  - SVA    : kiểm tra giao thức (tắt bằng +define+AXI4_LITE_NO_ASSERT)
 // Lưu ý: RTL của dự án dùng reset active-high ("reset"), khi ghép phải nối ~rst_n.
-// ============================================================================
 interface axi4_lite_if (input logic clk, input logic rst_n);
 
   // Write address channel
@@ -37,6 +35,11 @@ interface axi4_lite_if (input logic clk, input logic rst_n);
   // Đếm số lần SVA thất bại. $error của SVA KHÔNG vào bộ đếm lỗi của UVM,
   // nên base_test.check_phase đọc biến này và báo uvm_error nếu khác 0.
   int unsigned assert_fail_count = 0;
+
+  // Dem so lan reset (canh xuong rst_n). Sequence so sanh truoc/sau mot thao tac nhieu giao dich
+  // de biet DUT co bi reset giua chung khong (driver chi huy duoc giao dich dang chay).
+  int unsigned reset_count = 0;
+  always @(negedge rst_n) reset_count++;
 
   clocking drv_cb @(posedge clk);
     output awaddr, awvalid, wdata, wstrb, wvalid, bready, araddr, arvalid, rready;
