@@ -20,7 +20,10 @@ extern "C" void     hal_host_write32(uint32_t off, uint32_t v) { g_cpu->wr(vp_ma
 extern "C" uint32_t hal_host_memread32(uintptr_t addr)       { return g_cpu->rd(addr); }
 
 int sc_main(int argc, char* argv[]) {
-    if (argc < 2) { std::printf("usage: %s <app.hex> [--tamper]\n", argv[0]); return 2; }
+    if (argc < 2) {
+        std::printf("usage: %s <app.hex> [--tamper]\n", argv[0]);
+        return 2;
+    }
     bool tamper = argc > 2 && std::strcmp(argv[2], "--tamper") == 0;
 
     CPU_Dummy_Initiator cpu("cpu");
@@ -41,7 +44,10 @@ int sc_main(int argc, char* argv[]) {
     // "Sign" the whole 4 KB ROM as I-04 says (unused words stay zero), before any tampering
     cpu.app_len = app_rom.mem.size();
     sha256_ref(app_rom.mem.data(), cpu.app_len, cpu.golden);
-    if (tamper) { app_rom.mem[0] ^= 0x01; std::printf("[tamper] flipped one bit in the App ROM\n"); }
+    if (tamper) {
+        app_rom.mem[0] ^= 0x01;
+        std::printf("[Tamper] Flipped one bit in the App ROM\n");
+    }
 
     sc_start();
 

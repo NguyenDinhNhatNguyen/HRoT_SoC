@@ -17,7 +17,8 @@ module Data_Memory #(
     wire [$clog2(MEM_SIZE)-1:0] word_addr = addr[$clog2(MEM_SIZE)+1:2];
 
     initial begin
-        if (INIT_FILE != "") $readmemh(INIT_FILE, ram);
+        if (INIT_FILE != "")
+            $readmemh(INIT_FILE, ram);
     end
 
     // Read and write on the falling edge: address and data from the rising-edge pipeline registers
@@ -27,16 +28,22 @@ module Data_Memory #(
     always @(negedge clk) begin
         q <= ram[word_addr];
         if (MemWrite) begin
-            if (wstrb[0]) ram[word_addr][7:0]   <= write_data[7:0];
-            if (wstrb[1]) ram[word_addr][15:8]  <= write_data[15:8];
-            if (wstrb[2]) ram[word_addr][23:16] <= write_data[23:16];
-            if (wstrb[3]) ram[word_addr][31:24] <= write_data[31:24];
+            if (wstrb[0])
+                ram[word_addr][7:0] <= write_data[7:0];
+            if (wstrb[1])
+                ram[word_addr][15:8] <= write_data[15:8];
+            if (wstrb[2])
+                ram[word_addr][23:16] <= write_data[23:16];
+            if (wstrb[3])
+                ram[word_addr][31:24] <= write_data[31:24];
         end
     end
 
     always @(*) begin
-        if (MemRead) read_data = q;
-        else read_data = 32'b0;
+        if (MemRead)
+            read_data = q;
+        else
+            read_data = 32'b0;
     end
 
 endmodule

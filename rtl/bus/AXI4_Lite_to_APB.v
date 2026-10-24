@@ -88,7 +88,8 @@ module AXI4_Lite_to_APB (
                         state   <= SETUP;
                     end
                 end
-                SETUP:  state <= ACCESS;
+                SETUP:
+                    state <= ACCESS;
                 ACCESS: begin
                     if (PREADY) begin
                         rdata_q <= PRDATA;
@@ -96,9 +97,14 @@ module AXI4_Lite_to_APB (
                         state   <= write_q ? WRESP : RRESP;
                     end
                 end
-                WRESP:  if (S_AXI_BREADY) state <= IDLE;
-                RRESP:  if (S_AXI_RREADY) state <= IDLE;
-                default: state <= IDLE;
+                WRESP:
+                    if (S_AXI_BREADY)
+                        state <= IDLE;
+                RRESP:
+                    if (S_AXI_RREADY)
+                        state <= IDLE;
+                default:
+                    state <= IDLE;
             endcase
         end
     end

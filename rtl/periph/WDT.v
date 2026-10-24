@@ -46,10 +46,14 @@ module WDT #(
             load  <= LOAD_RST;
             count <= LOAD_RST;
         end else begin
-            if (en_set) en <= 1'b1;
-            if (wr && PADDR == 12'h004 && !en) load <= PWDATA;
-            if (en_set || (en && kick)) count <= load;
-            else if (en && count != 0)  count <= count - 32'd1;
+            if (en_set)
+                en <= 1'b1;
+            if (wr && PADDR == 12'h004 && !en)
+                load <= PWDATA;
+            if (en_set || (en && kick))
+                count <= load;
+            else if (en && count != 0)
+                count <= count - 32'd1;
         end
     end
 
@@ -58,10 +62,14 @@ module WDT #(
 
     always @(*) begin
         case (PADDR)
-            12'h000: PRDATA = {31'b0, en};
-            12'h004: PRDATA = load;
-            12'h008: PRDATA = count;
-            default: PRDATA = 32'b0;
+            12'h000:
+                PRDATA = {31'b0, en};
+            12'h004:
+                PRDATA = load;
+            12'h008:
+                PRDATA = count;
+            default:
+                PRDATA = 32'b0;
         endcase
     end
 endmodule

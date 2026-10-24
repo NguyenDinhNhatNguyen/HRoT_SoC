@@ -79,8 +79,10 @@ module AXI4_Lite_Master (
                 
                 // Write: AW and W can be accepted in either order
                 WRITE_ADDR_DATA: begin
-                    if (M_AXI_AWREADY) M_AXI_AWVALID <= 0;
-                    if (M_AXI_WREADY)  M_AXI_WVALID  <= 0;
+                    if (M_AXI_AWREADY)
+                        M_AXI_AWVALID <= 0;
+                    if (M_AXI_WREADY)
+                        M_AXI_WVALID <= 0;
                     
                     if (!M_AXI_AWVALID && !M_AXI_WVALID) begin
                         M_AXI_BREADY <= 1; 

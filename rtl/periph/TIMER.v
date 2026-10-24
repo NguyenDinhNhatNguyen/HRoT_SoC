@@ -39,22 +39,32 @@ module TIMER (
             irq      <= 1'b0;
         end else begin
             // a bus write beats the increment in the same cycle
-            if (wr && PADDR == 12'h000)      mtime[31:0]  <= PWDATA;
-            else if (wr && PADDR == 12'h004) mtime[63:32] <= PWDATA;
-            else                             mtime        <= mtime + 64'd1;
-            if (wr && PADDR == 12'h008) mtimecmp[31:0]  <= PWDATA;
-            if (wr && PADDR == 12'h00C) mtimecmp[63:32] <= PWDATA;
+            if (wr && PADDR == 12'h000)
+                mtime[31:0] <= PWDATA;
+            else if (wr && PADDR == 12'h004)
+                mtime[63:32] <= PWDATA;
+            else
+                mtime <= mtime + 64'd1;
+            if (wr && PADDR == 12'h008)
+                mtimecmp[31:0] <= PWDATA;
+            if (wr && PADDR == 12'h00C)
+                mtimecmp[63:32] <= PWDATA;
             irq <= (mtime >= mtimecmp);
         end
     end
 
     always @(*) begin
         case (PADDR)
-            12'h000: PRDATA = mtime[31:0];
-            12'h004: PRDATA = mtime[63:32];
-            12'h008: PRDATA = mtimecmp[31:0];
-            12'h00C: PRDATA = mtimecmp[63:32];
-            default: PRDATA = 32'b0;
+            12'h000:
+                PRDATA = mtime[31:0];
+            12'h004:
+                PRDATA = mtime[63:32];
+            12'h008:
+                PRDATA = mtimecmp[31:0];
+            12'h00C:
+                PRDATA = mtimecmp[63:32];
+            default:
+                PRDATA = 32'b0;
         endcase
     end
 endmodule

@@ -44,10 +44,14 @@ module UART #(
     wire       tick = (tick_cnt == 16'd0);
     wire baud_wr = wr && (PADDR == 12'h00C);
     always @(posedge clk) begin
-        if (reset)        tick_cnt <= BAUD_DIV_RST;
-        else if (baud_wr) tick_cnt <= PWDATA[15:0];   // a new divisor applies at once, no waiting out the old period
-        else if (tick)    tick_cnt <= baud_div;
-        else              tick_cnt <= tick_cnt - 16'd1;
+        if (reset)
+            tick_cnt <= BAUD_DIV_RST;
+        else if (baud_wr)
+            tick_cnt <= PWDATA[15:0];   // a new divisor applies at once, no waiting out the old period
+        else if (tick)
+            tick_cnt <= baud_div;
+        else
+            tick_cnt <= tick_cnt - 16'd1;
     end
 
     // ---- FIFO ----
@@ -114,8 +118,10 @@ module UART #(
             frame_err <= 1'b0;
         end else begin
             if (wr && PADDR == 12'h008) begin
-                if (PWDATA[3]) overrun   <= 1'b0;
-                if (PWDATA[4]) frame_err <= 1'b0;
+                if (PWDATA[3])
+                    overrun <= 1'b0;
+                if (PWDATA[4])
+                    frame_err <= 1'b0;
             end
             if (tick) begin
                 if (rx_bits == 4'd0) begin
@@ -133,8 +139,10 @@ module UART #(
                         rx_sub <= 4'd0;
                         if (rx_bits == 4'd9) begin
                             rx_bits <= 4'd0;
-                            if (!rx_in) frame_err <= 1'b1;
-                            else if (rx_full) overrun <= 1'b1;
+                            if (!rx_in)
+                                frame_err <= 1'b1;
+                            else if (rx_full)
+                                overrun <= 1'b1;
                             else begin
                                 rx_byte <= rx_shift;
                                 rx_push <= 1'b1;
@@ -156,8 +164,10 @@ module UART #(
             baud_div <= BAUD_DIV_RST;
             irq_en   <= 2'b00;
         end else if (wr) begin
-            if (PADDR == 12'h00C) baud_div <= PWDATA[15:0];
-            if (PADDR == 12'h010) irq_en   <= PWDATA[1:0];
+            if (PADDR == 12'h00C)
+                baud_div <= PWDATA[15:0];
+            if (PADDR == 12'h010)
+                irq_en <= PWDATA[1:0];
         end
     end
 
@@ -165,11 +175,16 @@ module UART #(
 
     always @(*) begin
         case (PADDR)
-            12'h004: PRDATA = {rx_empty, 23'b0, rx_dout};
-            12'h008: PRDATA = {27'b0, frame_err, overrun, !rx_empty, tx_idle, tx_full};
-            12'h00C: PRDATA = {16'b0, baud_div};
-            12'h010: PRDATA = {30'b0, irq_en};
-            default: PRDATA = 32'b0;
+            12'h004:
+                PRDATA = {rx_empty, 23'b0, rx_dout};
+            12'h008:
+                PRDATA = {27'b0, frame_err, overrun, !rx_empty, tx_idle, tx_full};
+            12'h00C:
+                PRDATA = {16'b0, baud_div};
+            12'h010:
+                PRDATA = {30'b0, irq_en};
+            default:
+                PRDATA = 32'b0;
         endcase
     end
 endmodule

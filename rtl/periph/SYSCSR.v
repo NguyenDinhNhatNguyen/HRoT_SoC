@@ -66,9 +66,12 @@ module SYSCSR #(
         if (por_rst)
             rst_cause <= 3'b001;
         else begin
-            if (wr && PADDR == 12'h010) rst_cause <= rst_cause & ~PWDATA[2:0];
-            if (wdt_rst_req) rst_cause[1] <= 1'b1;
-            if (sw_req)      rst_cause[2] <= 1'b1;
+            if (wr && PADDR == 12'h010)
+                rst_cause <= rst_cause & ~PWDATA[2:0];
+            if (wdt_rst_req)
+                rst_cause[1] <= 1'b1;
+            if (sw_req)
+                rst_cause[2] <= 1'b1;
         end
     end
 
@@ -87,12 +90,18 @@ module SYSCSR #(
 
     always @(*) begin
         case (PADDR)
-            12'h000: PRDATA = {31'b0, app_run};
-            12'h004: PRDATA = CHIP_ID;
-            12'h008: PRDATA = VERSION;
-            12'h00C: PRDATA = {28'b0, strap_q};
-            12'h010: PRDATA = {29'b0, rst_cause};
-            default: PRDATA = 32'b0;
+            12'h000:
+                PRDATA = {31'b0, app_run};
+            12'h004:
+                PRDATA = CHIP_ID;
+            12'h008:
+                PRDATA = VERSION;
+            12'h00C:
+                PRDATA = {28'b0, strap_q};
+            12'h010:
+                PRDATA = {29'b0, rst_cause};
+            default:
+                PRDATA = 32'b0;
         endcase
     end
 endmodule

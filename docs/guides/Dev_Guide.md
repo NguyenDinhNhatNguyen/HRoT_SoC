@@ -67,3 +67,4 @@ Trên Questa 10.2c, chạy `make test < /dev/null` cho tới khi `sim/run_unit.d
 - Firmware: C11 freestanding, rv32i (không M), không libc, nhân/chia lấy từ libgcc. Địa chỉ ngoại vi lấy theo `docs/spec/SoC_Memory_Map.md` (I-02).
 - Đổi bản đồ địa chỉ hay giao diện giữa hai người: cập nhật mục "Mốc & Giao diện" trong sheet và báo trước.
 - Viết comment, tài liệu: không dùng dấu `;` trong câu, bảng Markdown dùng dòng phân cách `| --- | --- |`.
+- Mỗi dòng code chỉ một lệnh kết thúc bằng `;`. Lệnh sau `if`, `else`, `else if`, `for`, `while` và sau nhãn `case` (kể cả `default:`) xuống dòng mới, thụt vào một mức (4 dấu cách). Trong C/C++, khối `{ ... }` có từ hai lệnh trở lên phải viết trên nhiều dòng. Riêng hàm một lệnh như `{ return x; }` được giữ trên một dòng.

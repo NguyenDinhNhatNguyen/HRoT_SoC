@@ -19,7 +19,10 @@ SC_MODULE(VP_Bus) {
     };
     std::vector<Region> regions;
 
-    struct RegionCfg { const char* name; uint64_t base, size; };
+    struct RegionCfg {
+        const char* name;
+        uint64_t base, size;
+    };
 
     // SystemC sockets must be created in the constructor, so the region list comes in here
     VP_Bus(sc_module_name n, const std::vector<RegionCfg>& cfg) : sc_module(n), target_socket("target_socket") {

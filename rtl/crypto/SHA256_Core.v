@@ -59,14 +59,21 @@ module SHA256_Core (
             busy  <= 1'b1;
             done  <= 1'b0;
             round <= 7'd0;
-            if (init) H <= IV;
+            if (init)
+                H <= IV;
             {a, b, c, d, e, f, g, h} <= H_start;
             for (i = 0; i < 16; i = i + 1)
                 W[i] <= block_in[511 - 32*i -: 32];
         end else if (busy) begin
             if (round < 7'd64) begin
-                h <= g; g <= f; f <= e; e <= d + T1;
-                d <= c; c <= b; b <= a; a <= T1 + T2;
+                h <= g;
+                g <= f;
+                f <= e;
+                e <= d + T1;
+                d <= c;
+                c <= b;
+                b <= a;
+                a <= T1 + T2;
                 for (i = 0; i < 15; i = i + 1)
                     W[i] <= W[i+1];
                 W[15] <= W_new;

@@ -34,9 +34,13 @@ module GPIO (
 
     always @(posedge clk) begin
         if (reset) begin
-            s1 <= 8'b0; s2 <= 8'b0; s3 <= 8'b0;
+            s1 <= 8'b0;
+            s2 <= 8'b0;
+            s3 <= 8'b0;
         end else begin
-            s1 <= gpio_i; s2 <= s1; s3 <= s2;
+            s1 <= gpio_i;
+            s2 <= s1;
+            s3 <= s2;
         end
     end
 
@@ -48,8 +52,10 @@ module GPIO (
             en_q   <= 8'b0;
             stat_q <= 8'b0;
         end else begin
-            if (wr && PADDR == 12'h000 && PSTRB[0]) out_q <= PWDATA[7:0];
-            if (wr && PADDR == 12'h008 && PSTRB[0]) en_q  <= PWDATA[7:0];
+            if (wr && PADDR == 12'h000 && PSTRB[0])
+                out_q <= PWDATA[7:0];
+            if (wr && PADDR == 12'h008 && PSTRB[0])
+                en_q <= PWDATA[7:0];
             // an edge sets the flag, writing 1 clears it, and an edge in the same cycle wins
             stat_q <= (stat_q & ~((wr && PADDR == 12'h00C) ? PWDATA[7:0] : 8'b0)) | rise;
         end
@@ -60,11 +66,16 @@ module GPIO (
 
     always @(*) begin
         case (PADDR)
-            12'h000: PRDATA = {24'b0, out_q};
-            12'h004: PRDATA = {24'b0, s2};
-            12'h008: PRDATA = {24'b0, en_q};
-            12'h00C: PRDATA = {24'b0, stat_q};
-            default: PRDATA = 32'b0;
+            12'h000:
+                PRDATA = {24'b0, out_q};
+            12'h004:
+                PRDATA = {24'b0, s2};
+            12'h008:
+                PRDATA = {24'b0, en_q};
+            12'h00C:
+                PRDATA = {24'b0, stat_q};
+            default:
+                PRDATA = 32'b0;
         endcase
     end
 endmodule

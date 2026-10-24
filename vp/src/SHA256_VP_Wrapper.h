@@ -53,9 +53,11 @@ SC_MODULE(SHA256_VP_Wrapper) {
         if (trans.is_write()) {
             uint32_t v = *ptr;
             if (off < 0x40) {
-                if (!busy(now)) block[off >> 2] = v;
+                if (!busy(now)) 
+                    block[off >> 2] = v;
             } else if (off == 0x40 && (v & 1) && !busy(now)) {
-                if (v & 2) std::memcpy(h, SHA256_REF_IV, sizeof h);
+                if (v & 2) 
+                    std::memcpy(h, SHA256_REF_IV, sizeof h);
                 std::memcpy(h_next, h, sizeof h);
                 sha256_ref_compress(h_next, block);
                 done = false;
@@ -63,8 +65,10 @@ SC_MODULE(SHA256_VP_Wrapper) {
             }
         } else {
             uint32_t v = 0;
-            if (off == 0x44)                    v = (busy(now) ? 2u : 0u) | (done ? 1u : 0u);
-            else if (off >= 0x50 && off <= 0x6C) v = h[(off - 0x50) >> 2];
+            if (off == 0x44)                    
+                v = (busy(now) ? 2u : 0u) | (done ? 1u : 0u);
+            else if (off >= 0x50 && off <= 0x6C)   
+                v = h[(off - 0x50) >> 2];
             *ptr = v;
         }
         delay += clk_period * 4;   // roughly one AXI4-Lite transaction on the RTL

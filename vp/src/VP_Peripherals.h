@@ -27,9 +27,11 @@ SC_MODULE(Memory_VP) {
         std::string tok;
         size_t n = 0;
         while (f >> tok) {
-            if (tok[0] == '@') continue;
+            if (tok[0] == '@')
+                continue;
             uint32_t w = std::stoul(tok, nullptr, 16);
-            if (n + 4 > mem.size()) break;
+            if (n + 4 > mem.size())
+                break;
             std::memcpy(&mem[n], &w, 4);
             n += 4;
         }
@@ -39,9 +41,15 @@ SC_MODULE(Memory_VP) {
     void b_transport(tlm::tlm_generic_payload& trans, sc_time& delay) {
         uint64_t a = trans.get_address();
         unsigned len = trans.get_data_length();
-        if (a + len > mem.size()) { trans.set_response_status(tlm::TLM_ADDRESS_ERROR_RESPONSE); return; }
+        if (a + len > mem.size()) {
+            trans.set_response_status(tlm::TLM_ADDRESS_ERROR_RESPONSE);
+            return;
+        }
         if (trans.is_write()) {
-            if (read_only) { trans.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE); return; }
+            if (read_only) { 
+                trans.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
+                return; 
+            }
             std::memcpy(&mem[a], trans.get_data_ptr(), len);
         } else {
             std::memcpy(trans.get_data_ptr(), &mem[a], len);
@@ -69,7 +77,7 @@ SC_MODULE(SYSCSR_VP) {
             if (off == 0x00) {
                 app_ctrl = *p & 1;
                 std::cout << "[" << sc_time_stamp() + delay << "] SYSCSR: App Core "
-                          << (app_running() ? "released from reset" : "held in reset") << std::endl;
+                          << (app_running() ? "Released from reset" : "held in reset") << std::endl;
             }
         } else {
             *p = off == 0x00 ? app_ctrl : off == 0x04 ? 0x48524F54u : off == 0x08 ? 0x00020000u : 0u;

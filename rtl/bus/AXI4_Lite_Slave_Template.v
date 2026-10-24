@@ -83,7 +83,8 @@ localparam IDLE = 2'b00, ACTIVE = 2'b01, RESP = 2'b10;
                         w_state <= IDLE;
                     end
                 end
-                default: w_state <= IDLE;
+                default:
+                    w_state <= IDLE;
             endcase
         end
     end
@@ -117,7 +118,8 @@ localparam IDLE = 2'b00, ACTIVE = 2'b01, RESP = 2'b10;
                         r_state <= IDLE;
                     end
                 end
-                default: r_state <= IDLE;
+                default:
+                    r_state <= IDLE;
             endcase
         end
     end

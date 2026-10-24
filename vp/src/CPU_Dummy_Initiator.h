@@ -65,9 +65,11 @@ SC_MODULE(CPU_Dummy_Initiator) {
         uint8_t digest[32];
         sha256_status_t st = sha256_digest_mem(vp_map::APP_ROM, app_len, digest);
         std::printf("  sha256_digest_mem(0x60000000, %u bytes) -> status %d\n  hash   = ", app_len, (int)st);
-        for (int i = 0; i < 32; i++) std::printf("%02x", digest[i]);
+        for (int i = 0; i < 32; i++)
+            std::printf("%02x", digest[i]);
         std::printf("\n  golden = ");
-        for (int i = 0; i < 32; i++) std::printf("%02x", golden[i]);
+        for (int i = 0; i < 32; i++)
+            std::printf("%02x", golden[i]);
         std::printf("\n");
 
         boot_ok = (st == SHA256_OK) && sha256_compare(digest, golden, 32) == 0;
