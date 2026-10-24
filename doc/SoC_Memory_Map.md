@@ -21,8 +21,8 @@
 | `0x4000_0000` | SYSCSR | Tuần 8 |
 | `0x4000_1000` | UART0 | Tuần 8 |
 | `0x4000_2000` | GPIO0 | Tuần 8 |
-| `0x4000_3000` | TIMER0 | Tuần 9 |
-| `0x4000_4000` | WDT | Tuần 9 |
+| `0x4000_3000` | TIMER0 | Tuần 8 |
+| `0x4000_4000` | WDT | Tuần 8 |
 | `0x4000_5000` | PLIC-lite | Tuần 9 |
 | `0x4000_6000` | MAILBOX | Tuần 10 |
 | `0x4000_7000` | (trống) | `SLVERR` |
@@ -59,9 +59,32 @@ Offset chưa dùng trong một cửa sổ có slave: đọc ra 0, ghi bị bỏ 
 | `0x08` | IRQ_EN | RW | [7:0] bật ngắt cạnh lên theo từng chân |
 | `0x0C` | IRQ_STAT | W1C | [7:0] chân đã có cạnh lên |
 
+## TIMER0 (`0x4000_3000`) — kiểu CLINT, `mtime` tăng mỗi chu kỳ clk
+
+| Offset | Tên | Truy cập | Mô tả |
+|---|---|---|---|
+| `0x00` | MTIME_LO | RW | `mtime[31:0]` |
+| `0x04` | MTIME_HI | RW | `mtime[63:32]`. Đọc 64-bit: HI → LO → HI, đọc lại nếu HI đổi |
+| `0x08` | MTIMECMP_LO | RW | `mtimecmp[31:0]` |
+| `0x0C` | MTIMECMP_HI | RW | `mtimecmp[63:32]`. Reset = toàn 1 (không ngắt sau reset) |
+
+`timer0_irq` mức cao khi `mtime >= mtimecmp` (trễ 1 chu kỳ). Muốn xóa ngắt thì ghi `mtimecmp` mới. Nối vào `irq_timer` của lõi theo I-01.
+
+## WDT (`0x4000_4000`)
+
+| Offset | Tên | Truy cập | Mô tả |
+|---|---|---|---|
+| `0x00` | CTRL | RW | bit0 `EN`: ghi 1 để bật (nạp COUNT = LOAD). Đã bật thì chỉ reset mới tắt |
+| `0x04` | LOAD | RW | Số chu kỳ tới hạn, mặc định 50.000.000 (1 s @ 50 MHz). Bị khóa khi `EN = 1` |
+| `0x08` | COUNT | RO | Giá trị đếm hiện tại |
+| `0x0C` | KICK | WO | Ghi `0x5A5A_0002` → nạp lại COUNT = LOAD. Giá trị khác bị bỏ qua |
+
+COUNT về 0 khi đang bật → reset toàn thế giới Secure qua SYSCSR, `RST_CAUSE.WDT = 1`.
+
 ## Ngắt (nối vào PLIC-lite ở Tuần 9)
 
 | Nguồn | Tín hiệu |
 |---|---|
 | UART0 | `uart0_irq` |
 | GPIO0 | `gpio0_irq` |
+| TIMER0 | `timer0_irq` (vào `irq_timer`, không qua PLIC) |

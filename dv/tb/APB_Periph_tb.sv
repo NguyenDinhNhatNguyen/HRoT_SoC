@@ -9,16 +9,16 @@ module APB_Periph_tb;
     reg         PENABLE = 0, PWRITE = 0;
     reg  [31:0] PWDATA;
     reg  [3:0]  PSTRB;
-    reg  [2:0]  sel = 0;                  // 1 = SYSCSR, 2 = GPIO, 3 = UART
-    wire [31:0] rd_sys, rd_gpio, rd_uart;
-    wire        sys_rst, app_rst, uart_tx, gpio_irq, uart_irq;
+    reg  [2:0]  sel = 0;                  // 1 = SYSCSR, 2 = GPIO, 3 = UART, 4 = TIMER, 5 = WDT
+    wire [31:0] rd_sys, rd_gpio, rd_uart, rd_tim, rd_wdt;
+    wire        sys_rst, app_rst, uart_tx, gpio_irq, uart_irq, timer_irq, wdt_rst;
     wire [7:0]  gpio_o;
     reg  [7:0]  gpio_i = 0;
     reg         rx_force = 0, rx_val = 1;
     wire        uart_rx = rx_force ? rx_val : uart_tx;   // loopback, hoac tb tu lai chan RX
 
     SYSCSR #(.RST_HOLD(3)) u_sys (
-        .clk(clk), .por_rst(por), .wdt_rst_req(1'b0), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA),
+        .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA),
         .PADDR(PADDR), .PSEL(sel == 1), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
         .PRDATA(rd_sys), .PREADY(), .PSLVERR());
     GPIO u_gpio (
@@ -29,6 +29,13 @@ module APB_Periph_tb;
         .clk(clk), .reset(sys_rst), .uart_tx(uart_tx), .uart_rx(uart_rx), .irq(uart_irq),
         .PADDR(PADDR), .PSEL(sel == 3), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
         .PRDATA(rd_uart), .PREADY(), .PSLVERR());
+    TIMER u_tim (
+        .clk(clk), .reset(sys_rst), .irq(timer_irq),
+        .PADDR(PADDR), .PSEL(sel == 4), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
+        .PRDATA(rd_tim), .PREADY(), .PSLVERR());
+    WDT #(.LOAD_RST(32'd1000)) u_wdt (
+        .clk(clk), .reset(sys_rst), .rst_req(wdt_rst),
+        .PADDR(PADDR), .PSEL(sel == 5), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),        .PRDATA(rd_wdt), .PREADY(), .PSLVERR());
 
     integer fail = 0, pass = 0;
     reg [31:0] r;
@@ -44,19 +51,29 @@ module APB_Periph_tb;
         begin
             @(posedge clk); sel <= s; PADDR <= a; PWRITE <= 0; PENABLE <= 0; PSTRB <= 0;
             @(posedge clk); PENABLE <= 1;
-            #1 d = (s == 1) ? rd_sys : (s == 2) ? rd_gpio : rd_uart;
+            #1 d = (s == 1) ? rd_sys : (s == 2) ? rd_gpio : (s == 3) ? rd_uart : (s == 4) ? rd_tim : rd_wdt;
             @(posedge clk); sel <= 0; PENABLE <= 0;
         end
     endtask
     task chk(input [31:0] got, input [31:0] exp, input [255:0] name);
-        if (got !== exp) begin fail = fail + 1; $display("[FAIL] %0s: got %h exp %h", name, got, exp); end
-        else begin pass = pass + 1; $display("[PASS] %0s", name); end
+        if (got !== exp) begin 
+            fail = fail + 1; 
+            $display("[FAIL] %0s: got %h exp %h", name, got, exp); 
+            end
+        else begin 
+            pass = pass + 1; 
+            $display("[PASS] %0s", name); 
+        end
     endtask
 
     integer i;
+    reg [31:0] r2;
+
     initial begin
-        repeat (3) @(posedge clk); por <= 0;
-        wait (!sys_rst); @(posedge clk);
+        repeat (3) @(posedge clk); 
+        por <= 0;
+        wait (!sys_rst); 
+        @(posedge clk);
 
         // ---------------- SYSCSR ----------------
         apb_rd(1, 12'h004, r); chk(r, 32'h48524F54, "SYSCSR CHIP_ID");
@@ -106,6 +123,35 @@ module APB_Periph_tb;
         // frame error: tb giu RX = 0 qua ca bit stop
         rx_force = 1; rx_val = 0; repeat (32 * 12) @(posedge clk); rx_val = 1; repeat (64) @(posedge clk);
         apb_rd(3, 12'h008, r); chk(r[4], 1, "UART FRAME_ERR khi stop bit = 0");
+
+        // ---------------- TIMER ----------------
+        apb_rd(4, 12'h00C, r); chk(r, 32'hFFFFFFFF, "TIMER MTIMECMP_HI reset = toan 1");
+        chk(timer_irq, 0, "TIMER khong ngat sau reset");
+        apb_rd(4, 12'h000, r); apb_rd(4, 12'h000, r2); chk(r2 > r, 1, "TIMER mtime dang dem");
+        apb_wr(4, 12'h000, 32'h0);              // mtime ~ 0 (HI van = 0 vi moi reset)
+        apb_wr(4, 12'h00C, 32'h0);
+        apb_wr(4, 12'h008, 32'd200);
+        chk(timer_irq, 0, "TIMER chua ngat khi mtime < mtimecmp");
+        repeat (250) @(posedge clk);
+        chk(timer_irq, 1, "TIMER ngat khi mtime >= mtimecmp");
+        apb_wr(4, 12'h008, 32'hFFFFFFFF); repeat (2) @(posedge clk); #1;
+        chk(timer_irq, 0, "TIMER ghi mtimecmp lon -> het ngat");
+
+        // ---------------- WDT ----------------
+        apb_rd(5, 12'h004, r); chk(r, 32'd1000, "WDT LOAD reset");
+        apb_rd(5, 12'h000, r); chk(r, 32'h0, "WDT tat sau reset");
+        apb_wr(5, 12'h004, 32'd200);
+        apb_wr(5, 12'h000, 32'h1);
+        apb_wr(5, 12'h004, 32'd5);  apb_rd(5, 12'h004, r); chk(r, 32'd200, "WDT LOAD khoa khi EN = 1");
+        apb_wr(5, 12'h000, 32'h0);  apb_rd(5, 12'h000, r); chk(r, 32'h1, "WDT phan mem khong tat duoc");        repeat (20) @(posedge clk);
+        apb_wr(5, 12'h00C, 32'h5A5A0002); apb_rd(5, 12'h008, r);
+        chk(r > 32'd190, 1, "WDT KICK dung khoa nap lai COUNT");
+        apb_wr(5, 12'h00C, 32'h12345678); apb_rd(5, 12'h008, r2);
+        chk(r2 < r, 1, "WDT KICK sai khoa bi bo qua");
+        repeat (250) @(posedge clk);
+        wait (!sys_rst); @(posedge clk);
+        apb_rd(1, 12'h010, r); chk(r[1], 1, "WDT het gio -> reset, RST_CAUSE.WDT");
+        apb_rd(5, 12'h000, r); chk(r, 32'h0, "WDT tat lai sau reset");
 
         $display("APB PERIPH RESULT: PASS = %0d, FAIL = %0d", pass, fail);
         $finish;

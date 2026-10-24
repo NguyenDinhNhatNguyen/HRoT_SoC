@@ -200,7 +200,7 @@ module SoC_Top #(
     );
 
     // ---------------- Bus ngoai vi APB (the gioi Secure) ----------------
-    // Slave APB: 0 = SYSCSR, 1 = UART0, 2 = GPIO0, 3..7 = du phong (TIMER, WDT, PLIC, MAILBOX)
+    // Slave APB: 0 = SYSCSR, 1 = UART0, 2 = GPIO0, 3 = TIMER0, 4 = WDT, 5..7 = du phong (PLIC, MAILBOX)
 
     APB_Decoder #(.NUM_SLV(NUM_APB)) apb_dec (
         .PADDR(PADDR), .PSEL(PSEL), .PSEL_S(psel_s),
@@ -209,15 +209,17 @@ module SoC_Top #(
     );
 
     wire app_rst;
+    wire wdt_rst;
 
     SYSCSR syscsr (
-        .clk(clk), .por_rst(reset_system), .wdt_rst_req(1'b0),
+        .clk(clk), .por_rst(reset_system), .wdt_rst_req(wdt_rst),
         .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(boot_strap),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[0]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[31:0]), .PREADY(pready_s[0]), .PSLVERR(pslverr_s[0])
     );
 
     wire uart0_irq, gpio0_irq;   // noi vao PLIC-lite o Tuan 9
+    wire timer0_irq;             // noi vao irq_timer cua loi khi P-09 xong (I-01)
 
     UART uart0 (
         .clk(clk), .reset(sys_rst), .uart_tx(uart0_tx), .uart_rx(uart0_rx), .irq(uart0_irq),
@@ -231,10 +233,22 @@ module SoC_Top #(
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[95:64]), .PREADY(pready_s[2]), .PSLVERR(pslverr_s[2])
     );
 
+    TIMER timer0 (
+        .clk(clk), .reset(sys_rst), .irq(timer0_irq),
+        .PADDR(PADDR[11:0]), .PSEL(psel_s[3]), .PENABLE(PENABLE), .PWRITE(PWRITE),
+        .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[127:96]), .PREADY(pready_s[3]), .PSLVERR(pslverr_s[3])
+    );
+
+    WDT wdt (
+        .clk(clk), .reset(sys_rst), .rst_req(wdt_rst),
+        .PADDR(PADDR[11:0]), .PSEL(psel_s[4]), .PENABLE(PENABLE), .PWRITE(PWRITE),
+        .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[159:128]), .PREADY(pready_s[4]), .PSLVERR(pslverr_s[4])
+    );
+
     // Cua so APB chua co ngoai vi: tra PSLVERR
-    assign prdata_s[32*NUM_APB-1:96] = {(32*(NUM_APB-3)){1'b0}};
-    assign pready_s[NUM_APB-1:3]     = {(NUM_APB-3){1'b1}};
-    assign pslverr_s[NUM_APB-1:3]    = {(NUM_APB-3){1'b1}};
+   assign prdata_s[32*NUM_APB-1:160] = {(32*(NUM_APB-5)){1'b0}};
+    assign pready_s[NUM_APB-1:5]      = {(NUM_APB-5){1'b1}};
+    assign pslverr_s[NUM_APB-1:5]     = {(NUM_APB-5){1'b1}};
 
     wire app_core_reset_n = ~app_rst;
     assign app_running    = app_core_reset_n;
