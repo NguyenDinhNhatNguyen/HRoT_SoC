@@ -1,12 +1,9 @@
-  4. SDC File List
-  5. Clocks
-  6. Slow Model Fmax Summary
-  7. Slow Model Setup Summary
-  8. Slow Model Hold Summary
-  9. Slow Model Recovery Summary
- 10. Slow Model Removal Summary
- 11. Slow Model Minimum Pulse Width Summary
- 12. Slow Model Setup: 'clk50'
---
-
 +-------------------------------------------------+
+; Slow Model Fmax Summary                         ;
++-----------+-----------------+------------+------+
+; Fmax      ; Restricted Fmax ; Clock Name ; Note ;
++-----------+-----------------+------------+------+
+; 55.17 MHz ; 55.17 MHz       ; clk50      ;      ;
++-----------+-----------------+------------+------+
+This panel reports FMAX for every clock in the design, regardless of the user-specified clock periods.  FMAX is only computed for paths where the source and destination registers or ports are driven by the same clock.  Paths of different clocks, including generated clocks, are ignored.  For paths between a clock and its inversion, FMAX is computed as if the rising and falling edges are scaled along with FMAX, such that the duty cycle (in terms of a percentage) is maintained. Altera recommends that you always use clock constraints and other slack reports for sign-off analysis.
+
