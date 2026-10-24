@@ -1,6 +1,7 @@
 #!/bin/bash
 SYSTEMC_HOME="/usr/local/systemc-2.3.3"
 
+mkdir -p ../vp/build
 g++ -I$SYSTEMC_HOME/include -L$SYSTEMC_HOME/lib-linux64 \
     ../vp/src/*.cpp -lsystemc -lm -o ../vp/build/vp_sim
 
