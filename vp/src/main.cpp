@@ -37,8 +37,9 @@ int sc_main(int argc, char* argv[]) {
     bus.port(1).bind(sha.target_socket);
     bus.port(2).bind(app_rom.target_socket);
 
-    cpu.app_len = app_rom.load_hex(argv[1]);
-    // "Sign" the image: the golden hash is taken before loading (later the firmware build will produce it)
+    app_rom.load_hex(argv[1]);
+    // "Sign" the whole 4 KB ROM as I-04 says (unused words stay zero), before any tampering
+    cpu.app_len = app_rom.mem.size();
     sha256_ref(app_rom.mem.data(), cpu.app_len, cpu.golden);
     if (tamper) { app_rom.mem[0] ^= 0x01; std::printf("[tamper] flipped one bit in the App ROM\n"); }
 
