@@ -10,8 +10,10 @@ module SHA256_Core (
     output reg         done,      // high while hash_out is valid, cleared by the next start
     output     [255:0] hash_out
 );
-    localparam [255:0] IV = {32'h6a09e667, 32'hbb67ae85, 32'h3c6ef372, 32'ha54ff53a,
-                             32'h510e527f, 32'h9b05688c, 32'h1f83d9ab, 32'h5be0cd19};
+    localparam [255:0] IV = {
+        32'h6a09e667, 32'hbb67ae85, 32'h3c6ef372, 32'ha54ff53a,
+        32'h510e527f, 32'h9b05688c, 32'h1f83d9ab, 32'h5be0cd19
+    };
 
     // The 64 SHA-256 round constants, K[0] in the top bits
     localparam [2047:0] K_ALL = {
@@ -22,7 +24,8 @@ module SHA256_Core (
         32'h27b70a85, 32'h2e1b2138, 32'h4d2c6dfc, 32'h53380d13, 32'h650a7354, 32'h766a0abb, 32'h81c2c92e, 32'h92722c85,
         32'ha2bfe8a1, 32'ha81a664b, 32'hc24b8b70, 32'hc76c51a3, 32'hd192e819, 32'hd6990624, 32'hf40e3585, 32'h106aa070,
         32'h19a4c116, 32'h1e376c08, 32'h2748774c, 32'h34b0bcb5, 32'h391c0cb3, 32'h4ed8aa4a, 32'h5b9cca4f, 32'h682e6ff3,
-        32'h748f82ee, 32'h78a5636f, 32'h84c87814, 32'h8cc70208, 32'h90befffa, 32'ha4506ceb, 32'hbef9a3f7, 32'hc67178f2};
+        32'h748f82ee, 32'h78a5636f, 32'h84c87814, 32'h8cc70208, 32'h90befffa, 32'ha4506ceb, 32'hbef9a3f7, 32'hc67178f2
+    };
 
     function [31:0] rotr(input [31:0] x, input [4:0] n);
         rotr = (x >> n) | (x << (32 - n));
