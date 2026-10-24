@@ -57,6 +57,7 @@ module SoC_Top #(
     );
 
     Instruction_Memory #(.INIT_FILE(BOOT_HEX)) boot_rom (
+        .clk(clk),
         .pc(boot_addr),
         .instr(boot_data)
     );
@@ -274,6 +275,7 @@ module SoC_Top #(
 
     // Slave 3: ROM cua App - port A cho App Core fetch, port B chi doc qua AXI cua Master (ghi bi bo qua)
     Dual_Port_ROM #(.INIT_FILE(APP_HEX)) app_rom (
+        .clk(clk),
         .addrA(app_instr_addr),
         .dataOutA(app_instr),
         .addrB(reg_raddr[3]),

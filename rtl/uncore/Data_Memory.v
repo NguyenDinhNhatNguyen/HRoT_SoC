@@ -20,7 +20,11 @@ module Data_Memory #(
         if (INIT_FILE != "") $readmemh(INIT_FILE, ram);
     end
 
-    always @(posedge clk) begin
+    // Ghi va doc dong bo o canh xuong: dia chi/du lieu tu thanh ghi canh len da on dinh,
+    // ket qua doc co truoc canh len ke tiep -> suy ra M4K/BRAM ma loi khong can doi.
+    reg [31:0] q;
+    always @(negedge clk) begin
+        q <= ram[word_addr];
         if (MemWrite) begin
             if (wstrb[0]) ram[word_addr][7:0]   <= write_data[7:0];
             if (wstrb[1]) ram[word_addr][15:8]  <= write_data[15:8];
@@ -30,7 +34,7 @@ module Data_Memory #(
     end
 
     always @(*) begin
-        if (MemRead) read_data = ram[word_addr];
+        if (MemRead) read_data = q;
         else read_data = 32'b0;
     end
 
