@@ -10,6 +10,9 @@
 //   0x0C BOOT_STRAP RO  [3:0] boot_strap pins, latched during reset
 //   0x10 RST_CAUSE  RW1C bit0 POR, bit1 WDT, bit2 SW (only POR or a write of 1 clears a bit)
 //   0x14 SW_RESET   WO  write 0x5A5A_0001 to reset the whole Secure world
+//   0x18 BUS_ERR    RW1C bit0 VALID, bit1 WRITE, [3:2] RESP (2 SLVERR, 3 DECERR), bit4 OVERFLOW.
+//                   Holds the first Master bus error since the last clear. Write 1 to bit0 to clear
+//   0x1C BUS_ERR_ADDR RO address of that error
 //   other offsets: read 0, writes ignored
 module SYSCSR #(
     parameter RST_HOLD = 4              // cycles sys_rst stays high after a reset request
@@ -20,6 +23,12 @@ module SYSCSR #(
     output            sys_rst,         // reset for the rest of the Secure world
     output            app_rst,         // App Core reset (1 = held)
     input      [3:0]  boot_strap,
+
+    // Master bus error report from AXI4_Lite_Master
+    input             bus_err,         // one-cycle pulse
+    input             bus_err_write,
+    input      [1:0]  bus_err_resp,
+    input      [31:0] bus_err_addr,
 
     // APB4 slave
     input      [11:0] PADDR,
@@ -75,6 +84,35 @@ module SYSCSR #(
         end
     end
 
+    // ---- Master bus error capture: keep the first error, flag any later one as overflow ----
+    reg        be_valid, be_write, be_ovf;
+    reg [1:0]  be_resp;
+    reg [31:0] be_addr;
+    wire       be_clear = wr && PADDR == 12'h018 && PWDATA[0];
+    always @(posedge clk) begin
+        if (sys_rst_q) begin
+            be_valid <= 1'b0;
+            be_write <= 1'b0;
+            be_ovf   <= 1'b0;
+            be_resp  <= 2'b00;
+            be_addr  <= 32'b0;
+        end else if (bus_err && (!be_valid || be_clear)) begin
+            be_valid <= 1'b1;
+            be_write <= bus_err_write;
+            be_ovf   <= 1'b0;
+            be_resp  <= bus_err_resp;
+            be_addr  <= bus_err_addr;
+        end else if (bus_err) begin
+            be_ovf <= 1'b1;
+        end else if (be_clear) begin
+            be_valid <= 1'b0;
+            be_write <= 1'b0;
+            be_ovf   <= 1'b0;
+            be_resp  <= 2'b00;
+            be_addr  <= 32'b0;
+        end
+    end
+
     // ---- Registers reset by sys_rst ----
     reg       app_run;
     reg [3:0] strap_q;
@@ -100,6 +138,10 @@ module SYSCSR #(
                 PRDATA = {28'b0, strap_q};
             12'h010:
                 PRDATA = {29'b0, rst_cause};
+            12'h018:
+                PRDATA = {27'b0, be_ovf, be_resp, be_write, be_valid};
+            12'h01C:
+                PRDATA = be_addr;
             default:
                 PRDATA = 32'b0;
         endcase

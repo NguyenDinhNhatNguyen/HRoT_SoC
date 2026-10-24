@@ -11,6 +11,10 @@ module AXI4_Lite_Master (
     output reg        req_ready,
     output reg        resp_valid,
     output reg [31:0] resp_rdata,
+    output reg        err_valid,     // one-cycle pulse: the transaction just finished with SLVERR or DECERR
+    output reg        err_write,     // 1 = that transaction was a write
+    output reg [1:0]  err_resp,      // its BRESP or RRESP
+    output reg [31:0] err_addr,      // its address
 
     // AXI Write Address Channel
     output reg        M_AXI_AWVALID,
@@ -55,7 +59,12 @@ module AXI4_Lite_Master (
             M_AXI_BREADY  <= 0;
             M_AXI_ARVALID <= 0; 
             M_AXI_RREADY  <= 0;
+            err_valid     <= 0;
+            err_write     <= 0;
+            err_resp      <= 2'b00;
+            err_addr      <= 32'b0;
         end else begin
+            err_valid <= 0;
             case (state)
                 IDLE: begin
                     resp_valid <= 0;
@@ -92,6 +101,12 @@ module AXI4_Lite_Master (
                 
                 WRITE_RESP: begin
                     if (M_AXI_BVALID) begin
+                        if (M_AXI_BRESP != 2'b00) begin
+                            err_valid <= 1;
+                            err_write <= 1;
+                            err_resp  <= M_AXI_BRESP;
+                            err_addr  <= M_AXI_AWADDR;
+                        end
                         M_AXI_BREADY <= 0; 
                         resp_valid   <= 1; 
                         req_ready    <= 1; 
@@ -110,6 +125,12 @@ module AXI4_Lite_Master (
                 
                 READ_DATA: begin
                     if (M_AXI_RVALID) begin
+                        if (M_AXI_RRESP != 2'b00) begin
+                            err_valid <= 1;
+                            err_write <= 0;
+                            err_resp  <= M_AXI_RRESP;
+                            err_addr  <= M_AXI_ARADDR;
+                        end
                         resp_rdata   <= M_AXI_RDATA; 
                         M_AXI_RREADY <= 0;
                         resp_valid   <= 1; 

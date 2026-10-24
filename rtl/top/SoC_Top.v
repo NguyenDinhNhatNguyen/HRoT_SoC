@@ -70,6 +70,9 @@ module SoC_Top #(
     wire [31:0] M_AXI_AWADDR, M_AXI_WDATA, M_AXI_ARADDR, M_AXI_RDATA;
     wire [1:0]  M_AXI_BRESP, M_AXI_RRESP;
     wire [3:0]  M_AXI_WSTRB;
+    wire        bus_err, bus_err_write;   // error responses reported to SYSCSR.BUS_ERR
+    wire [1:0]  bus_err_resp;
+    wire [31:0] bus_err_addr;
 
     AXI4_Lite_Master axi_master (
         .clk(clk),
@@ -82,6 +85,10 @@ module SoC_Top #(
         .req_ready(master_req_ready),
         .resp_valid(master_resp_valid),
         .resp_rdata(master_data_rdata),
+        .err_valid(bus_err),
+        .err_write(bus_err_write),
+        .err_resp(bus_err_resp),
+        .err_addr(bus_err_addr),
 
         .M_AXI_AWVALID(M_AXI_AWVALID), .M_AXI_AWREADY(M_AXI_AWREADY), .M_AXI_AWADDR(M_AXI_AWADDR),
         .M_AXI_WVALID(M_AXI_WVALID),   .M_AXI_WREADY(M_AXI_WREADY),   .M_AXI_WDATA(M_AXI_WDATA),
@@ -215,6 +222,7 @@ module SoC_Top #(
     SYSCSR syscsr (
         .clk(clk), .por_rst(reset_system), .wdt_rst_req(wdt_rst),
         .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(boot_strap),
+        .bus_err(bus_err), .bus_err_write(bus_err_write), .bus_err_resp(bus_err_resp), .bus_err_addr(bus_err_addr),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[0]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[31:0]), .PREADY(pready_s[0]), .PSLVERR(pslverr_s[0])
     );

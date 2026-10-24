@@ -39,6 +39,8 @@ Cửa sổ chưa có slave trả `SLVERR`. Offset chưa dùng trong một cửa 
 | `0x0C` | BOOT_STRAP | RO | [3:0] chân boot strap, chốt lúc reset |
 | `0x10` | RST_CAUSE | RW1C | bit0 POR, bit1 WDT, bit2 SW. Chỉ POR hoặc ghi 1 mới xóa (còn nguyên sau SW/WDT reset) |
 | `0x14` | SW_RESET | WO | ghi `0x5A5A_0001` → reset toàn thế giới Secure (App bị giữ reset lại) |
+| `0x18` | BUS_ERR | RW1C | Lỗi bus đầu tiên của Master kể từ lần xóa gần nhất: bit0 `VALID`, bit1 `WRITE` (1 = ghi), [3:2] `RESP` (2 = SLVERR, 3 = DECERR), bit4 `OVERFLOW` (có thêm lỗi sau lỗi đầu). Ghi 1 vào bit0 để xóa cả thanh ghi |
+| `0x1C` | BUS_ERR_ADDR | RO | Địa chỉ của lỗi đang giữ trong BUS_ERR |
 
 ## UART0 (`0x4000_1000`) — 8N1, lấy mẫu 16x, FIFO TX/RX 8 byte
 

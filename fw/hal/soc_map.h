@@ -26,11 +26,17 @@
 #define SYSCSR_BOOT_STRAP    0x0Cu
 #define SYSCSR_RST_CAUSE     0x10u            /* W1C */
 #define SYSCSR_SW_RESET      0x14u
+#define SYSCSR_BUS_ERR       0x18u            /* W1C, first Master bus error since the last clear */
+#define SYSCSR_BUS_ERR_ADDR  0x1Cu
 #define SYSCSR_CHIP_ID_HROT  0x48524F54u
 #define SYSCSR_SW_RESET_KEY  0x5A5A0001u
 #define RST_CAUSE_POR        (1u << 0)
 #define RST_CAUSE_WDT        (1u << 1)
 #define RST_CAUSE_SW         (1u << 2)
+#define BUS_ERR_VALID        (1u << 0)
+#define BUS_ERR_WRITE        (1u << 1)
+#define BUS_ERR_RESP(v)      (((v) >> 2) & 3u)  /* 2 = SLVERR, 3 = DECERR */
+#define BUS_ERR_OVERFLOW     (1u << 4)
 
 /* UART0 */
 #define UART_TXDATA          0x00u

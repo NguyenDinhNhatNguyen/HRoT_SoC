@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-// Self-checking testbench for the APB peripherals: SYSCSR, GPIO, UART (TX looped back to RX),
+// Self-checking testbench for the APB peripherals: SYSCSR (incl. BUS_ERR), GPIO, UART (TX looped back to RX),
 // TIMER and WDT. Ends with "APB_Periph_tb RESULT: PASS|FAIL", which sim/regress.sh looks for.
 module APB_Periph_tb;
     reg clk = 0, por = 1;
@@ -17,9 +17,13 @@ module APB_Periph_tb;
     reg  [7:0]  gpio_i = 0;
     reg         rx_force = 0, rx_val = 1;
     wire        uart_rx = rx_force ? rx_val : uart_tx;   // loopback, or the tb drives RX itself
+    reg         be_pulse = 0, be_write = 0;               // fake Master bus error into SYSCSR
+    reg  [1:0]  be_resp = 0;
+    reg  [31:0] be_addr = 0;
 
     SYSCSR #(.RST_HOLD(3)) u_sys (
         .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA),
+        .bus_err(be_pulse), .bus_err_write(be_write), .bus_err_resp(be_resp), .bus_err_addr(be_addr),
         .PADDR(PADDR), .PSEL(sel == 1), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
         .PRDATA(rd_sys), .PREADY(), .PSLVERR());
     GPIO u_gpio (
@@ -78,6 +82,19 @@ module APB_Periph_tb;
         end
     endtask
 
+    task bus_err_pulse(input w, input [1:0] resp, input [31:0] a);
+        begin
+            @(posedge clk);
+            be_pulse <= 1;
+            be_write <= w;
+            be_resp  <= resp;
+            be_addr  <= a;
+            @(posedge clk);
+            be_pulse <= 0;
+            #1;
+        end
+    endtask
+
     task chk(input [31:0] got, input [31:0] exp, input [8*48-1:0] name);
         if (got !== exp) begin
             fail = fail + 1;
@@ -121,6 +138,26 @@ module APB_Periph_tb;
         apb_wr(1, 12'h010, 32'h5);
         apb_rd(1, 12'h010, r);
         chk(r, 32'h0, "RST_CAUSE W1C");
+
+        // ---------------- SYSCSR bus error capture ----------------
+        apb_rd(1, 12'h018, r);
+        chk(r, 32'h0, "BUS_ERR clear after reset");
+        bus_err_pulse(1, 2'b10, 32'h60000004);
+        apb_rd(1, 12'h018, r);
+        chk(r, 32'hB, "BUS_ERR records a write SLVERR");
+        apb_rd(1, 12'h01C, r);
+        chk(r, 32'h60000004, "BUS_ERR_ADDR holds its address");
+        bus_err_pulse(0, 2'b11, 32'h70000000);
+        apb_rd(1, 12'h018, r);
+        chk(r, 32'h1B, "BUS_ERR keeps the first, flags overflow");
+        apb_rd(1, 12'h01C, r);
+        chk(r, 32'h60000004, "BUS_ERR_ADDR keeps the first address");
+        apb_wr(1, 12'h018, 32'h1);
+        apb_rd(1, 12'h018, r);
+        chk(r, 32'h0, "BUS_ERR W1C clears it");
+        bus_err_pulse(0, 2'b11, 32'h70000000);
+        apb_rd(1, 12'h018, r);
+        chk(r, 32'hD, "BUS_ERR records a read DECERR");
 
         // ---------------- GPIO ----------------
         apb_wr(2, 12'h000, 32'hA5);

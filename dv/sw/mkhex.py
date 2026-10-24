@@ -65,9 +65,22 @@ emit(LW(4, 1, 0x6C), *LI(5, 0xf20015ad))
 br('b', 1, 4, 5, 'fail')
 # A write to the App ROM gets SLVERR and leaves the ROM alone (checked by the read below)
 emit(LUI(9, 0x60000), SW(0, 9, 4))
+# SYSCSR.BUS_ERR must have caught it: valid, write, SLVERR (0xB) at 0x6000_0004. Then clear it
+emit(LUI(20, 0x40000), LW(21, 20, 0x18), ADDI(22, 0, 0xB))
+br('b', 1, 21, 22, 'fail')
+emit(LW(21, 20, 0x1C), *LI(22, 0x60000004))
+br('b', 1, 21, 22, 'fail')
+emit(ADDI(22, 0, 1), SW(22, 20, 0x18), LW(21, 20, 0x18))
+br('b', 1, 21, 0, 'fail')
 # 0x7000_0000 maps to nothing: DECERR, the bus doesn't hang, reads return 0
 emit(LUI(14, 0x70000), LW(13, 14, 0), SW(13, 14, 0))
 br('b', 1, 13, 0, 'fail')
+# BUS_ERR keeps the read DECERR (0xD) and flags the write after it as overflow (0x10). Then clear it
+emit(LW(21, 20, 0x18), ADDI(22, 0, 0x1D))
+br('b', 1, 21, 22, 'fail')
+emit(LW(21, 20, 0x1C), LUI(22, 0x70000))
+br('b', 1, 21, 22, 'fail')
+emit(ADDI(22, 0, 1), SW(22, 20, 0x18))
 # App ROM port B 0x6000_0000
 emit(LUI(9, 0x60000), LW(8, 9, 4), *LI(5, APP[1]))
 br('b', 1, 8, 5, 'fail')
