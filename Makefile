@@ -1,42 +1,61 @@
-# HRoT_SoC - tram dieu khien chung (chay trong Git Bash hoac WSL)
-#   make fw          build firmware Master (CMake + riscv64-unknown-elf, chay trong WSL)
-#   make sim-core    mo phong loi (Questa, sim/run_rtl.do)
-#   make sim-soc     mo phong toan SoC (Questa, sim/run_soc.do)
-#   make sim-ip      testbench ngoai vi APB
-#   make vp          Virtual Platform SystemC (WSL)
+# HRoT_SoC - tram dieu khien chung. CHAY TRONG WSL (Ubuntu), tai thu muc goc repo:
+#   make test        regression toan bo (lop, IP, SoC, VP) bang QuestaSim -> PASS/FAIL
+#   make sim-core    mo phong loi (sim/run_rtl.do), TB=RISCV_Core_prog_tb | RISCV_Core_tb
+#   make sim-soc     mo phong toan SoC (sim/run_soc.do)
+#   make sim-ip      testbench ngoai vi APB (sim/run_ip.do)
+#   make vp          Virtual Platform SystemC (sim/run_vp.sh)
+#   make fw          build firmware Master (CMake + riscv64-unknown-elf)
 #   make de2         tong hop + P&R cho DE2 (Quartus II 13.0sp1)
-#   make xilinx      tong hop + P&R cho kit Xilinx (Vivado), PART=...
+#   make xilinx      tong hop + P&R cho kit Xilinx (Vivado 2025.2), PART=...
 #   make clean       xoa thu muc build
-# Duong dan cong cu dat qua bien moi truong, khong phu thuoc PATH (tranh xung dot Questa/ModelSim/Vivado).
+# Cong cu Windows goi qua WSL interop bang duong dan tuyet doi (khong phu thuoc PATH):
+# mo phong chi dung QuestaSim, khong dung ModelSim.
 
-QUARTUS ?= /c/altera/13.0sp1/quartus/bin64/quartus_sh.exe
-VIVADO  ?= vivado
-VSIM    ?= vsim
-WSL     ?= wsl.exe -d Ubuntu --
+QUESTA  ?= /mnt/c/questasim64_10.2c/win64/vsim.exe
+QUARTUS ?= /mnt/c/altera/13.0sp1/quartus/bin64/quartus_sh.exe
+VIVADO  ?= D:\AMDDesignTools\2025.2\Vivado\bin\vivado.bat
 PART    ?= xc7a35tcpg236-1
+TB      ?= RISCV_Core_prog_tb
 
-.PHONY: fw sim-core sim-soc sim-ip vp de2 xilinx clean
+# Firmware nap vao FPGA: mac dinh dung firmware thu (dv/tests/mkhex.py, UART 115200 @ 50 MHz)
+# cho toi khi co firmware that; doi bang: make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
+HEX_DIR  := build/hex
+BOOT_HEX ?= $(HEX_DIR)/boot.hex
+RAM_HEX  ?= $(HEX_DIR)/zero.hex
+APP_HEX  ?= $(HEX_DIR)/app.hex
+winpath   = $(shell wslpath -m $(abspath $(1)))
 
-fw:
-	$(WSL) bash -c "cmake -S fw -B fw/build && cmake --build fw/build"
+.PHONY: test sim-core sim-soc sim-ip vp fw hex de2 xilinx clean
+
+test:
+	bash sim/regress.sh
 
 sim-core:
-	cd sim && $(VSIM) -c -do run_rtl.do
+	cd sim && $(QUESTA) -c -do "set TB $(TB); do run_rtl.do"
 
 sim-soc:
-	cd sim && $(VSIM) -c -do run_soc.do
+	python3 dv/tests/mkhex.py sim
+	cd sim && $(QUESTA) -c -do run_soc.do
 
 sim-ip:
-	cd sim && $(VSIM) -c -do run_ip.do
+	cd sim && $(QUESTA) -c -do run_ip.do
 
 vp:
-	$(WSL) bash -c "cd sim && bash run_vp.sh"
+	cd sim && bash run_vp.sh
 
-de2:
-	cd syn/intel_de2 && $(QUARTUS) -t build.tcl
+fw:
+	cmake -S fw -B fw/build && cmake --build fw/build
 
-xilinx:
-	cd syn/xilinx && $(VIVADO) -mode batch -source build.tcl -tclargs $(PART)
+hex:
+	mkdir -p $(HEX_DIR)
+	python3 dv/tests/mkhex.py $(HEX_DIR) --baud-div 26
+	echo 00000000 > $(HEX_DIR)/zero.hex
+
+de2: hex
+	cd syn/intel_de2 && $(QUARTUS) -t build.tcl $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))
+
+xilinx: hex
+	cd syn/xilinx && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
 
 clean:
-	rm -rf fw/build syn/intel_de2/build syn/xilinx/build vp/build sim/work sim/transcript sim/*.wlf
+	rm -rf build fw/build syn/intel_de2/build syn/xilinx/build vp/build sim/work sim/transcript sim/*.wlf sim/*.hex sim/labels.vh

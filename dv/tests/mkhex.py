@@ -1,18 +1,27 @@
 # Sinh boot.hex / app.hex cho soc_tb (mini assembler RV32I)
 import sys, os
 out = sys.argv[1]
+# --baud-div N: gia tri UART BAUD_DIV (0 = 16 clk/bit cho mo phong nhanh; 26 = 115200 baud @ 50 MHz cho board)
+baud_div = int(sys.argv[sys.argv.index('--baud-div') + 1]) if '--baud-div' in sys.argv else 0
 
-def r(v, n): return v & ((1 << n) - 1)
-def I(op, rd, f3, rs1, imm): return r(imm,12)<<20 | rs1<<15 | f3<<12 | rd<<7 | op
-def S(rs2, rs1, imm, f3=2): return r(imm>>5,7)<<25 | rs2<<20 | rs1<<15 | f3<<12 | r(imm,5)<<7 | 0x23
+def r(v, n): 
+    return v & ((1 << n) - 1)
+def I(op, rd, f3, rs1, imm): 
+    return r(imm,12)<<20 | rs1<<15 | f3<<12 | rd<<7 | op
+def S(rs2, rs1, imm, f3=2): 
+    return r(imm>>5,7)<<25 | rs2<<20 | rs1<<15 | f3<<12 | r(imm,5)<<7 | 0x23
 def B(f3, rs1, rs2, off):
     o = r(off, 13)
     return (o>>12&1)<<31 | (o>>5&0x3f)<<25 | rs2<<20 | rs1<<15 | f3<<12 | (o>>1&0xf)<<8 | (o>>11&1)<<7 | 0x63
 def LUI(rd, imm20): return r(imm20,20)<<12 | rd<<7 | 0x37
-def ADDI(rd, rs1, imm): return I(0x13, rd, 0, rs1, imm)
-def ANDI(rd, rs1, imm): return I(0x13, rd, 7, rs1, imm)
-def LW(rd, rs1, imm): return I(0x03, rd, 2, rs1, imm)
-def SW(rs2, rs1, imm): return S(rs2, rs1, imm)
+def ADDI(rd, rs1, imm): 
+    return I(0x13, rd, 0, rs1, imm)
+def ANDI(rd, rs1, imm): 
+    return I(0x13, rd, 7, rs1, imm)
+def LW(rd, rs1, imm): 
+    return I(0x03, rd, 2, rs1, imm)
+def SW(rs2, rs1, imm): 
+    return S(rs2, rs1, imm)
 def JAL(rd, off):
     o = r(off, 21)
     return (o>>20&1)<<31 | (o>>1&0x3ff)<<21 | (o>>11&1)<<20 | (o>>12&0xff)<<12 | rd<<7 | 0x6f
@@ -34,25 +43,33 @@ emit(LUI(10, 0x10000), ADDI(11, 0, 0x55), SW(11, 10, 0), LW(12, 10, 0)); br('b',
 emit(*LI(15, 0x11223344), SW(15, 10, 4), ADDI(16, 0, 0xAA), S(16, 10, 5, f3=0), LW(17, 10, 4), *LI(18, 0x1122AA44)); br('b', 1, 17, 18, 'fail')
 # SHA-256("abc")
 emit(LUI(1, 0x50000), *LI(2, 0x61626380), SW(2, 1, 0))
-for i in range(1, 15): emit(SW(0, 1, 4 * i))
+for i in range(1, 15): 
+    emit(SW(0, 1, 4 * i))
 emit(ADDI(2, 0, 0x18), SW(2, 1, 60), ADDI(2, 0, 3), SW(2, 1, 0x40))
 labels['poll'] = here()
-emit(LW(3, 1, 0x44), ANDI(3, 3, 1)); br('b', 0, 3, 0, 'poll')
-emit(LW(4, 1, 0x50), *LI(5, 0xba7816bf)); br('b', 1, 4, 5, 'fail')
-emit(LW(4, 1, 0x6C), *LI(5, 0xf20015ad)); br('b', 1, 4, 5, 'fail')
+emit(LW(3, 1, 0x44), ANDI(3, 3, 1)); 
+br('b', 0, 3, 0, 'poll')
+emit(LW(4, 1, 0x50), *LI(5, 0xba7816bf)); 
+br('b', 1, 4, 5, 'fail')
+emit(LW(4, 1, 0x6C), *LI(5, 0xf20015ad)); 
+br('b', 1, 4, 5, 'fail')
 # Ghi vao ROM App -> SLVERR, ROM khong doi (kiem o buoc doc ben duoi)
 emit(LUI(9, 0x60000), SW(0, 9, 4))
 # Dia chi khong ton tai 0x7000_0000 -> DECERR, bus khong treo, doc ra 0
-emit(LUI(14, 0x70000), LW(13, 14, 0), SW(13, 14, 0)); br('b', 1, 13, 0, 'fail')
+emit(LUI(14, 0x70000), LW(13, 14, 0), SW(13, 14, 0)); 
+br('b', 1, 13, 0, 'fail')
 # App ROM port B 0x6000_0000
-emit(LUI(9, 0x60000), LW(8, 9, 4), *LI(5, APP[1])); br('b', 1, 8, 5, 'fail')
+emit(LUI(9, 0x60000), LW(8, 9, 4), *LI(5, APP[1])); 
+br('b', 1, 8, 5, 'fail')
 # APB qua cau AXI->APB: SYSCSR CHIP_ID, UART0 gui "OK", GPIO0 bat LED, nhan 1 byte UART -> LED
-emit(LUI(20, 0x40000), LW(21, 20, 4), *LI(22, 0x48524F54)); br('b', 1, 21, 22, 'fail')
-emit(LUI(23, 0x40001), SW(0, 23, 0xC))                          # BAUD_DIV = 0: 16 clk / bit (cho mo phong nhanh)
+emit(LUI(20, 0x40000), LW(21, 20, 4), *LI(22, 0x48524F54)); 
+br('b', 1, 21, 22, 'fail')
+emit(LUI(23, 0x40001), ADDI(31, 0, baud_div), SW(31, 23, 0xC))   # BAUD_DIV (mac dinh 0 cho mo phong)
 emit(ADDI(24, 0, ord('O')), SW(24, 23, 0), ADDI(24, 0, ord('K')), SW(24, 23, 0))
 emit(LUI(25, 0x40002), ADDI(26, 0, 0xA5), SW(26, 25, 0))       # LED = 0xA5: bao tb gui byte vao RX
 labels['rxwait'] = here()
-emit(LW(27, 23, 8), ANDI(27, 27, 4)); br('b', 0, 27, 0, 'rxwait')
+emit(LW(27, 23, 8), ANDI(27, 27, 4)); 
+br('b', 0, 27, 0, 'rxwait')
 emit(LW(28, 23, 4), ANDI(28, 28, 0xFF), SW(28, 25, 0))          # LED = byte nhan duoc
 emit(LUI(29, 0x40007), LW(30, 29, 0))                           # cua so APB trong -> SLVERR, khong treo
 # Nha reset App Core (SYSCSR APP_CTRL, offset 0 cua 0x4000_0000)

@@ -11,3 +11,4 @@ sim/labels.vh
 *.jou
 *.log
 .Xil/
+build/
