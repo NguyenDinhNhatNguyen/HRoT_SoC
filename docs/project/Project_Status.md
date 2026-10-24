@@ -4,7 +4,7 @@
 
 ## 1. Tổng quan
 
-- Toàn dự án 26/59 việc (44%): Nguyên 18/35, Phát 8/22. Ngày 25/10 thêm 5 việc phát sinh (N-32…N-35, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
+- Toàn dự án 29/60 việc (48%): Nguyên 21/36, Phát 8/22. Ngày 25/10 thêm 6 việc phát sinh (N-32…N-36, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
 - SoC biên dịch và chạy được: Master boot từ Boot ROM riêng, dùng SHA-256 phần cứng, đọc ROM App qua cổng B, nhả reset App qua SYSCSR. Bus APB đã có SYSCSR, UART0, GPIO0, TIMER0 và WDT. `SoC_Top_tb` hiện chỉ băm chuỗi "abc" (firmware thử `dv/sw/mkhex.py`), **chưa băm image App và chưa có kịch bản image bị sửa trên RTL** (VP đã có cả hai kịch bản).
 - FPGA (25/10, sau khi thêm TIMER0/WDT): DE2 7.885 LE (24%), 135 Kbit M4K, Fmax 55,17 MHz. Artix-7 xc7a35t 3.360 LUT, WNS +2,891 ns @ 50 MHz. Báo cáo ở `fpga/reports/`.
 - Firmware Secure Boot thật **chưa có**: `SoC_Top_tb` đang chạy firmware thử viết tay (`dv/sw/mkhex.py`), còn `fw/secure_boot/main.c` là code giả (việc P-13).
@@ -57,7 +57,7 @@ Các lỗi SoC/uncore liệt kê ở bản trước (SoC không compile, Master 
 
 ## 4. Điểm cần lưu ý
 
-- **Việc mới của Nguyên (25/10):** N-33 VP băm cả 4 KB ROM App (I-04), N-34 header `fw/hal/soc_map.h` (I-02), N-32 VP thêm UART0/TIMER0/WDT cho firmware P-13, N-35 `SoC_Top_tb` băm image App và thêm kịch bản image bị sửa trên RTL. N-19, N-20, N-21 kéo lên làm từ 26/10. N-18 xong: 52/52 chân trong `fpga/intel_de2/de2_pins.tcl` khớp bảng chân của DE2 User Manual v1.3.
+- **Việc mới của Nguyên (25/10):** N-33 VP băm cả 4 KB ROM App (I-04), N-34 header `fw/hal/soc_map.h` (I-02), N-32 VP thêm UART0/TIMER0/WDT cho firmware P-13, N-35 `SoC_Top_tb` băm image App và thêm kịch bản image bị sửa trên RTL, N-36 báo lỗi bus AXI cho firmware qua `SYSCSR.BUS_ERR`. N-33, N-34, N-36 đã xong 25/10 (N-36: commit `d2315b2`, APB 49/49, DE2 8.011 LE, 54,69 MHz). N-19, N-20, N-21 kéo lên làm từ 26/10. N-18 xong: 52/52 chân trong `fpga/intel_de2/de2_pins.tcl` khớp bảng chân của DE2 User Manual v1.3.
 - **Cấu trúc repo đổi từ 25/10:** `doc/` thành `docs/` (chia `spec`, `verification`, `guides`, `project`), `rtl/uncore/` tách thành `rtl/bus`, `rtl/periph`, `rtl/mem`, `rtl/crypto`, `syn/` thành `fpga/` (thêm `fpga/reports`), `mkhex.py` sang `dv/sw/`. Phải `git pull` trước khi sửa tiếp.
 - **Lỗi RTL SHA-256 (P-08 phát hiện), đã sửa 25/10:** `SHA256_Wrapper` chỉ giải mã `addr[7:0]` trong khi `SoC_Top` cấp cửa sổ 64 KB, nên offset ≥ `0x100` bị alias vào thanh ghi thật. Wrapper giờ giải mã `addr[15:8] == 0`, `sha256_alias_test` PASS trên Questa (chạy với `+TEST_TIMEOUT_US=100000000`, xem mục dưới).
 - **Ba lỗi khi chạy trên Questa 10.2c (Nguyên phát hiện 25/10, chờ Phát sửa, trên Verilator không gặp):**

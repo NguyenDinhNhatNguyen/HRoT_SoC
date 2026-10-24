@@ -90,7 +90,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 | Tuần | Nguyên | Phát |
 | --- | --- | --- |
 | **8** (26/10–01/11) — Nền tảng + TIMER/WDT | ~~TIMER0 kiểu CLINT~~, ~~WDT~~, ~~cập nhật `SoC_Memory_Map.md`~~, ~~đối chiếu chân DE2 (N-18)~~ (xong 25/10). Còn: VP băm cả 4 KB ROM App (N-33), header địa chỉ firmware `soc_map.h` (I-02, N-34). **Kéo lên từ Tuần 9:** cổng đọc dữ liệu Boot ROM (N-21), Boot Guard + Zeroization (N-20), PLIC-lite (N-19) | Zicsr + trap máy (`mtvec`, `mepc`, `mcause`, `mstatus.MIE`, `mie`/`mip`, `ecall`/`mret`) + cổng `irq_timer`/`irq_ext` (I-01, **chặn nối ngắt TIMER/PLIC**), ~~UVM sequence ngẫu nhiên cho SHA-256 (P-08)~~ (xong 25/10), sửa 2 lỗi script Questa (P-22), dọn `dv/tb` sang `dv/env`, `dv/agents`, driver UART/GPIO trong `fw/hal` dùng `soc_map.h`, cập nhật `Project_Status.md` |
-| **9** (02–08/11) — Ngắt + Boot Guard | Hoàn tất N-19, N-20, N-21 (nối `irq_ext` khi có I-01), VP thêm mô hình UART0, TIMER0, WDT cho firmware (N-32), `SoC_Top_tb` băm cả image App và thêm kịch bản image bị sửa trên RTL (N-35) | Firmware secure boot thật (HAL + log UART + golden trong Boot ROM + LOCK khi sai), chạy VP rồi RTL, đổi `linker.ld` đặt `.rodata` vào Boot ROM (I-03), test assembly ngắt timer/external |
+| **9** (02–08/11) — Ngắt + Boot Guard | Hoàn tất N-19, N-20, N-21 (nối `irq_ext` khi có I-01), VP thêm mô hình UART0, TIMER0, WDT cho firmware (N-32), `SoC_Top_tb` băm cả image App và thêm kịch bản image bị sửa trên RTL (N-35). ~~Báo lỗi bus AXI qua `SYSCSR.BUS_ERR` (N-36)~~ (xong 25/10) | Firmware secure boot thật (HAL + log UART + golden trong Boot ROM + LOCK khi sai), chạy VP rồi RTL, đổi `linker.ld` đặt `.rodata` vào Boot ROM (I-03), test assembly ngắt timer/external |
 | **10** (09–15/11) — DMA, tường lửa, thế giới App | Secure DMA (ROM App → SHA theo block) + bus Secure 2 master (arbiter) + tường lửa AXI ở cổng DMA, bus APB của App (UART1, GPIO1, TIMER1) + Mailbox 2 chiều | Firmware dùng DMA, firmware App demo (Mailbox, LED, UART) + target CMake `app_firmware.hex` + bước sinh golden hash băm cả 4 KB (I-04), UVM agent APB + scoreboard SHA (golden model DPI từ `sha256_ref.c`) |
 | **11** (16–22/11) — Tích hợp, **RTL FREEZE 22/11** | Regression toàn SoC, đạt 50 MHz trên DE2 và Xilinx, cập nhật VP theo RTL, đóng băng RTL | Test firmware toàn SoC (boot đúng/sai, ngắt, DMA), regression UVM |
 | **12** (23–29/11) — Đổ board | Nạp DE2 qua USB-Blaster, demo secure boot bằng LED + log UART, chốt kit Xilinx, gán chân, nạp | Covergroup + thu coverage, sửa lỗi phát sinh khi chạy board |
@@ -101,7 +101,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 ## 8. Rủi ro và cách xử lý
 
-Cập nhật 25/10/2026. Cột "Phụ trách" là người xử lý, việc của Phát ở đây là **đề xuất**, Phát xác nhận lại.
+Cập nhật 25/10/2026, 15 rủi ro. Cột "Phụ trách" là người xử lý, việc của Phát ở đây là **đề xuất**, Phát xác nhận lại.
 
 | # | Rủi ro | Mức | Hướng xử lý | Phụ trách | Trạng thái |
 | --- | --- | --- | --- | --- | --- |
@@ -111,6 +111,7 @@ Cập nhật 25/10/2026. Cột "Phụ trách" là người xử lý, việc củ
 | R4 | Golden hash nằm trong RAM ghi được, chưa đúng mô hình Root of Trust | Cao | Kéo N-21 (cổng đọc dữ liệu Boot ROM) lên Tuần 8, Phát đổi `linker.ld` theo I-03 ở Tuần 9 | Nguyên, Phát | Kéo lên Tuần 8 |
 | R5 | VP băm theo độ dài image, còn I-04 chốt băm cả 4 KB ROM App, hai bên ra golden khác nhau | Trung bình | VP băm đủ 4 KB (N-33, diff 3 dòng đã có) | Nguyên | Chờ áp diff |
 | R6 | Firmware secure boot (P-13) phải chạy trên VP trước RTL nhưng VP chưa có UART, TIMER, WDT | Trung bình | Thêm mô hình UART0 (in log ra console), TIMER0, WDT vào VP ở Tuần 9 (N-32) | Nguyên | Đã lên lịch |
+| R6b | Firmware không biết khi bus Master trả SLVERR/DECERR vì `AXI4_Lite_Master` bỏ qua BRESP/RRESP | Trung bình | Thêm `SYSCSR.BUS_ERR` và `BUS_ERR_ADDR` (N-36). Access fault qua trap làm sau P-09 | Nguyên | Đã xong 25/10 |
 | R7 | Secure boot mức RTL mới kiểm image đúng, firmware thử chỉ băm "abc" | Trung bình | `SoC_Top_tb` băm cả 4 KB ROM App bằng SHA phần cứng, so với golden do `mkhex.py` tính bằng `hashlib`, chạy thêm lần với image bị sửa và kiểm App bị giữ reset (N-35) | Nguyên | Đã lên lịch |
 | R8 | Bộ nhớ đọc ở cạnh xuống không hợp với SRAM macro ASIC (Tuần 13–14) | Trung bình | Nguyên thêm tham số chọn bộ nhớ đồng bộ cạnh lên cho bản ASIC, Phát thêm tín hiệu chờ (`ready`) ở IF/MEM để lõi chịu được 1 chu kỳ trễ. Chốt cách làm trước Tuần 12 | Nguyên, Phát | Đề xuất |
 | R9 | Xuống dòng lẫn LF và CRLF giữa hai máy, diff dễ bị nhiễu | Thấp | Thêm `* text=auto eol=lf` vào `.gitattributes` và `git add --renormalize .` trong một commit riêng, làm lúc cả hai đã push hết | Nguyên | Chờ thời điểm |
