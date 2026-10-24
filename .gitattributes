@@ -1,0 +1,4 @@
+# Script chay trong WSL/bash phai giu LF (CRLF lam bash bao loi)
+*.sh     text eol=lf
+Makefile text eol=lf
+*.tcl    text eol=lf
