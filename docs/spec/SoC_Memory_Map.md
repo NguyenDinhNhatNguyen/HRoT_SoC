@@ -32,7 +32,7 @@ Cửa sổ chưa có slave trả `SLVERR`. Offset chưa dùng trong một cửa 
 ## SYSCSR (`0x4000_0000`)
 
 | Offset | Tên | Truy cập | Mô tả |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `0x00` | APP_CTRL | RW | bit0 `APP_RUN`: 1 = nhả reset App Core, 0 = giữ reset |
 | `0x04` | CHIP_ID | RO | `0x4852_4F54` ("HROT") |
 | `0x08` | VERSION | RO | `0x0002_0000` |
@@ -45,7 +45,7 @@ Cửa sổ chưa có slave trả `SLVERR`. Offset chưa dùng trong một cửa 
 ## UART0 (`0x4000_1000`) — 8N1, lấy mẫu 16x, FIFO TX/RX 8 byte
 
 | Offset | Tên | Truy cập | Mô tả |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `0x00` | TXDATA | WO | [7:0] đẩy vào FIFO TX (bỏ qua nếu đầy) |
 | `0x04` | RXDATA | RO | [7:0] lấy từ FIFO RX (đọc = pop), bit31 = 1 nếu FIFO rỗng |
 | `0x08` | STATUS | RO / W1C | bit0 TX_FULL, bit1 TX_IDLE, bit2 RX_VALID, bit3 RX_OVERRUN (W1C), bit4 FRAME_ERR (W1C) |
@@ -55,7 +55,7 @@ Cửa sổ chưa có slave trả `SLVERR`. Offset chưa dùng trong một cửa 
 ## GPIO0 (`0x4000_2000`) — 8 ra, 8 vào
 
 | Offset | Tên | Truy cập | Mô tả |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `0x00` | DATA_OUT | RW | [7:0] → chân `gpio0_o` (LED) |
 | `0x04` | DATA_IN | RO | [7:0] ← chân `gpio0_i`, đã đồng bộ 2 tầng |
 | `0x08` | IRQ_EN | RW | [7:0] bật ngắt cạnh lên theo từng chân |
@@ -64,7 +64,7 @@ Cửa sổ chưa có slave trả `SLVERR`. Offset chưa dùng trong một cửa 
 ## TIMER0 (`0x4000_3000`) — kiểu CLINT, `mtime` tăng mỗi chu kỳ clk
 
 | Offset | Tên | Truy cập | Mô tả |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `0x00` | MTIME_LO | RW | `mtime[31:0]` |
 | `0x04` | MTIME_HI | RW | `mtime[63:32]`. Đọc 64-bit: HI → LO → HI, đọc lại nếu HI đổi |
 | `0x08` | MTIMECMP_LO | RW | `mtimecmp[31:0]` |
@@ -76,7 +76,7 @@ Khi đặt `mtimecmp` 64-bit, ghi `MTIMECMP_HI = 0xFFFF_FFFF` trước, rồi LO
 ## WDT (`0x4000_4000`)
 
 | Offset | Tên | Truy cập | Mô tả |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `0x00` | CTRL | RW | bit0 `EN`: ghi 1 để bật (nạp COUNT = LOAD). Đã bật thì chỉ reset mới tắt |
 | `0x04` | LOAD | RW | Số chu kỳ tới hạn, mặc định 50.000.000 (1 s @ 50 MHz). Bị khóa khi `EN = 1` |
 | `0x08` | COUNT | RO | Giá trị đếm hiện tại |
