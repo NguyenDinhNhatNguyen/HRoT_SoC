@@ -46,7 +46,16 @@ emit(LUI(9, 0x60000), SW(0, 9, 4))
 emit(LUI(14, 0x70000), LW(13, 14, 0), SW(13, 14, 0)); br('b', 1, 13, 0, 'fail')
 # App ROM port B 0x6000_0000
 emit(LUI(9, 0x60000), LW(8, 9, 4), *LI(5, APP[1])); br('b', 1, 8, 5, 'fail')
-# Nha reset App Core
+# APB qua cau AXI->APB: SYSCSR CHIP_ID, UART0 gui "OK", GPIO0 bat LED, nhan 1 byte UART -> LED
+emit(LUI(20, 0x40000), LW(21, 20, 4), *LI(22, 0x48524F54)); br('b', 1, 21, 22, 'fail')
+emit(LUI(23, 0x40001), SW(0, 23, 0xC))                          # BAUD_DIV = 0: 16 clk / bit (cho mo phong nhanh)
+emit(ADDI(24, 0, ord('O')), SW(24, 23, 0), ADDI(24, 0, ord('K')), SW(24, 23, 0))
+emit(LUI(25, 0x40002), ADDI(26, 0, 0xA5), SW(26, 25, 0))       # LED = 0xA5: bao tb gui byte vao RX
+labels['rxwait'] = here()
+emit(LW(27, 23, 8), ANDI(27, 27, 4)); br('b', 0, 27, 0, 'rxwait')
+emit(LW(28, 23, 4), ANDI(28, 28, 0xFF), SW(28, 25, 0))          # LED = byte nhan duoc
+emit(LUI(29, 0x40007), LW(30, 29, 0))                           # cua so APB trong -> SLVERR, khong treo
+# Nha reset App Core (SYSCSR APP_CTRL, offset 0 cua 0x4000_0000)
 emit(LUI(6, 0x40000), ADDI(7, 0, 1), SW(7, 6, 0))
 labels['pass'] = here(); emit(JAL(0, 0))
 labels['fail'] = here(); emit(JAL(0, 0))

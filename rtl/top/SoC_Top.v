@@ -5,7 +5,9 @@
 // SoC Top - 2 the gioi cach ly:
 //  - Master (Secure): Master Core + Boot ROM rieng + bus AXI4-Lite rieng
 //      0x1000_0000 : RAM cua Master (stack/bien cua firmware secure_boot)
-//      0x4000_0000 : Reset Controller (ghi 1 -> nha reset App Core)
+//      0x4000_0000 : cau AXI->APB, bus ngoai vi APB (moi slave 4 KB):
+//                    0x4000_0000 SYSCSR (APP_CTRL o offset 0: ghi 1 -> nha reset App Core)
+//                    0x4000_1000 UART0, 0x4000_2000 GPIO0, cua so khac -> PSLVERR
 //      0x5000_0000 : SHA-256
 //      0x6000_0000 : ROM cua App, port B (chi doc) de bam firmware App; ghi -> SLVERR
 //      dia chi khac : default slave tra DECERR (khong treo bus)
@@ -16,10 +18,19 @@ module SoC_Top #(
     parameter RAM_HEX  = "../fw/build/firmware_dmem.hex",   // .rodata/.data, word 0 = 0x1000_0000
     parameter APP_HEX  = "../fw/build/app_firmware.hex"
 )(
-    input  wire clk,
-    input  wire reset_system,
-    output wire app_running      // = 1 khi Master da nha reset App (noi LED tren board)
+    input  wire       clk,
+    input  wire       reset_system,  // reset nguon / nut bam (POR)
+    output wire       app_running,   // = 1 khi Master da nha reset App (noi LED tren board)
+    // Ngoai vi the gioi Secure
+    output wire       uart0_tx,
+    input  wire       uart0_rx,
+    output wire [7:0] gpio0_o,       // LED
+    input  wire [7:0] gpio0_i,       // switch / nut
+    input  wire [3:0] boot_strap     // switch chon che do boot (doc qua SYSCSR)
 );
+    // sys_rst: reset cua the gioi Secure, do SYSCSR sinh ra (POR + SW reset + WDT)
+    wire sys_rst;
+
     // ---------------- Master Core ----------------
     wire [31:0] boot_addr, boot_data;
     wire [31:0] master_data_addr, master_data_wdata, master_data_rdata;
@@ -32,7 +43,7 @@ module SoC_Top #(
 
     RISCV_Core master_core (
         .clk(clk),
-        .rst(reset_system),
+        .rst(sys_rst),
         .bus_stall(master_bus_stall),
         .instr_addr(boot_addr),
         .instr_rdata(boot_data),
@@ -60,7 +71,7 @@ module SoC_Top #(
 
     AXI4_Lite_Master axi_master (
         .clk(clk),
-        .reset(reset_system),
+        .reset(sys_rst),
         .req_valid(master_data_we | master_data_re),
         .req_write(master_data_we),
         .req_addr(master_data_addr),
@@ -80,7 +91,7 @@ module SoC_Top #(
     );
 
     // ---------------- Giai ma dia chi (Interconnect 1 master - 5 slave) ----------------
-    // Thu tu slave: 0 = RAM, 1 = Reset Controller, 2 = SHA-256, 3 = App ROM port B, 4 = default (DECERR)
+    // Thu tu slave: 0 = RAM, 1 = cau APB, 2 = SHA-256, 3 = App ROM port B, 4 = default (DECERR)
     wire [3:0] hit_w = {M_AXI_AWADDR[31:16] == 16'h6000, M_AXI_AWADDR[31:16] == 16'h5000,
                         M_AXI_AWADDR[31:16] == 16'h4000, M_AXI_AWADDR[31:16] == 16'h1000};
     wire [3:0] hit_r = {M_AXI_ARADDR[31:16] == 16'h6000, M_AXI_ARADDR[31:16] == 16'h5000,
@@ -109,7 +120,7 @@ module SoC_Top #(
     assign M_AXI_RRESP   = sel_r[0] ? s_rresp[0] : sel_r[1] ? s_rresp[1] : sel_r[2] ? s_rresp[2] :
                            sel_r[3] ? s_rresp[3] : s_rresp[4];
 
-    // Cong thanh ghi cua cac slave don gian (RAM, Reset Controller, App ROM, default); index 2 (SHA) khong dung
+    // Cong thanh ghi cua cac slave don gian (RAM, App ROM, default); index 1 (APB), 2 (SHA) khong dung
     wire [4:0]  reg_wen;
     wire [31:0] reg_waddr [0:4];
     wire [31:0] reg_wdata [0:4];
@@ -117,13 +128,21 @@ module SoC_Top #(
     wire [31:0] reg_raddr [0:4];
     wire [31:0] reg_rdata [0:4];
 
+    // Tin hieu bus APB (cau AXI->APB o slave 1 -> APB_Decoder -> ngoai vi)
+    localparam NUM_APB = 8;
+    wire [31:0] PADDR, PWDATA, PRDATA;
+    wire [3:0]  PSTRB;
+    wire        PSEL, PENABLE, PWRITE, PREADY, PSLVERR;
+    wire [NUM_APB-1:0]    psel_s, pready_s, pslverr_s;
+    wire [32*NUM_APB-1:0] prdata_s;
+
     genvar k;
     generate
         for (k = 0; k < 5; k = k + 1) begin : g_slave
             if (k == 2) begin : g_sha
                 // ---- Slave 2: SHA-256 ----
                 SHA256_Wrapper sha256 (
-                    .clk(clk), .reset(reset_system),
+                    .clk(clk), .reset(sys_rst),
                     .S_AXI_AWVALID(M_AXI_AWVALID & sel_w[k]), .S_AXI_AWREADY(s_awready[k]), .S_AXI_AWADDR(M_AXI_AWADDR),
                     .S_AXI_WVALID(M_AXI_WVALID & sel_w[k]),   .S_AXI_WREADY(s_wready[k]),   .S_AXI_WDATA(M_AXI_WDATA),
                     .S_AXI_BVALID(s_bvalid[k]),               .S_AXI_BREADY(M_AXI_BREADY),
@@ -132,14 +151,28 @@ module SoC_Top #(
                 );
                 assign s_bresp[k] = 2'b00;
                 assign s_rresp[k] = 2'b00;
+            end else if (k == 1) begin : g_apb
+                // ---- Slave 1: cau AXI -> APB ----
+                AXI4_Lite_to_APB axi2apb (
+                    .clk(clk), .reset(sys_rst),
+                    .S_AXI_AWVALID(M_AXI_AWVALID & sel_w[k]), .S_AXI_AWREADY(s_awready[k]), .S_AXI_AWADDR(M_AXI_AWADDR),
+                    .S_AXI_WVALID(M_AXI_WVALID & sel_w[k]),   .S_AXI_WREADY(s_wready[k]),   .S_AXI_WDATA(M_AXI_WDATA),
+                    .S_AXI_WSTRB(M_AXI_WSTRB),
+                    .S_AXI_BVALID(s_bvalid[k]),               .S_AXI_BREADY(M_AXI_BREADY),  .S_AXI_BRESP(s_bresp[k]),
+                    .S_AXI_ARVALID(M_AXI_ARVALID & sel_r[k]), .S_AXI_ARREADY(s_arready[k]), .S_AXI_ARADDR(M_AXI_ARADDR),
+                    .S_AXI_RVALID(s_rvalid[k]),               .S_AXI_RREADY(M_AXI_RREADY),  .S_AXI_RDATA(s_rdata[k]),
+                    .S_AXI_RRESP(s_rresp[k]),
+                    .PADDR(PADDR), .PSEL(PSEL), .PENABLE(PENABLE), .PWRITE(PWRITE),
+                    .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(PRDATA), .PREADY(PREADY), .PSLVERR(PSLVERR)
+                );
             end else begin : g_reg
-                // ---- Slave 0, 1, 3, 4: adapter AXI -> cong thanh ghi ----
+                // ---- Slave 0, 3, 4: adapter AXI -> cong thanh ghi ----
                 // ROM App: ghi tra SLVERR; default slave: tra DECERR ca ghi lan doc
                 AXI4_Lite_Slave_Template #(
                     .WRESP(k == 4 ? 2'b11 : k == 3 ? 2'b10 : 2'b00),
                     .RRESP(k == 4 ? 2'b11 : 2'b00)
                 ) axi_slave (
-                    .clk(clk), .reset(reset_system),
+                    .clk(clk), .reset(sys_rst),
                     .S_AXI_AWVALID(M_AXI_AWVALID & sel_w[k]), .S_AXI_AWREADY(s_awready[k]), .S_AXI_AWADDR(M_AXI_AWADDR),
                     .S_AXI_WVALID(M_AXI_WVALID & sel_w[k]),   .S_AXI_WREADY(s_wready[k]),   .S_AXI_WDATA(M_AXI_WDATA),
                     .S_AXI_WSTRB(M_AXI_WSTRB),
@@ -165,18 +198,45 @@ module SoC_Top #(
         .read_data(reg_rdata[0])
     );
 
-    // Slave 1: Reset Controller
-    wire app_core_reset_n;
+    // ---------------- Bus ngoai vi APB (the gioi Secure) ----------------
+    // Slave APB: 0 = SYSCSR, 1 = UART0, 2 = GPIO0, 3..7 = du phong (TIMER, WDT, PLIC, MAILBOX)
 
-    Reset_Controller reset_controller (
-        .clk(clk),
-        .reset(reset_system),
-        .axi_wen(reg_wen[1]),
-        .axi_wdata(reg_wdata[1]),
-        .app_core_reset_n(app_core_reset_n)
+    APB_Decoder #(.NUM_SLV(NUM_APB)) apb_dec (
+        .PADDR(PADDR), .PSEL(PSEL), .PSEL_S(psel_s),
+        .PRDATA_S(prdata_s), .PREADY_S(pready_s), .PSLVERR_S(pslverr_s),
+        .PRDATA(PRDATA), .PREADY(PREADY), .PSLVERR(PSLVERR)
     );
-    assign reg_rdata[1] = {31'b0, app_core_reset_n};
-    assign app_running  = app_core_reset_n;
+
+    wire app_rst;
+
+    SYSCSR syscsr (
+        .clk(clk), .por_rst(reset_system), .wdt_rst_req(1'b0),
+        .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(boot_strap),
+        .PADDR(PADDR[11:0]), .PSEL(psel_s[0]), .PENABLE(PENABLE), .PWRITE(PWRITE),
+        .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[31:0]), .PREADY(pready_s[0]), .PSLVERR(pslverr_s[0])
+    );
+
+    wire uart0_irq, gpio0_irq;   // noi vao PLIC-lite o Tuan 9
+
+    UART uart0 (
+        .clk(clk), .reset(sys_rst), .uart_tx(uart0_tx), .uart_rx(uart0_rx), .irq(uart0_irq),
+        .PADDR(PADDR[11:0]), .PSEL(psel_s[1]), .PENABLE(PENABLE), .PWRITE(PWRITE),
+        .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[63:32]), .PREADY(pready_s[1]), .PSLVERR(pslverr_s[1])
+    );
+
+    GPIO gpio0 (
+        .clk(clk), .reset(sys_rst), .gpio_o(gpio0_o), .gpio_i(gpio0_i), .irq(gpio0_irq),
+        .PADDR(PADDR[11:0]), .PSEL(psel_s[2]), .PENABLE(PENABLE), .PWRITE(PWRITE),
+        .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[95:64]), .PREADY(pready_s[2]), .PSLVERR(pslverr_s[2])
+    );
+
+    // Cua so APB chua co ngoai vi: tra PSLVERR
+    assign prdata_s[32*NUM_APB-1:96] = {(32*(NUM_APB-3)){1'b0}};
+    assign pready_s[NUM_APB-1:3]     = {(NUM_APB-3){1'b1}};
+    assign pslverr_s[NUM_APB-1:3]    = {(NUM_APB-3){1'b1}};
+
+    wire app_core_reset_n = ~app_rst;
+    assign app_running    = app_core_reset_n;
 
     // Slave 4: default slave, doc ra 0
     assign reg_rdata[4] = 32'b0;
