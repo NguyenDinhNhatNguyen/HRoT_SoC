@@ -22,12 +22,23 @@ module APB_Periph_tb;
     reg  [7:0]  gpio_i = 0;
     reg         rx_force = 0, rx_val = 1;
     wire        uart_rx = rx_force ? rx_val : uart_tx;   // loopback, or the tb drives RX itself
+    wire        zero_en;                              // Boot Guard zeroization of the App RAM
+    wire [9:0]  zero_addr;
+    integer     zero_cycles = 0;
+    reg  [9:0]  zero_last = 0;
+    always @(posedge clk) begin
+        if (zero_en) begin
+            zero_cycles = zero_cycles + 1;
+            zero_last   = zero_addr;
+        end
+    end
     reg         be_pulse = 0, be_write = 0;               // fake Master bus error into SYSCSR
     reg  [1:0]  be_resp = 0;
     reg  [31:0] be_addr = 0;
 
-    SYSCSR #(.RST_HOLD(3)) u_sys (
+    SYSCSR #(.RST_HOLD(3), .ZERO_WORDS(16)) u_sys (
         .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA),
+        .app_zero_en(zero_en), .app_zero_addr(zero_addr),
         .bus_err(be_pulse), .bus_err_write(be_write), .bus_err_resp(be_resp), .bus_err_addr(be_addr),
         .PADDR(PADDR), .PSEL(sel == 1), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
         .PRDATA(rd_sys), .PREADY(), .PSLVERR());
@@ -211,6 +222,34 @@ module APB_Periph_tb;
         bus_err_pulse(0, 2'b11, 32'h70000000);
         apb_rd(1, 12'h018, r);
         chk(r, 32'hD, "BUS_ERR records a read DECERR");
+
+        // ---------------- SYSCSR Boot Guard ----------------
+        apb_rd(1, 12'h020, r);
+        chk(r, 32'h0, "GUARD open after reset");
+        apb_wr(1, 12'h000, 32'h1);
+        chk(app_rst, 0, "App released before the lock");
+        apb_wr(1, 12'h020, 32'h1);
+        chk(app_rst, 1, "LOCK holds the App in reset even with APP_RUN = 1");
+        repeat (40) @(posedge clk);
+        chk(zero_cycles, 16, "Zeroization visits every App RAM word once");
+        chk(zero_last, 15, "Zeroization ends at the last word");
+        apb_rd(1, 12'h020, r);
+        chk(r, 32'h5, "GUARD reports LOCK and ZERO_DONE");
+        apb_wr(1, 12'h000, 32'h1);
+        chk(app_rst, 1, "APP_CTRL cannot release a locked App");
+        apb_wr(1, 12'h014, 32'h5A5A0001);
+        wait (!sys_rst);
+        @(posedge clk);
+        apb_rd(1, 12'h020, r);
+        chk(r, 32'h5, "LOCK survives a software reset");
+        por <= 1;
+        repeat (3) @(posedge clk);
+        por <= 0;
+        wait (!sys_rst);
+        @(posedge clk);
+        apb_rd(1, 12'h020, r);
+        chk(r, 32'h0, "Only POR clears the LOCK");
+        chk(app_rst, 1, "App held in reset again after POR");
 
         // ---------------- GPIO ----------------
         apb_wr(2, 12'h000, 32'hA5);

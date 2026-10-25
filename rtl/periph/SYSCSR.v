@@ -13,15 +13,20 @@
 //   0x18 BUS_ERR    RW1C bit0 VALID, bit1 WRITE, [3:2] RESP (2 SLVERR, 3 DECERR), bit4 OVERFLOW.
 //                   Holds the first Master bus error since the last clear. Write 1 to bit0 to clear
 //   0x1C BUS_ERR_ADDR RO address of that error
+//   0x20 GUARD      RW  bit0 LOCK (write 1, cleared only by POR): holds the App Core in reset for good and
+//                   starts the zeroization of the App RAM. Reads bit0 LOCK, bit1 ZERO_BUSY, bit2 ZERO_DONE
 //   other offsets: read 0, writes ignored
 module SYSCSR #(
-    parameter RST_HOLD = 4              // cycles sys_rst stays high after a reset request
+    parameter RST_HOLD = 4,             // cycles sys_rst stays high after a reset request
+    parameter ZERO_WORDS = 1024         // words of the App RAM that zeroization clears
 )(
     input             clk,
     input             por_rst,         // power-on / push-button reset, already synchronized outside
     input             wdt_rst_req,     // reset request pulse from the WDT
     output            sys_rst,         // reset for the rest of the Secure world
     output            app_rst,         // App Core reset (1 = held)
+    output            app_zero_en,     // Boot Guard is clearing the App RAM: write zero_addr with zero data
+    output     [9:0]  app_zero_addr,   // word index being cleared
     input      [3:0]  boot_strap,
 
     // Master bus error report from AXI4_Lite_Master
@@ -113,6 +118,30 @@ module SYSCSR #(
         end
     end
 
+    // ---- Boot Guard: LOCK is cleared only by POR, so no SW or WDT reset can unlock the App ----
+    reg       lock_q, zero_busy, zero_done;
+    reg [9:0] zero_cnt;
+    always @(posedge clk) begin
+        if (por_rst) begin
+            lock_q    <= 1'b0;
+            zero_busy <= 1'b0;
+            zero_done <= 1'b0;
+            zero_cnt  <= 10'b0;
+        end else if (wr && PADDR == 12'h020 && PWDATA[0] && !lock_q) begin
+            lock_q    <= 1'b1;
+            zero_busy <= 1'b1;
+            zero_cnt  <= 10'b0;
+        end else if (zero_busy) begin
+            zero_cnt <= zero_cnt + 10'd1;
+            if (zero_cnt == ZERO_WORDS - 1) begin
+                zero_busy <= 1'b0;
+                zero_done <= 1'b1;
+            end
+        end
+    end
+    assign app_zero_en   = zero_busy;
+    assign app_zero_addr = zero_cnt;
+
     // ---- Registers reset by sys_rst ----
     reg       app_run;
     reg [3:0] strap_q;
@@ -124,7 +153,7 @@ module SYSCSR #(
             app_run <= PWDATA[0];
         end
     end
-    assign app_rst = sys_rst_q | ~app_run;
+    assign app_rst = sys_rst_q | ~app_run | lock_q;
 
     always @(*) begin
         case (PADDR)
@@ -142,6 +171,8 @@ module SYSCSR #(
                 PRDATA = {27'b0, be_ovf, be_resp, be_write, be_valid};
             12'h01C:
                 PRDATA = be_addr;
+            12'h020:
+                PRDATA = {29'b0, zero_done, zero_busy, lock_q};
             default:
                 PRDATA = 32'b0;
         endcase
