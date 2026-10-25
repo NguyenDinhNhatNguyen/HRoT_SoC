@@ -4,7 +4,7 @@
 
 ## 1. Tổng quan
 
-- Toàn dự án 29/60 việc (48%): Nguyên 21/36, Phát 8/22. Ngày 25/10 thêm 6 việc phát sinh (N-32…N-36, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
+- Toàn dự án 30/60 việc (50%): Nguyên 21/36, Phát 9/22. Ngày 25/10 thêm 6 việc phát sinh (N-32…N-36, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
 - SoC biên dịch và chạy được: Master boot từ Boot ROM riêng, dùng SHA-256 phần cứng, đọc ROM App qua cổng B, nhả reset App qua SYSCSR. Bus APB đã có SYSCSR, UART0, GPIO0, TIMER0 và WDT. `SoC_Top_tb` hiện chỉ băm chuỗi "abc" (firmware thử `dv/sw/mkhex.py`), **chưa băm image App và chưa có kịch bản image bị sửa trên RTL** (VP đã có cả hai kịch bản).
 - FPGA (25/10, sau khi thêm TIMER0/WDT): DE2 7.885 LE (24%), 135 Kbit M4K, Fmax 55,17 MHz. Artix-7 xc7a35t 3.360 LUT, WNS +2,891 ns @ 50 MHz. Báo cáo ở `fpga/reports/`.
 - Firmware Secure Boot thật **chưa có**: `SoC_Top_tb` đang chạy firmware thử viết tay (`dv/sw/mkhex.py`), còn `fw/secure_boot/main.c` là code giả (việc P-13).
@@ -29,13 +29,13 @@ Trên Verilator (Phát chạy, 23–25/10): UVM AXI4-Lite 15/15 PASS. UVM SHA-25
 | ID | Việc | Hạn | Trạng thái |
 | --- | --- | --- | --- |
 | P-01…P-06 | Lõi 5 tầng, hazard + test ISA, khung UVM, HAL + test plan, toolchain, load/store byte/half | ≤ 25/10 | ✅ Xong |
-| P-07 | Sơ đồ khối datapath 5 tầng trong `docs/` | 13/09 | ✅ Vẽ từ Tuần 1, đưa vào repo 25/10: `docs/spec/Core_Datapath.md` + hình, có bảng đối chiếu RTL và 5 điểm nên sửa khi vẽ lại cho báo cáo |
+| P-07 | Sơ đồ khối datapath 5 tầng trong `docs/` | 13/09 | ✅ Vẽ từ Tuần 1, đưa vào repo 25/10: `docs/spec/Core_Datapath.md` + hình, có bảng đối chiếu RTL và 5 điểm nên sửa khi vẽ lại cho báo cáo (commit `fb0b577`) |
 | P-08 | UVM sequence ngẫu nhiên cho SHA-256 (corner case) | 25/10 | ✅ Xong 25/10 (commit `bb59f25`). `sha256_alias_test` PASS sau khi Nguyên sửa RTL 25/10 |
 | **P-09** | Zicsr + trap máy + cổng `irq_timer`/`irq_ext` | 01/11 | Chưa làm, **chặn việc nối ngắt TIMER0 vào lõi và N-19**, thuộc mốc M1. Cổng đã chốt (I-01). Thêm sau đó: access fault qua trap (`mcause` 5/7) với cổng `data_err` |
 | P-10 | Dọn `dv/tb` sang `dv/env`, `dv/agents` | 01/11 | Chưa làm. Testbench của Nguyên đã chuyển sang `dv/tb/soc/` |
 | P-11 | Driver UART/GPIO theo `SoC_Memory_Map.md` | 01/11 | Chưa làm (ngoại vi đã có) |
 | P-12 | Cập nhật tài liệu này + `Dev_Guide.md`, thêm test của Phát vào `make test` | 01/11 | ✅ Xong (làm 24/10, vào `main` cùng commit P-08 `bb59f25`), sheet đã cập nhật 25/10 |
-| P-22 | Sửa 2 lỗi script trên Questa 10.2c (mục 4) | 01/11 | Đã sửa 25/10, kiểm trên Verilator, **chờ chạy `make test` trên Questa để đóng** |
+| P-22 | Sửa 2 lỗi script trên Questa 10.2c (mục 4) | 01/11 | Đã sửa 25/10 (commit `fb0b577`), kiểm trên Verilator, **chờ chạy `make test` trên Questa để đóng** |
 | P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | Chờ P-11, I-03. Sau khi băm ROM App đọc `SYSCSR.BUS_ERR`: `VALID = 1` thì in log qua UART và giữ App trong reset, xong ghi 1 vào bit0 để xóa (N-36) |
 | P-14 | Test assembly ngắt timer/external | 08/11 | Chờ P-09 (TIMER0 đã có) |
 | P-15…P-17 | FW dùng Secure DMA · FW App + `app_firmware.hex` + sinh golden hash · UVM agent APB + scoreboard SHA (DPI) | 15/11 | Chưa làm |
@@ -65,8 +65,8 @@ Các lỗi SoC/uncore liệt kê ở bản trước (SoC không compile, Master 
   2. `vsim -onfinish stop` trong `sim/run_unit.do` làm macro dừng sau `ALU_tb` ở chế độ `-c`, chỉ 1/11 TB chạy. Chạy `make test` trong terminal thì Questa đứng chờ ở dấu nhắc `VSIM(paused)>` và cả regression bị treo. Tạm thời chạy `make test < /dev/null`.
      Cách sửa (25/10): `base_test.svh` bỏ `uvm_top.set_timeout()` (đối số bị đọc theo đơn vị thời gian của `uvm_pkg`, trên Questa là 1 ps theo `-t 1ps`) và dùng watchdog `#(timeout_us * 1us)` ngay trong package của test nên luôn đúng đơn vị. `regress.sh` chạy mỗi TB đơn vị bằng một tiến trình `vsim` riêng (`set UNIT <tb>`, cùng kiểu với `run_rtl.do`) và mọi lệnh `vsim` đọc stdin từ `/dev/null` nên không còn treo ở `VSIM(paused)>`.
   3. (Đã sửa, phía Nguyên) `sim/run_vp.sh` trước đây chỉ tìm thư viện ở `$SYSTEMC_HOME/lib-linux64`, nên link lỗi khi `SYSTEMC_HOME` trỏ tới bản 2.3.4 (thư viện nằm trong `lib/`). Script giờ thử cả hai.
-- **Comment và chuỗi in ra của testbench viết bằng tiếng Anh** từ 25/10. File của Nguyên đã đổi, file của Phát đổi dần khi sửa tới.
-- **VP băm theo độ dài image** (`cpu.app_len`), còn I-04 chốt băm cả 4 KB ROM App. Cần thống nhất trước P-13/P-16.
+- **Comment và chuỗi in ra của testbench viết bằng tiếng Anh** từ 25/10. File của Nguyên đã đổi, file của Phát đổi hết ngày 25/10 (commit `fb0b577`).
+- **VP băm cả 4 KB ROM App** theo I-04 từ 25/10 (N-33, commit `a946e2a`).
 - **Bộ nhớ đọc ở cạnh xuống** chạy tốt trên FPGA nhưng không hợp với SRAM macro khi làm ASIC (P-20/P-21). Cần phương án: thêm 1 tầng chờ ở IF/MEM, hoặc dùng flip-flop cho bộ nhớ nhỏ.
 - **Golden hash đang nằm trong RAM ghi được** cho tới khi có cổng đọc dữ liệu Boot ROM (N-21, I-03).
 - **Xuống dòng:** `.gitattributes` ép LF cho `*.sh`, `Makefile`, `*.tcl`. Nên thêm `* text=auto eol=lf` để file `.v/.sv/.c/.md` không bị đổi qua lại LF↔CRLF giữa hai máy.
