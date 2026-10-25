@@ -7,7 +7,7 @@
 | Thư mục | Nội dung | Phụ trách |
 | --- | --- | --- |
 | `rtl/core/`, `rtl/top/RISCV_Core.v` | Lõi RV32I 5 tầng (forwarding, load-use stall, flush ở EX, load/store byte/half) | Phát |
-| `rtl/bus/`, `rtl/periph/`, `rtl/mem/`, `rtl/crypto/`, `rtl/top/SoC_Top.v` | AXI4-Lite master + interconnect, cầu AXI→APB, SYSCSR, UART, GPIO, TIMER, WDT, SHA-256, bộ nhớ | Nguyên |
+| `rtl/bus/`, `rtl/periph/`, `rtl/mem/`, `rtl/crypto/`, `rtl/top/SoC_Top.v` | AXI4-Lite master dùng chung (CPU và Secure DMA) + interconnect, cầu AXI→APB, SYSCSR (BUS_ERR, Boot Guard), UART, GPIO, TIMER, WDT, PLIC-lite, Mailbox, Secure DMA + tường lửa, SHA-256, bộ nhớ, bus APB thế giới App | Nguyên |
 | `dv/tb/` · `dv/tb/soc/` | TB đơn vị, TB lõi (`RISCV_Core_tb`, `RISCV_Core_prog_tb`, `RISCV_Core_hazard_tb`) · `APB_Periph_tb`, `SoC_Top_tb` | Phát (lõi, UVM) · Nguyên (IP, SoC) |
 | `dv/agents`, `dv/env`, `dv/tests`, `dv/hrot_dv_pkg.sv` | Môi trường UVM AXI4-Lite | Phát |
 | `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình ISA tự kiểm tra cho lõi · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
@@ -31,14 +31,14 @@ Nguồn chính thức: `docs/spec/SoC_Memory_Map.md`. Tóm tắt:
 
 | Địa chỉ | Vùng | Ghi chú |
 | --- | --- | --- |
-| `0x0000_0000` 4 KB | Boot ROM | chỉ fetch lệnh, nạp `firmware_imem.hex` (`.text`) |
+| `0x0000_0000` 4 KB | Boot ROM | cổng A fetch lệnh (`.text`), cổng B cho `lw` đọc dữ liệu chỉ-đọc (`.rodata`, golden hash). Ghi → `SLVERR`. Nạp `firmware_imem.hex` |
 | `0x1000_0000` 4 KB | RAM Master | nạp `firmware_dmem.hex` (`.rodata/.data`), `.bss` + stack |
-| `0x4000_0000` | Cầu AXI→APB | SYSCSR `0x4000_0000` (APP_CTRL ở offset 0), UART0 `+0x1000`, GPIO0 `+0x2000`, TIMER0 `+0x3000`, WDT `+0x4000` |
+| `0x4000_0000` | Cầu AXI→APB | SYSCSR `0x4000_0000` (APP_CTRL ở offset 0), UART0 `+0x1000`, GPIO0 `+0x2000`, TIMER0 `+0x3000`, WDT `+0x4000`, PLIC-lite `+0x5000`, Mailbox `+0x6000`, Secure DMA `+0x7000` |
 | `0x5000_0000` | SHA-256 | `docs/spec/SHA256_Register_Map.md`, `fw/hal/sha256_regs.h`, 66 chu kỳ START→DONE. Offset `0x100`–`0xFFFF` đọc 0 |
 | `0x6000_0000` 4 KB | ROM App, cổng B | chỉ đọc (để băm), ghi → `SLVERR` |
 | còn lại | default slave | `DECERR`, không treo bus |
 
-Lõi là Harvard: lệnh load **không** đọc được Boot ROM, nên hằng số (kể cả golden hash) hiện nằm trong RAM. Cổng đọc dữ liệu chỉ-đọc cho Boot ROM là việc N-21/I-03.
+Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x0000_xxxx` đọc được ROM nên `.rodata` và golden hash đặt được trong ROM (N-21, I-03 còn việc đổi `linker.ld`). Thế giới App có bản đồ riêng (UART1, GPIO1, TIMER1, Mailbox ở `0x4000_xxxx`, địa chỉ khác là RAM App), xem `docs/spec/SoC_Memory_Map.md`.
 
 ## 4. Chạy kiểm tra
 
@@ -46,11 +46,11 @@ Lõi là Harvard: lệnh load **không** đọc được Boot ROM, nên hằng s
 
 | Lệnh (thư mục gốc repo) | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch), HAL host, APB, SoC secure boot, VP. Log ở `build/logs/` |
+| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256), HAL host, APB, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`), VP. Log ở `build/logs/` |
 | `make sim-unit` | 11 TB đơn vị (`sim/run_unit.do`), mỗi TB in `SUMMARY <TÊN>: PASS = x \| FAIL = y` |
 | `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
 | `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do` |
-| `make sim-ip` / `make sim-soc` / `make vp` | APB (SYSCSR, UART, GPIO, TIMER, WDT) / toàn SoC / Virtual Platform |
+| `make sim-ip` / `make sim-soc` / `make vp` | APB (SYSCSR, GPIO, UART, TIMER, WDT, PLIC-lite, Mailbox) / toàn SoC (thêm tham số `set PLUSARGS +TAMPER` trong `sim/run_soc.do` để chạy ảnh bị sửa) / Virtual Platform |
 | `make fw` | `fw/build/firmware_imem.hex`, `firmware_dmem.hex`, `.dis`, `.map` |
 | `make -C fw/hal/test test` · `crosscheck` · `rv32` | HAL trên host · so với `sha256sum` · build rv32i |
 | Tạo lại hex ISA test | lệnh ở đầu `dv/tests/asm/core_isa_test.S` |
