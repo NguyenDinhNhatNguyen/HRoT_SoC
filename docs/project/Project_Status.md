@@ -4,7 +4,7 @@
 
 ## 1. Tổng quan
 
-- Toàn dự án 40/60 việc (67%): Nguyên 31/36, Phát 9/22. Ngày 26/10 Nguyên làm xong N-19…N-25, N-27, N-32 và N-35. Ngày 25/10 thêm 6 việc phát sinh (N-32…N-36, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
+- Toàn dự án 41/61 việc (67%): Nguyên 31/36, Phát 10/23. Ngày 26/10 Nguyên làm xong N-19…N-25, N-27, N-32 và N-35. Ngày 25/10 thêm 6 việc phát sinh (N-32…N-36, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
 - SoC biên dịch và chạy được: Master boot từ Boot ROM riêng, băm cả 4 KB ROM App bằng CPU và bằng Secure DMA (qua tường lửa), so với golden hash đọc từ Boot ROM, rồi nhả App qua SYSCSR, hoặc khóa App bằng Boot Guard và xóa RAM App khi hash sai. Bus APB Secure có SYSCSR, UART0, GPIO0, TIMER0, WDT, PLIC-lite, Mailbox và Secure DMA. Thế giới App có bus APB riêng với UART1, GPIO1, TIMER1 và Mailbox. `SoC_Top_tb` chạy cả ảnh đúng lẫn ảnh bị sửa trên RTL (firmware thử `dv/sw/mkhex.py`). Dây ngắt của hai lõi đã có trong `SoC_Top`, chờ P-09 để nối (I-01).
 - FPGA (26/10, đo với lõi đã đổi reset đồng bộ ở `IF_ID_Reg` và `ID_EX_Reg`, xem mục 4): DE2 9.358 LE (28%), 4.390 thanh ghi, 135 Kbit M4K, Fmax 53,02 MHz. Artix-7 xc7a35t 5.530 LUT (27%), 4.092 FF, WNS +3,519 ns @ 50 MHz. Đường găng DE2 nằm trong lõi (`Rd_WB` → forwarding ở ID → `RD2_EX`, slack +1,14 ns), không có đường nào của uncore trong top. Báo cáo ở `fpga/reports/`.
 - Firmware Secure Boot thật **chưa có**: `SoC_Top_tb` chạy firmware thử viết tay (`dv/sw/mkhex.py`), còn `fw/secure_boot/main.c` là code giả (việc P-13).
@@ -35,6 +35,7 @@ Trên Verilator (Phát chạy, 23–25/10): UVM AXI4-Lite 15/15 PASS. UVM SHA-25
 | P-10 | Dọn `dv/tb` sang `dv/env`, `dv/agents` | 01/11 | Chưa làm. Testbench của Nguyên đã chuyển sang `dv/tb/soc/` |
 | P-11 | Driver UART/GPIO theo `SoC_Memory_Map.md` | 01/11 | Chưa làm (ngoại vi đã có) |
 | P-12 | Cập nhật tài liệu này + `Dev_Guide.md`, thêm test của Phát vào `make test` | 01/11 | ✅ Xong (làm 24/10, vào `main` cùng commit P-08 `bb59f25`), sheet đã cập nhật 25/10 |
+| P-23 | Sửa lỗi Quartus 10200 ở `IF_ID_Reg.v` và `ID_EX_Reg.v`: đổi `always @(posedge clk or posedge rst)` thành `always @(posedge clk)` (mục 4, R15) | 01/11 | Đề xuất 26/10, chờ Phát áp |
 | P-22 | Sửa 2 lỗi script trên Questa 10.2c (mục 4) | 01/11 | ✅ Xong: Phát sửa 25/10 (commit `fb0b577`), Nguyên chạy `make test` trên Questa 26/10, 11 TB đơn vị và 4 test UVM PASS |
 | P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | Chờ P-11, I-03. Sau khi băm ROM App đọc `SYSCSR.BUS_ERR`: `VALID = 1` thì in log qua UART và giữ App trong reset, xong ghi 1 vào bit0 để xóa (N-36) |
 | P-14 | Test assembly ngắt timer/external | 08/11 | Chờ P-09 (TIMER0 đã có) |

@@ -101,7 +101,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 ## 8. Rủi ro và cách xử lý
 
-Cập nhật 26/10/2026, 19 rủi ro. Cột "Phụ trách" là người xử lý, việc của Phát ở đây là **đề xuất**, Phát xác nhận lại.
+Cập nhật 26/10/2026, 19 rủi ro, việc sửa R15 là P-23. Cột "Phụ trách" là người xử lý, việc của Phát ở đây là **đề xuất**, Phát xác nhận lại.
 
 | # | Rủi ro | Mức | Hướng xử lý | Phụ trách | Trạng thái |
 | --- | --- | --- | --- | --- | --- |
