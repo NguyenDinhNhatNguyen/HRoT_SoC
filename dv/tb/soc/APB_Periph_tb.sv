@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 // Self-checking testbench for the APB peripherals: SYSCSR (incl. BUS_ERR), GPIO, UART (TX looped back to RX),
-// TIMER and WDT. Ends with "APB_Periph_tb RESULT: PASS|FAIL", which sim/regress.sh looks for.
+// TIMER, WDT, PLIC-lite and Mailbox. Ends with "APB_Periph_tb RESULT: PASS|FAIL", which sim/regress.sh looks for.
 module APB_Periph_tb;
     reg clk = 0, por = 1;
     always #5 clk = ~clk;
@@ -10,9 +10,14 @@ module APB_Periph_tb;
     reg         PENABLE = 0, PWRITE = 0;
     reg  [31:0] PWDATA;
     reg  [3:0]  PSTRB;
-    reg  [2:0]  sel = 0;                  // 1 = SYSCSR, 2 = GPIO, 3 = UART, 4 = TIMER, 5 = WDT
-    wire [31:0] rd_sys, rd_gpio, rd_uart, rd_tim, rd_wdt;
+    reg  [2:0]  sel = 0;                  // 1 = SYSCSR, 2 = GPIO, 3 = UART, 4 = TIMER, 5 = WDT, 6 = PLIC, 7 = Mailbox (Secure side)
+    wire [31:0] rd_sys, rd_gpio, rd_uart, rd_tim, rd_wdt, rd_plic, rd_mbox, rd_mbox_a;
     wire        sys_rst, app_rst, uart_tx, gpio_irq, uart_irq, timer_irq, wdt_rst;
+    wire        plic_irq, mbox_irq_s, mbox_irq_a;
+    reg  [7:0]  plic_src = 0;
+    reg  [11:0] a_PADDR = 0;              // the Mailbox's second APB port (the App side)
+    reg         a_PSEL = 0, a_PENABLE = 0, a_PWRITE = 0;
+    reg  [31:0] a_PWDATA = 0;
     wire [7:0]  gpio_o;
     reg  [7:0]  gpio_i = 0;
     reg         rx_force = 0, rx_val = 1;
@@ -42,6 +47,16 @@ module APB_Periph_tb;
         .clk(clk), .reset(sys_rst), .rst_req(wdt_rst),
         .PADDR(PADDR), .PSEL(sel == 5), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
         .PRDATA(rd_wdt), .PREADY(), .PSLVERR());
+    PLIC u_plic (
+        .clk(clk), .reset(sys_rst), .src(plic_src), .irq(plic_irq),
+        .PADDR(PADDR), .PSEL(sel == 6), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),
+        .PRDATA(rd_plic), .PREADY(), .PSLVERR());
+    Mailbox u_mbox (
+        .clk(clk), .reset(sys_rst), .irq_s(mbox_irq_s), .irq_a(mbox_irq_a),
+        .s_PADDR(PADDR), .s_PSEL(sel == 7), .s_PENABLE(PENABLE), .s_PWRITE(PWRITE), .s_PWDATA(PWDATA), .s_PSTRB(PSTRB),
+        .s_PRDATA(rd_mbox), .s_PREADY(), .s_PSLVERR(),
+        .a_PADDR(a_PADDR), .a_PSEL(a_PSEL), .a_PENABLE(a_PENABLE), .a_PWRITE(a_PWRITE), .a_PWDATA(a_PWDATA), .a_PSTRB(4'hF),
+        .a_PRDATA(rd_mbox_a), .a_PREADY(), .a_PSLVERR());
 
     integer fail = 0, pass = 0;
     reg [31:0] r;
@@ -75,10 +90,12 @@ module APB_Periph_tb;
             PSTRB   <= 0;
             @(posedge clk);
             PENABLE <= 1;
-            #1 d = (s == 1) ? rd_sys : (s == 2) ? rd_gpio : (s == 3) ? rd_uart : (s == 4) ? rd_tim : rd_wdt;
+            #1 d = (s == 1) ? rd_sys : (s == 2) ? rd_gpio : (s == 3) ? rd_uart : (s == 4) ? rd_tim :
+                   (s == 5) ? rd_wdt : (s == 6) ? rd_plic : rd_mbox;
             @(posedge clk);
             sel     <= 0;
             PENABLE <= 0;
+            #1;
         end
     endtask
 
@@ -91,6 +108,42 @@ module APB_Periph_tb;
             be_addr  <= a;
             @(posedge clk);
             be_pulse <= 0;
+            #1;
+        end
+    endtask
+
+    // The same two accesses on the Mailbox's App-side port
+    task apba_wr(input [11:0] a, input [31:0] d);
+        begin
+            @(posedge clk);
+            a_PSEL    <= 1;
+            a_PADDR   <= a;
+            a_PWDATA  <= d;
+            a_PWRITE  <= 1;
+            a_PENABLE <= 0;
+            @(posedge clk);
+            a_PENABLE <= 1;
+            @(posedge clk);
+            a_PSEL    <= 0;
+            a_PENABLE <= 0;
+            a_PWRITE  <= 0;
+            #1;
+        end
+    endtask
+
+    task apba_rd(input [11:0] a, output [31:0] d);
+        begin
+            @(posedge clk);
+            a_PSEL    <= 1;
+            a_PADDR   <= a;
+            a_PWRITE  <= 0;
+            a_PENABLE <= 0;
+            @(posedge clk);
+            a_PENABLE <= 1;
+            #1 d = rd_mbox_a;
+            @(posedge clk);
+            a_PSEL    <= 0;
+            a_PENABLE <= 0;
             #1;
         end
     endtask
@@ -263,6 +316,57 @@ module APB_Periph_tb;
         chk(r[1], 1, "WDT timeout resets, sets RST_CAUSE.WDT");
         apb_rd(5, 12'h000, r);
         chk(r, 32'h0, "WDT disabled again after its reset");
+
+        // ---------------- PLIC-lite ----------------
+        apb_rd(6, 12'h004, r);
+        chk(r, 32'h0, "PLIC ENABLE resets to 0");
+        plic_src = 8'h04;
+        apb_rd(6, 12'h000, r);
+        chk(r, 32'h04, "PLIC PENDING follows the sources");
+        chk(plic_irq, 0, "PLIC quiet while the source is disabled");
+        apb_rd(6, 12'h008, r);
+        chk(r, 32'h0, "PLIC CLAIM is 0 with nothing enabled");
+        apb_wr(6, 12'h004, 32'h04);
+        chk(plic_irq, 1, "PLIC irq once the source is enabled");
+        apb_rd(6, 12'h008, r);
+        chk(r, 32'h3, "PLIC CLAIM = source index + 1");
+        plic_src = 8'h05;
+        apb_wr(6, 12'h004, 32'h05);
+        apb_rd(6, 12'h008, r);
+        chk(r, 32'h1, "PLIC lowest index wins");
+        apb_wr(6, 12'h004, 32'h04);
+        apb_rd(6, 12'h008, r);
+        chk(r, 32'h3, "PLIC masks a disabled source");
+        plic_src = 8'h00;
+        #1;
+        chk(plic_irq, 0, "PLIC irq drops with the source");
+
+        // ---------------- Mailbox ----------------
+        apb_rd(7, 12'h008, r);
+        chk(r, 32'h0, "Mailbox Secure STATUS empty after reset");
+        apb_wr(7, 12'h000, 32'hCAFE0001);
+        apb_rd(7, 12'h008, r);
+        chk(r, 32'h2, "Mailbox Secure sees OUT_FULL");
+        apba_rd(12'h008, r);
+        chk(r, 32'h1, "Mailbox App sees IN_FULL");
+        apb_wr(7, 12'h000, 32'h11111111);
+        apba_rd(12'h004, r);
+        chk(r, 32'hCAFE0001, "Mailbox ignores a send while OUT_FULL");
+        apb_rd(7, 12'h008, r);
+        chk(r, 32'h0, "Mailbox read by the App frees the Secure OUT");
+        apba_rd(12'h008, r);
+        chk(r, 32'h0, "Mailbox App IN_FULL cleared by the read");
+        apba_wr(12'h000, 32'hBEEF0002);
+        apba_rd(12'h008, r);
+        chk(r, 32'h2, "Mailbox App sees OUT_FULL");
+        apb_wr(7, 12'h00C, 32'h1);
+        chk(mbox_irq_s, 1, "Mailbox Secure irq while a word waits");
+        apb_rd(7, 12'h004, r);
+        chk(r, 32'hBEEF0002, "Mailbox Secure reads the App word");
+        chk(mbox_irq_s, 0, "Mailbox Secure irq clears after the read");
+        apba_wr(12'h00C, 32'h1);
+        apb_wr(7, 12'h000, 32'h12345678);
+        chk(mbox_irq_a, 1, "Mailbox App irq while a word waits");
 
         $display("APB_Periph_tb RESULT: %s (%0d of %0d checks passed)", fail ? "FAIL" : "PASS", pass, pass + fail);
         $finish;
