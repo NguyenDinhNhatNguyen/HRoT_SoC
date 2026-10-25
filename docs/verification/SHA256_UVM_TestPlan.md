@@ -1,48 +1,49 @@
 # Test Plan UVM — SHA-256 AXI4-Lite Slave
 
-> Phiên bản: Tuần 6 · Người viết: Phát (DV) · Phục vụ: Tuần 7 (sequence ngẫu nhiên), Tuần 10 (nhiễu), Tuần 11 (coverage)
-> Register map & hợp đồng: `docs/spec/SHA256_Register_Map.md`
+> Viết Tuần 6, cập nhật 25/10/2026 theo P-08 và I-05 · Người viết: Phát (DV) · Phục vụ: P-08 (sequence ngẫu nhiên, xong), P-17 (scoreboard DPI), P-19 (coverage)
+> Register map và hợp đồng: `docs/spec/SHA256_Register_Map.md`
 
 ## 1. Phạm vi và mục tiêu
 
-**DUT:** `SHA256_Wrapper` (AXI4-Lite slave, base `0x5000_0000`) bọc `SHA256_Core` (64 chu kỳ/khối).
+**DUT:** `SHA256_Wrapper` (AXI4-Lite slave, base `0x5000_0000`) bọc `SHA256_Core` (66 chu kỳ từ START đến DONE cho mỗi khối).
 
 **Mục tiêu:** chứng minh (a) hash đúng với mọi độ dài message, (b) giao thức thanh ghi đúng (START/INIT/BUSY/DONE), (c) tuân thủ AXI4-Lite dưới mọi thứ tự và độ trễ handshake, (d) hồi phục đúng sau reset, (e) không hỏng dữ liệu khi bị truy cập sai thứ tự.
 
-**Ngoài phạm vi:** logic Secure Boot ở mức SoC (Tuần 10), Dual-Port ROM và Reset Controller.
+**Ngoài phạm vi:** logic Secure Boot ở mức SoC (Tuần 10), Dual-Port ROM và SYSCSR.
 
-## 2. Giả định (cần Nguyên xác nhận)
+## 2. Thông số đã chốt (I-05)
 
-| # | Giả định | Nếu sai thì |
+| # | Thông số | Nguồn |
 | --- | --- | --- |
-| A1 | Truy cập địa chỉ ngoài map: `OKAY`, đọc 0, ghi bỏ qua | Đổi một cờ trong `sha256_cfg` (`unmapped_resp`) |
-| A2 | Độ trễ khối = 64 chu kỳ từ START đến DONE; ngưỡng kiểm tra đặt tham số `MAX_LATENCY` (mặc định 80) | Chỉnh `MAX_LATENCY` |
-| A3 | `DONE` sticky, xóa khi START; ghi lúc `BUSY` bị bỏ qua | Xem test `sha256_ctl_protocol_test` (mục 5) |
-| A4 | Reset ở RTL là active-high, interface UVM là active-low (`rst_n`) → `tb_top` nối `~rst_n` | – |
+| A1 | Offset trống trong cửa sổ 64 KB (`0x48`, `0x4C`, `0x70`–`0xFFFF`): `OKAY`, đọc 0, ghi bỏ qua, không alias. Ngoài mọi slave: `DECERR` từ default slave của `SoC_Top` | I-05, RTL sửa ở `a968cce` |
+| A2 | Độ trễ khối = 66 chu kỳ từ lúc START được chấp nhận đến DONE (64 vòng + 1 cộng H + 1 nhận lệnh AXI). Sequence chờ DONE tối đa `poll_limit` = 500 lần đọc STATUS | I-05 |
+| A3 | `DONE` sticky, xóa khi START. Ghi BLOCK hoặc START lúc `BUSY` bị bỏ qua | Hợp đồng HAL #3, #4, #6 |
+| A4 | Reset ở RTL là active-high, interface UVM là active-low (`rst_n`) → `tb_sha256_top` nối `~rst_n` | – |
+| A5 | Wrapper bỏ qua `WSTRB`, mỗi lần ghi luôn ghi cả word | Hợp đồng HAL #7 |
 
 ## 3. Kiến trúc kiểm chứng
 
-Tái sử dụng agent AXI4-Lite đã có (driver, monitor, sequencer, SVA trong `axi4_lite_if`). Thay slave mô hình bằng DUT thật, thêm:
+Tái sử dụng agent AXI4-Lite đã có (driver, monitor, sequencer, SVA trong `axi4_lite_if`). Top `dv/tb/tb_sha256_top.sv` nối agent thẳng vào DUT thật.
 
-| Thành phần mới | Vai trò |
-| --- | --- |
-| `sha256_ref_dpi.c` | Golden model: bọc `fw/hal/test/sha256_ref.c` bằng DPI-C (`sha256_ref_compress`, độ dài tuỳ ý) |
-| `sha256_reg_model` | Mô hình thanh ghi: BLOCK (W), CTRL, STATUS, HASH (RO), quy tắc bỏ qua ghi khi BUSY |
-| `sha256_scoreboard` | Dựng lại khối từ các ghi BLOCK, mỗi START gọi golden (có/không INIT), so với HASH đọc ra; kiểm quy tắc STATUS |
-| `sha256_cov` | Covergroup (mục 6) |
-| `sha256_seq_lib` | Sequence cấp "hash message" dựa trên `write_word`/`read_word` của `axi4_lite_base_seq` |
-| `sha256_base_test` + test con | Mục 5. Mỗi test ghi đè `run_stimulus()` giống `base_test` hiện tại |
+| Thành phần | Vai trò | Tình trạng |
+| --- | --- | --- |
+| `dv/env/sha256_ref.svh` | Mô hình tham chiếu SHA-256 bằng SV (cùng thuật toán với `fw/hal/test/sha256_ref.c`) | Có (P-08) |
+| `dv/tests/sha256_seq_lib.svh` | Sequence tự kiểm tra: băm message theo luồng HAL, so với `sha256_ref`, gom lỗi và bỏ qua kết quả bị reset cắt ngang | Có (P-08) |
+| `dv/tests/sha256_tests.svh` | `sha256_base_test` + test con, mỗi test ghi đè `run_stimulus()` | Có (P-08) |
+| `sha256_ref_dpi.c` + `sha256_scoreboard` | Golden bọc `fw/hal/test/sha256_ref.c` bằng DPI-C, scoreboard thụ động dựng lại khối từ các ghi BLOCK | P-17 |
+| `sha256_reg_model` | Mô hình thanh ghi: BLOCK (W), CTRL, STATUS, HASH (RO), quy tắc bỏ qua ghi khi BUSY | P-17 |
+| `sha256_cov` | Covergroup (mục 6) | P-19 |
 
 `axi4_lite_scoreboard` (mô hình bộ nhớ chung) **không dùng** cho DUT này vì thanh ghi RO/W1-clear/side-effect không khớp mô hình bộ nhớ.
 
-Sequence cấp cao `sha256_hash_seq` (tham số: `msg_len`, nội dung, cờ INIT mỗi khối, độ trễ AXI) thực hiện đúng luồng của HAL: kiểm BUSY → ghi 16 BLOCK → ghi CTRL → poll STATUS đến DONE (có timeout) → đọc 8 HASH.
+Hàm `hash_msg` trong `sha256_base_seq` (tham số: nội dung message, độ trễ AXI ngẫu nhiên, thứ tự ghi BLOCK, đọc STATUS xen kẽ) thực hiện đúng luồng của HAL: kiểm BUSY → ghi 16 BLOCK → ghi CTRL → poll STATUS đến DONE (có timeout) → đọc 8 HASH.
 
 ## 4. Danh sách tính năng cần kiểm (Verification Plan)
 
 | ID | Tính năng | Kiểm tra / Tiêu chí PASS | Cách kiểm | Ưu tiên |
 | --- | --- | --- | --- | --- |
-| F-REG-01 | Giá trị sau reset | STATUS=0; BLOCK/CTRL đọc về 0; HASH đọc 0 hoặc IV (ghi rõ theo RTL) | SVA + test đọc | Cao |
-| F-REG-02 | BLOCK ghi/đọc đúng, theo WSTRB | Ghi từng byte lane, đọc lại khớp mô hình | Scoreboard | Cao |
+| F-REG-01 | Giá trị sau reset | STATUS=0, BLOCK/CTRL đọc 0, HASH đọc IV (lõi nạp IV khi reset) | Test đọc | Cao |
+| F-REG-02 | BLOCK chỉ ghi, luôn ghi cả word | Ghi với WSTRB bất kỳ vẫn ghi cả word (A5), đọc BLOCK ra 0. Kiểm gián tiếp qua hash | Directed | Cao |
 | F-REG-03 | Thanh ghi RO không bị ghi đè | Ghi vào STATUS/HASH không đổi giá trị | Scoreboard | Trung bình |
 | F-REG-04 | Địa chỉ ngoài map | Theo A1; không tác dụng phụ lên trạng thái | Scoreboard | Trung bình |
 | F-HASH-01 | Một khối, KAT chuẩn | Digest rỗng, "abc" khớp NIST | KAT test | Cao |
@@ -50,9 +51,9 @@ Sequence cấp cao `sha256_hash_seq` (tham số: `msg_len`, nội dung, cờ INI
 | F-HASH-03 | Mọi độ dài biên | Độ dài 0,1,55,56,57,63,64,65,119,120,127,128 khớp golden | Directed + rand | Cao |
 | F-HASH-04 | INIT đúng | INIT nạp lại IV: hai message liên tiếp độc lập; thiếu INIT thì chaining | Directed | Cao |
 | F-CTL-01 | START tự xóa | Sau START, ghi lại CTRL không tự chạy thêm | Scoreboard | Cao |
-| F-CTL-02 | BUSY/DONE đúng pha | START → BUSY=1,DONE=0 → (≤MAX_LATENCY) BUSY=0,DONE=1 | SVA + scoreboard | Cao |
+| F-CTL-02 | BUSY/DONE đúng pha | START → BUSY=1,DONE=0 → BUSY=0,DONE=1, không bao giờ cả hai bằng 1 | Sequence + scoreboard | Cao |
 | F-CTL-03 | DONE sticky, xóa khi START | DONE giữ 1 qua nhiều lần đọc; về 0 khi START kế | Scoreboard | Cao |
-| F-CTL-04 | Độ trễ khối | DONE trong khoảng [64, MAX_LATENCY] chu kỳ | SVA | Trung bình |
+| F-CTL-04 | Độ trễ khối | DONE đúng 66 chu kỳ sau khi START được chấp nhận (A2) | SVA | Trung bình |
 | F-CTL-05 | START khi BUSY | Bị bỏ qua, hash đang chạy không đổi | Directed | Cao |
 | F-CTL-06 | Ghi BLOCK khi BUSY | Bị bỏ qua, hash đang chạy không đổi | Directed | Cao |
 | F-CTL-07 | Đọc HASH trước DONE | Không treo bus; (không kiểm giá trị) | Directed | Thấp |
@@ -65,25 +66,32 @@ Sequence cấp cao `sha256_hash_seq` (tham số: `msg_len`, nội dung, cờ INI
 
 ## 5. Danh sách test
 
-Chạy bằng `vsim -c -do "set TEST <tên>; do run_uvm.do"` (giống test AXI hiện có).
+Chạy bằng `vsim -c -do "set DUT sha256; set TEST <tên>; do run_uvm.do"`.
 
-| Test | Sequence | Feature | Tuần | Ghi chú |
-| --- | --- | --- | --- | --- |
-| `sha256_reg_reset_test` | đọc toàn map sau reset | F-REG-01 | 7 | Smoke, chạy đầu tiên |
-| `sha256_reg_rw_test` | ghi/đọc BLOCK có WSTRB, ghi RO, địa chỉ ngoài map | F-REG-02/03/04 | 7 | |
-| `sha256_kat_test` | `sha256_kat_seq`: các vector NIST | F-HASH-01/02 | 7 | Có đáp án cứng, không phụ thuộc DPI |
-| `sha256_len_sweep_test` | độ dài 0..300 và các biên 119/120/127/128 | F-HASH-03 | 7 | So golden DPI |
-| `sha256_ctl_protocol_test` | START×2, ghi lúc BUSY, đọc HASH sớm, DONE sticky | F-CTL-01..07 | 7 | Trình tự kiểm tra cố định, không phụ thuộc delay |
-| `sha256_init_chain_test` | message liên tiếp có/không INIT | F-HASH-04 | 7 | |
-| `sha256_reset_mid_op_test` | reset ở pha ngẫu nhiên khi BUSY, rồi băm lại | F-RST-01 | 7 | |
-| `sha256_rand_msg_test` | `sha256_rand_seq`: độ dài ngẫu nhiên có trọng số vào các biên, delay AXI ngẫu nhiên | F-HASH-03, F-AXI-01/02 | 7 | `+NUM_TRANS=<n>` |
-| `sha256_axi_stress_test` | đọc STATUS liên tục + ghi khối kế + back-pressure tối đa | F-AXI-03 | 7 | |
-| `sha256_noise_test` | xen giao dịch bất hợp lệ vào luồng hợp lệ | F-ROB-01 | 10 | Tuần 10 |
-| `sha256_full_test` | chạy lần lượt toàn bộ ở trên | tất cả | 7→11 | Dùng để chốt coverage |
+Đã có (P-08, 25/10):
 
-**Seed:** mỗi test ngẫu nhiên chạy tối thiểu 20 seed (`SEED=1..20`) trước khi báo cáo.
+| Test | Sequence | Feature | Ghi chú |
+| --- | --- | --- | --- |
+| `sha256_kat_test` | `sha256_kat_seq`: rỗng, "abc", 56 byte | F-HASH-01/02 | Đáp án cứng, không phụ thuộc mô hình SV |
+| `sha256_ctl_test` | `sha256_ctl_seq`: rác và START khi BUSY, đọc HASH sớm, DONE sticky, CTRL không START, ghi RO và offset trống, chaining, INIT nạp lại IV | F-CTL-01/03/05/06/07, F-HASH-04, F-REG-03/04 | Trình tự cố định, không phụ thuộc delay |
+| `sha256_rand_test` | `sha256_rand_seq`: độ dài có trọng số vào các biên, delay AXI, thứ tự ghi BLOCK và đọc HASH ngẫu nhiên, đọc STATUS xen kẽ | F-HASH-03, F-AXI-01/02/03 | `+NUM_MSGS=<n>` (mặc định 40), `+MAX_LEN=<byte>` (mặc định 600). Thêm `+RESET_AT_NS=<t>` để kiểm F-RST-01 |
+| `sha256_full_test` | KAT → ctl → rand | các mục trên | Nằm trong `make test` |
+| `sha256_alias_test` | `sha256_alias_seq`: offset từ `0x100` trở lên | F-REG-04 | Tìm ra lỗi alias, RTL sửa ở `a968cce`. Không nằm trong `make test` |
 
-## 6. Kế hoạch Functional Coverage (Tuần 11)
+Chưa có (làm cùng P-17 hoặc khi cần):
+
+| Test | Feature | Ghi chú |
+| --- | --- | --- |
+| `sha256_reg_reset_test` | F-REG-01 | Đọc toàn map sau reset |
+| `sha256_reg_rw_test` | F-REG-02 | Ghi BLOCK với WSTRB khác `F`, kiểm vẫn ghi cả word |
+| `sha256_len_sweep_test` | F-HASH-03 | Quét đủ 0..300 byte, hiện `sha256_rand_test` mới chọn ngẫu nhiên có trọng số |
+| `sha256_reset_mid_op_test` | F-RST-01 | Reset ở pha ngẫu nhiên khi BUSY. Hiện dùng `+RESET_AT_NS` với thời điểm cố định |
+| `sha256_axi_stress_test` | F-AXI-03 | Back-pressure tối đa liên tục |
+| `sha256_noise_test` | F-ROB-01 | Xen giao dịch bất hợp lệ vào luồng hợp lệ |
+
+**Seed:** mỗi test ngẫu nhiên nên chạy tối thiểu 20 seed trước khi báo cáo cuối. P-08 mới chạy 3 seed mỗi test.
+
+## 6. Kế hoạch Functional Coverage (P-19)
 
 | Covergroup | Điểm lấy mẫu (bins) |
 | --- | --- |
@@ -100,7 +108,7 @@ Chạy bằng `vsim -c -do "set TEST <tên>; do run_uvm.do"` (giống test AXI h
 
 ## 7. Tiêu chí PASS/FAIL tổng thể
 
-- Test PASS khi: không có `UVM_ERROR/UVM_FATAL`, `assert_fail_count == 0`, scoreboard đã nhận ≥ 1 giao dịch (kiểm có sẵn ở `check_phase`), và không chạm timeout toàn cục.
+- Test PASS khi: không có `UVM_ERROR/UVM_FATAL`, `assert_fail_count == 0`, sequence không còn lỗi gom lại, và không chạm timeout toàn cục (`+TEST_TIMEOUT_US`). Scoreboard bộ nhớ tắt cho DUT này (`has_mem_scoreboard = 0`).
 - Mọi test lỗi phải tái lập được bằng `TEST`+`SEED` (ghi vào log).
 - Mỗi lỗi RTL tìm ra được ghi vào bảng bug với ID, test phát hiện, seed.
 
@@ -109,13 +117,13 @@ Chạy bằng `vsim -c -do "set TEST <tên>; do run_uvm.do"` (giống test AXI h
 | Tuần | Việc |
 | --- | --- |
 | 6 (xong) | Test plan này + HAL (`fw/hal`) + golden C có sẵn |
-| 7 | Dựng `sha256_scoreboard`, `sha256_reg_model`, DPI golden, sequence và các test ở mục 5 (trừ noise); chạy rand với DUT Nguyên bàn giao |
-| 8 | Dùng chung vector KAT giữa UVM và firmware Secure Boot trên VP |
-| 10 | `sha256_noise_test`, chạy Full SoC |
-| 11 | Covergroup mục 6, xuất báo cáo coverage |
+| 7 (xong, P-08) | Mô hình SV, sequence tự kiểm tra và 5 test đã có ở mục 5, chạy trên DUT thật |
+| 10 (P-17, hạn 15/11) | DPI golden, `sha256_scoreboard`, `sha256_reg_model`, các test còn thiếu ở mục 5 |
+| 11 (P-18, hạn 22/11) | Regression UVM toàn SoC |
+| 12–13 (P-19, P-20) | Covergroup mục 6, báo cáo coverage |
 
 ## 9. Phụ thuộc và rủi ro
 
-- **RTL SHA-256 chưa hoàn chỉnh** (xem bảng "Điểm cần xử lý" trong `SHA256_Register_Map.md`): các test F-HASH/F-CTL chỉ chạy được sau khi Nguyên sửa xong. Có thể dùng trước slave mô hình hành vi để phát triển sequence/scoreboard song song.
-- **Reset khác cực** giữa RTL (active-high) và interface UVM (active-low): xử lý ở `tb_top`.
-- **Thông số chưa chốt** (A1, A2): đã tách thành cấu hình để không phải sửa test.
+- **RTL SHA-256:** đã hoàn chỉnh và khớp hợp đồng. Lỗi alias offset ≥ `0x100` do P-08 tìm ra đã sửa ở `a968cce`.
+- **Reset khác cực** giữa RTL (active-high) và interface UVM (active-low): xử lý ở `tb_sha256_top`.
+- **Thông số:** A1, A2 đã chốt ở I-05 (mục 2).
