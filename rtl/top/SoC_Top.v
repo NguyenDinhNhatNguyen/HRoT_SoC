@@ -54,7 +54,7 @@ module SoC_Top #(
 
     // Interrupts for the Master Core.
     // TODO(P-09, I-01): RISCV_Core has no irq_timer/irq_ext ports yet (Phat is adding Zicsr and traps).
-    // When it does, connect .irq_timer(timer0_irq) and .irq_ext(plic_irq) below.
+    // When it does, connect .irq_timer(timer0_irq) and .irq_ext(plic_irq) on master_core below.
     wire timer0_irq;
     wire plic_irq;
 
@@ -122,6 +122,11 @@ module SoC_Top #(
     assign master_resp_valid = axi_resp_valid & ~own_dma_q;
     assign master_data_rdata = axi_resp_rdata;
     wire dma_resp_valid = axi_resp_valid & own_dma_q;
+
+    // TODO(P-09, I-01): access fault. data_err is high in the same cycle as resp_valid when a CPU access
+    // got SLVERR or DECERR (DMA errors are reported to the DMA and SYSCSR.BUS_ERR, not trapped).
+    // Connect .data_err(master_data_err) on master_core once the core has the port
+    wire master_data_err = bus_err & master_resp_valid;
 
     AXI4_Lite_Master axi_master (
         .clk(clk),
@@ -346,7 +351,7 @@ module SoC_Top #(
     wire [3:0]  app_data_wstrb;
 
     // Interrupts for the App Core.
-    // TODO(P-09, I-01): connect .irq_timer(app_irq_timer) and .irq_ext(app_irq_ext) when RISCV_Core has the ports
+    // TODO(P-09, I-01): connect .irq_timer(app_irq_timer) and .irq_ext(app_irq_ext) on app_core when RISCV_Core has the ports
     wire timer1_irq, uart1_irq, gpio1_irq, mbox_irq_a;
     wire app_irq_timer = timer1_irq;
     wire app_irq_ext   = uart1_irq | gpio1_irq | mbox_irq_a;

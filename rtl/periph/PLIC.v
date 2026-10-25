@@ -9,6 +9,8 @@
 //   0x00 PENDING RO  [7:0] raw state of the source inputs
 //   0x04 ENABLE  RW  [7:0] per-source enable
 //   0x08 CLAIM   RO  1 + index of the lowest pending and enabled source, 0 if there is none
+//                    Writing 0x08 (the usual COMPLETE) is accepted and does nothing: the sources are
+//                    levels, so a source drops when its own device is serviced
 //   other offsets: read 0, writes ignored
 module PLIC (
     input             clk, reset,
