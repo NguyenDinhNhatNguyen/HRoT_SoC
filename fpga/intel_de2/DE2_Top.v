@@ -23,6 +23,7 @@ module DE2_Top #(
 
     wire       app_running;
     wire [7:0] led;
+    wire [7:0] gpio1_o;               // App-world GPIO1, shown on the green LEDs
 
     SoC_Top #(.BOOT_HEX(BOOT_HEX), .RAM_HEX(RAM_HEX), .APP_HEX(APP_HEX)) soc (
         .clk(CLOCK_50),
@@ -32,11 +33,15 @@ module DE2_Top #(
         .uart0_rx(UART_RXD),
         .gpio0_o(led),
         .gpio0_i(SW[7:0]),
-        .boot_strap(SW[17:14])
+        .boot_strap(SW[17:14]),
+        .uart1_tx(),                      // the DE2 has one RS-232 port, UART1 stays unconnected
+        .uart1_rx(1'b1),
+        .gpio1_o(gpio1_o),
+        .gpio1_i({2'b00, SW[13:8]})
     );
 
     assign LEDR = {10'b0, led};
-    assign LEDG = {8'b0, app_running};   // LEDG0 on = App Core released
+    assign LEDG = {gpio1_o, app_running};   // LEDG0 on = App Core released, LEDG[8:1] = App GPIO1
 endmodule
 
 `default_nettype wire

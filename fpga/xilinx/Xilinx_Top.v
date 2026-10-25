@@ -28,7 +28,11 @@ module Xilinx_Top #(
         .uart0_rx(uart_rx),
         .gpio0_o(led),
         .gpio0_i(sw),
-        .boot_strap(sw_boot)
+        .boot_strap(sw_boot),
+        .uart1_tx(),                      // App-world UART1 and GPIO1 have no pins until the kit is chosen
+        .uart1_rx(1'b1),
+        .gpio1_o(),
+        .gpio1_i(8'b0)
     );
 endmodule
 

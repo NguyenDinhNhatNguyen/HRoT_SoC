@@ -20,7 +20,7 @@ module Dual_Port_ROM #(
         $readmemh(INIT_FILE, rom);
     end
 
-    // Falling-edge synchronous read (see Instruction_Memory): maps to a dual-read-port M4K/BRAM
+    // Falling-edge synchronous read (same scheme as Data_Memory): maps to a dual-read-port M4K/BRAM
     // while the core still gets the instruction in the same cycle as its PC. The read path has
     // half a cycle (10 ns at 50 MHz). Addresses are byte addresses, hence the >> 2.
     always @(negedge clk) begin

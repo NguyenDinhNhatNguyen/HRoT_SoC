@@ -53,7 +53,9 @@ fi
 check "APB peripherals"             $LOG/ip.log        "RESULT: PASS"
 python3 dv/sw/mkhex.py sim > /dev/null
 (cd sim && "$QUESTA" -c -do run_soc.do < /dev/null)                                 > $LOG/soc.log 2>&1
-check "SoC: secure boot"            $LOG/soc.log       "RESULT: PASS"
+check "SoC: secure boot, good image" $LOG/soc.log      "RESULT: PASS"
+(cd sim && "$QUESTA" -c -do "set PLUSARGS +TAMPER; do run_soc.do" < /dev/null)      > $LOG/soc_tamper.log 2>&1
+check "SoC: tampered image locked"  $LOG/soc_tamper.log "RESULT: PASS"
 (cd sim && bash run_vp.sh)                                              > $LOG/vp.log 2>&1
 [ "$(grep -c 'VP RESULT: PASS' $LOG/vp.log)" = 2 ] && printf "  %-30s PASS\n" "VP: good and tampered image" \
     || { printf "  %-30s FAIL  (see %s)\n" "VP: good and tampered image" $LOG/vp.log; fail=1; }
