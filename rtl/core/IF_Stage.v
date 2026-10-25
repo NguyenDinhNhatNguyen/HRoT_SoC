@@ -2,16 +2,16 @@
 
 module IF_Stage(
     input         clk, rst,
-    input         stall_IF,         // Dong bang PC
-    input         flush_IF,         // Flush khi branch/jump resolve o EX
-    input  [31:0] PCFlushTarget_EX, // Dia chi dich tu EX khi flush
-    
-    //ROM interface
+    input         stall_IF,         // Freeze the PC
+    input         flush_IF,         // Redirect when a branch/jump resolves taken in EX
+    input  [31:0] PCFlushTarget_EX, // Target address from EX on flush
+
+    // Instruction memory interface
     input  [31:0] instr_rdata,
     output [31:0] instr_addr,
 
-    output [31:0] PC_IF_out,            // PC hien tai
-    output [31:0] Instr_IF_out,         // Lenh hien tai
+    output [31:0] PC_IF_out,            // Current PC
+    output [31:0] Instr_IF_out,         // Current instruction
     output [31:0] PC_Plus_4_IF_out      // PC + 4
 );
 

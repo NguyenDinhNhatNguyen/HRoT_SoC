@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-// Extend_tb - Testbench tu kiem tra mo rong immediate (I/S/B/J/U)
+// Extend_tb - Self-checking testbench for immediate extension (I/S/B/J/U)
 module Extend_tb;
 
     reg  [31:0] Instr;
@@ -17,7 +17,9 @@ module Extend_tb;
         input [31:0]   e_imm;
         input [8*24:1] name;
         begin
-            Instr = instr; ImmSrc = src; #10;
+            Instr = instr;
+            ImmSrc = src;
+            #10;
             if (ImmExt === e_imm) begin
                 pass_count = pass_count + 1;
                 $display("[PASS] %0s : ImmExt=%h", name, ImmExt);
@@ -31,7 +33,7 @@ module Extend_tb;
     initial begin
         $display("\n=== EXTEND TESTBENCH ===");
 
-        // U-type: opcode quyet dinh, ImmSrc bo qua
+        // U-type: selected by the opcode, ImmSrc is ignored
         check(32'h1234_5037, 2'b00, 32'h1234_5000, "LUI 0x12345");
         check(32'hABCD_E017, 2'b11, 32'hABCD_E000, "AUIPC 0xABCDE");
 

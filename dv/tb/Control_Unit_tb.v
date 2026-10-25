@@ -81,7 +81,7 @@ module Control_Unit_tb;
                 $display("     | %-20s | EXPECTED RS=%b MW=%b MR=%b BR=%b AS=%b RW=%b JP=%b Imm=%b ALU=%b JALR=%b",
                     "", exp_ResultSrc, exp_MemWrite, exp_MemRead, exp_Branch, exp_ALUSrc, exp_RegWrite, exp_Jump, exp_ImmSrc, exp_ALUControl, exp_Jalr);
             end
-            #9; // Doi phan thoi gian con lai cua chu ky 10ns[cite: 1]
+            #9; // wait out the rest of the 10 ns cycle
         end
     endtask
 
@@ -101,50 +101,134 @@ module Control_Unit_tb;
         $display("----------------------------------------------------------------------------------------------------------------");
 
         // 1. R-TYPE
-        op = 7'b0110011; funct3 = 3'b000; funct7b5 = 1'b0; check_control("R-Type ADD", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
-        op = 7'b0110011; funct3 = 3'b000; funct7b5 = 1'b1; check_control("R-Type SUB", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0001, 1'b0);
-        op = 7'b0110011; funct3 = 3'b111; funct7b5 = 1'b0; check_control("R-Type AND", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0010, 1'b0);
-        op = 7'b0110011; funct3 = 3'b110; funct7b5 = 1'b0; check_control("R-Type OR", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0011, 1'b0);
-        op = 7'b0110011; funct3 = 3'b100; funct7b5 = 1'b0; check_control("R-Type XOR", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0100, 1'b0);
-        op = 7'b0110011; funct3 = 3'b010; funct7b5 = 1'b0; check_control("R-Type SLT", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0101, 1'b0);
-        op = 7'b0110011; funct3 = 3'b011; funct7b5 = 1'b0; check_control("R-Type SLTU", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0110, 1'b0);
-        op = 7'b0110011; funct3 = 3'b001; funct7b5 = 1'b0; check_control("R-Type SLL", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b1010, 1'b0);
-        op = 7'b0110011; funct3 = 3'b101; funct7b5 = 1'b0; check_control("R-Type SRL", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b1100, 1'b0);
-        op = 7'b0110011; funct3 = 3'b101; funct7b5 = 1'b1; check_control("R-Type SRA", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b1011, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("R-Type ADD", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b000;
+        funct7b5 = 1'b1;
+        check_control("R-Type SUB", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0001, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b111;
+        funct7b5 = 1'b0;
+        check_control("R-Type AND", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0010, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b110;
+        funct7b5 = 1'b0;
+        check_control("R-Type OR", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0011, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b100;
+        funct7b5 = 1'b0;
+        check_control("R-Type XOR", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0100, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b010;
+        funct7b5 = 1'b0;
+        check_control("R-Type SLT", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0101, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b011;
+        funct7b5 = 1'b0;
+        check_control("R-Type SLTU", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b0110, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b001;
+        funct7b5 = 1'b0;
+        check_control("R-Type SLL", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b1010, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b101;
+        funct7b5 = 1'b0;
+        check_control("R-Type SRL", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b1100, 1'b0);
+        op = 7'b0110011;
+        funct3 = 3'b101;
+        funct7b5 = 1'b1;
+        check_control("R-Type SRA", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00, 4'b1011, 1'b0);
 
-        // 2. I-TYPE ALU (Da sua exp_Branch thanh 0)[cite: 1]
-        op = 7'b0010011; funct3 = 3'b000; funct7b5 = 1'b0; check_control("I-Type ADDI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
-        op = 7'b0010011; funct3 = 3'b111; funct7b5 = 1'b0; check_control("I-Type ANDI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0010, 1'b0);
-        op = 7'b0010011; funct3 = 3'b110; funct7b5 = 1'b0; check_control("I-Type ORI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0011, 1'b0);
-        op = 7'b0010011; funct3 = 3'b100; funct7b5 = 1'b0; check_control("I-Type XORI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0100, 1'b0);
-        op = 7'b0010011; funct3 = 3'b010; funct7b5 = 1'b0; check_control("I-Type SLTI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0101, 1'b0);
-        op = 7'b0010011; funct3 = 3'b011; funct7b5 = 1'b0; check_control("I-Type SLTIU", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0110, 1'b0);
-        op = 7'b0010011; funct3 = 3'b001; funct7b5 = 1'b0; check_control("I-Type SLLI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1010, 1'b0);
-        op = 7'b0010011; funct3 = 3'b101; funct7b5 = 1'b0; check_control("I-Type SRLI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1100, 1'b0);
-        op = 7'b0010011; funct3 = 3'b101; funct7b5 = 1'b1; check_control("I-Type SRAI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1011, 1'b0);
+        // 2. I-TYPE ALU (Branch = 0)
+        op = 7'b0010011;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("I-Type ADDI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b111;
+        funct7b5 = 1'b0;
+        check_control("I-Type ANDI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0010, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b110;
+        funct7b5 = 1'b0;
+        check_control("I-Type ORI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0011, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b100;
+        funct7b5 = 1'b0;
+        check_control("I-Type XORI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0100, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b010;
+        funct7b5 = 1'b0;
+        check_control("I-Type SLTI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0101, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b011;
+        funct7b5 = 1'b0;
+        check_control("I-Type SLTIU", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0110, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b001;
+        funct7b5 = 1'b0;
+        check_control("I-Type SLLI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1010, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b101;
+        funct7b5 = 1'b0;
+        check_control("I-Type SRLI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1100, 1'b0);
+        op = 7'b0010011;
+        funct3 = 3'b101;
+        funct7b5 = 1'b1;
+        check_control("I-Type SRAI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1011, 1'b0);
 
         // 3. LOAD / STORE
-        op = 7'b0000011; funct3 = 3'b010; funct7b5 = 1'b0; check_control("LW", 2'b01, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
-        op = 7'b0100011; funct3 = 3'b010; funct7b5 = 1'b0; check_control("SW", 2'b00, 1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 2'b01, 4'b0000, 1'b0);
+        op = 7'b0000011;
+        funct3 = 3'b010;
+        funct7b5 = 1'b0;
+        check_control("LW", 2'b01, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
+        op = 7'b0100011;
+        funct3 = 3'b010;
+        funct7b5 = 1'b0;
+        check_control("SW", 2'b00, 1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 2'b01, 4'b0000, 1'b0);
 
-        // 4. BRANCH (Da sua exp_Branch thanh 1)[cite: 1]
-        op = 7'b1100011; funct3 = 3'b000; funct7b5 = 1'b0; check_control("BEQ", 2'b00, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10, 4'b0001, 1'b0);
-        op = 7'b1100011; funct3 = 3'b001; funct7b5 = 1'b0; check_control("BNE", 2'b00, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10, 4'b0001, 1'b0);
+        // 4. BRANCH (Branch = 1, ALU subtracts to compare)
+        op = 7'b1100011;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("BEQ", 2'b00, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10, 4'b0001, 1'b0);
+        op = 7'b1100011;
+        funct3 = 3'b001;
+        funct7b5 = 1'b0;
+        check_control("BNE", 2'b00, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10, 4'b0001, 1'b0);
 
         // 5. JUMP
-        // JAL (Da sua exp_ALUSrc thanh 0)[cite: 1]
-        op = 7'b1101111; funct3 = 3'b000; funct7b5 = 1'b0; check_control("JAL", 2'b10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 2'b11, 4'b0000, 1'b0);
-        // JALR (Da sua exp_Branch thanh 0)[cite: 1]
-        op = 7'b1100111; funct3 = 3'b000; funct7b5 = 1'b0; check_control("JALR", 2'b10, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b1);
+        // JAL (ALUSrc = 0, link PC+4 through ResultSrc = 10)
+        op = 7'b1101111;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("JAL", 2'b10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 2'b11, 4'b0000, 1'b0);
+        // JALR (Branch = 0, Jalr = 1, target = rs1 + imm)
+        op = 7'b1100111;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("JALR", 2'b10, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b1);
 
         // 6. U-TYPE
-        // LUI (Da sua exp_Branch thanh 0)[cite: 1]
-        op = 7'b0110111; funct3 = 3'b000; funct7b5 = 1'b0; check_control("LUI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1001, 1'b0);
-        // AUIPC (Da sua exp_Branch thanh 0 va exp_ALUControl thanh 1000)[cite: 1]
-        op = 7'b0010111; funct3 = 3'b000; funct7b5 = 1'b0; check_control("AUIPC", 2'b11, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
+        // LUI (Branch = 0, ALU passes the immediate, ALUControl = 1001)
+        op = 7'b0110111;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("LUI", 2'b00, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b1001, 1'b0);
+        // AUIPC (Branch = 0, result taken from PCTarget through ResultSrc = 11, so ALUControl stays 0000)
+        op = 7'b0010111;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("AUIPC", 2'b11, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 2'b00, 4'b0000, 1'b0);
 
         // 7. INVALID / DEFAULT
-        op = 7'b1111111; funct3 = 3'b000; funct7b5 = 1'b0; check_control("INVALID", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 2'b00, 4'b0000, 1'b0);
+        op = 7'b1111111;
+        funct3 = 3'b000;
+        funct7b5 = 1'b0;
+        check_control("INVALID", 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 2'b00, 4'b0000, 1'b0);
 
         $display("\n================================================================================================================");
         $display("                                      TEST SUMMARY");

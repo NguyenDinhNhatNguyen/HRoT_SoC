@@ -6,6 +6,7 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | --- | --- | --- | --- |
 | `spec/` | [SoC_Memory_Map.md](spec/SoC_Memory_Map.md) | Bản đồ địa chỉ và thanh ghi của thế giới Secure (bus, SYSCSR, UART, GPIO, TIMER, WDT, ngắt) | Nguyên |
 | `spec/` | [SHA256_Register_Map.md](spec/SHA256_Register_Map.md) | Thanh ghi và hợp đồng phần cứng–HAL của khối SHA-256 | Phát |
+| `spec/` | [Core_Datapath.md](spec/Core_Datapath.md) | Sơ đồ khối datapath lõi RISC-V 5 tầng, đối chiếu module RTL và tín hiệu stall/flush/forward | Phát |
 | `verification/` | [SHA256_UVM_TestPlan.md](verification/SHA256_UVM_TestPlan.md) | Kế hoạch kiểm chứng UVM cho SHA-256 | Phát |
 | `guides/` | [Dev_Guide.md](guides/Dev_Guide.md) | Phân công, giao kèo của lõi, cách chạy kiểm tra, quy ước code | Phát |
 | `project/` | [Project_Plan.md](project/Project_Plan.md) | Kế hoạch tổng thể, mốc, lộ trình theo tuần | Phát |

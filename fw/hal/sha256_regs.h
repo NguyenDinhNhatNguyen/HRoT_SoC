@@ -1,29 +1,29 @@
 /*
- * sha256_regs.h -- Register map của SHA-256 AXI4-Lite Slave (SHA256_Wrapper)
+ * sha256_regs.h -- register map of the SHA-256 AXI4-Lite slave (SHA256_Wrapper)
  *
- * Đây là NGUỒN SỰ THẬT DUY NHẤT về địa chỉ/bit của ngoại vi SHA-256 phía phần
- * mềm. Khi RTL (Nguyên) hoặc VP đổi map, chỉ sửa file này.
+ * Firmware-side source of truth for the SHA-256 offsets and bits. The base address comes
+ * from soc_map.h (I-02), so the whole address map lives in one place. Matches the RTL
+ * (rtl/crypto/SHA256_Wrapper.v) and the VP (vp/src/SHA256_VP_Wrapper.h), settled in I-05.
+ * Details and the HW/SW contract: docs/spec/SHA256_Register_Map.md.
  *
- * Địa chỉ nền 0x5000_0000 và các offset 0x40 (CTRL) / 0x44 (STATUS) / 0x50
- * (HASH[0]) trùng với RTL hiện tại (SHA256_Wrapper.v) và VP
- * (SHA256_VP_Wrapper.h). Các offset còn lại là phần mở rộng ĐỀ XUẤT cho đủ
- * khối 512-bit và digest 256-bit -- cần Nguyên xác nhận (xem docs/spec/SHA256_Register_Map.md).
- *
- *   Offset      Tên           Truy cập  Mô tả
- *   0x00-0x3C   BLOCK[0..15]  W         Khối message 512-bit. BLOCK[0] = W0 (word
- *                                       đầu, byte đầu của message ở bit [31:24]).
- *   0x40        CTRL          W         bit0 START (tự xóa), bit1 INIT
- *   0x44        STATUS        R         bit0 DONE (sticky), bit1 BUSY
- *   0x48-0x4C   (reserved)    -         Đọc 0, ghi bị bỏ qua
- *   0x50-0x6C   HASH[0..7]    R         Digest 256-bit. HASH[0] = H0 = bit [255:224]
+ *   Offset       Name          Access  Description
+ *   0x00-0x3C    BLOCK[0..15]  W       512-bit message block. BLOCK[0] = W0 (first word,
+ *                                      first message byte in bits [31:24])
+ *   0x40         CTRL          W       bit0 START (self-clearing), bit1 INIT
+ *   0x44         STATUS        R       bit0 DONE (sticky), bit1 BUSY
+ *   0x48-0x4C    (reserved)    -       read 0, writes ignored
+ *   0x50-0x6C    HASH[0..7]    R       256-bit digest. HASH[0] = H0 = bits [255:224]
+ *   0x70-0xFFFF  (empty)       -       read 0, writes ignored
+ * One block takes 66 cycles from START to DONE.
  */
 #ifndef SHA256_REGS_H
 #define SHA256_REGS_H
 
 #include <stdint.h>
+#include "soc_map.h"
 
 #ifndef SHA256_BASE_ADDR
-#define SHA256_BASE_ADDR     0x50000000u
+#define SHA256_BASE_ADDR     SOC_SHA256_BASE
 #endif
 
 #define SHA256_REG_BLOCK(i)  (0x00u + 4u * (uint32_t)(i))   /* i = 0..15 */
@@ -35,17 +35,17 @@
 #define SHA256_HASH_WORDS    8u
 
 /* CTRL */
-#define SHA256_CTRL_START    (1u << 0)  /* Bắt đầu nén 1 khối (64 vòng)                */
-#define SHA256_CTRL_INIT     (1u << 1)  /* Nạp IV H0..H7 trước khi nén (khối đầu tiên)  */
+#define SHA256_CTRL_START    (1u << 0)  /* compress one block (64 rounds)            */
+#define SHA256_CTRL_INIT     (1u << 1)  /* load IV H0..H7 first (first block only)    */
 
 /* STATUS */
-#define SHA256_STATUS_DONE   (1u << 0)  /* Đã xong, giữ đến khi có START kế tiếp       */
-#define SHA256_STATUS_BUSY   (1u << 1)  /* Đang nén                                    */
+#define SHA256_STATUS_DONE   (1u << 0)  /* finished, held until the next START        */
+#define SHA256_STATUS_BUSY   (1u << 1)  /* compressing                                */
 
-/* ---- Truy cập thanh ghi ----------------------------------------------------
- * Trên SoC: truy cập MMIO volatile.
- * Trên máy host (-DHAL_HOST_MODEL): chuyển hướng vào mô hình ngoại vi giả lập
- * để chạy unit test trong WSL mà không cần phần cứng/VP.                      */
+/* Register access
+ * On the SoC: volatile MMIO.
+ * On the host (-DHAL_HOST_MODEL): routed to a behavioural peripheral model so the unit
+ * tests run in WSL without hardware or the VP. */
 #ifdef HAL_HOST_MODEL
 uint32_t hal_host_read32(uint32_t offset);
 void     hal_host_write32(uint32_t offset, uint32_t value);
@@ -58,17 +58,17 @@ void     hal_host_write32(uint32_t offset, uint32_t value);
     (*(volatile uint32_t *)((uintptr_t)SHA256_BASE_ADDR + (uintptr_t)(off)) = (uint32_t)(val))
 #endif
 
-/* Đọc 1 word 32-bit từ vùng nhớ (ROM của App qua Dual-Port ROM). Luôn truy cập
- * 32-bit căn lề: bus AXI4-Lite không có truy cập byte. */
+/* Read one 32-bit word from memory (App ROM through the Dual-Port ROM). Always an aligned
+ * 32-bit access, the AXI4-Lite bus has no byte reads. */
 #ifdef HAL_HOST_MODEL
-uint32_t hal_host_memread32(uintptr_t addr);   /* ghi nhận mọi lần đọc ROM để test */
+uint32_t hal_host_memread32(uintptr_t addr);   /* records every ROM read for the tests */
 #define HAL_MEM_RD32(addr)   hal_host_memread32((uintptr_t)(addr))
 #else
 #define HAL_MEM_RD32(addr)   (*(volatile const uint32_t *)(uintptr_t)(addr))
 #endif
-/* Lưu ý đọc ROM: sha256_update_mem() chỉ đọc word 32-bit CĂN LỀ, và chỉ những
- * word chứa ít nhất 1 byte của [addr, addr+len). Byte thừa trong word đầu/cuối
- * được đọc rồi bỏ, không đưa vào hash. Vì ranh giới vùng nhớ luôn chia hết cho 4
- * nên không bao giờ đọc ra ngoài vùng ánh xạ, miễn là base của ROM căn lề 4. */
+/* ROM reads: sha256_update_mem() only reads ALIGNED 32-bit words, and only the words that
+ * hold at least one byte of [addr, addr+len). Extra bytes in the first and last word are
+ * read and dropped, never hashed. Memory regions always end on a multiple of 4, so a read
+ * never leaves the mapped region as long as the ROM base is 4-byte aligned. */
 
 #endif /* SHA256_REGS_H */

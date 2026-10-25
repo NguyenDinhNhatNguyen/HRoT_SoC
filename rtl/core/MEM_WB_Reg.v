@@ -3,16 +3,16 @@
 module MEM_WB_Reg(
     input        clk,
     input        rst,
-    input        stall, // [FUTURE] Freeze MEM/WB khi Bus/Memory stall
-    // Control signals tu tang MEM
+    input        stall, // Freeze MEM/WB on bus/memory stall
+    // Control signals from MEM
     input        RegWrite_MEM,
     input [1:0]  ResultSrc_MEM,
 
     // Data signals
     input [31:0] ALUResult_MEM,
     input [31:0] ReadData_MEM,
-    input [31:0] PC_Plus_4_MEM, // Dung cho JAL/JALR khi ghi gia tri vao rd.
-    input [31:0] PCTarget_MEM, // Co the dung cho AUIPC tuy theo Result_Mux.
+    input [31:0] PC_Plus_4_MEM, // Link value written to rd by JAL/JALR
+    input [31:0] PCTarget_MEM, // PC + imm, written to rd by AUIPC
     input [4:0]  Rd_MEM,
     // Control signals
     output reg         RegWrite_WB,
@@ -39,7 +39,7 @@ always @(posedge clk or posedge rst) begin
         Rd_WB        <= 5'b0;
     end
     else if (stall) begin
-            // HOLD current MEM/WB values
+        // Hold the current MEM/WB values
     end
     else begin
         // Control

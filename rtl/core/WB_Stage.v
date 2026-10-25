@@ -3,7 +3,7 @@
 module WB_Stage(
     input         RegWrite_WB,
     input  [1:0]  ResultSrc_WB,
- 
+
     input  [31:0] ALUResult_WB,
     input  [31:0] ReadData_WB,
     input  [31:0] PC_Plus_4_WB,

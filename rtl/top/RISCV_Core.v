@@ -6,10 +6,11 @@
 // - Branch/Jump resolved at EX and flushes IF/ID, ID/EX
 // - bus_stall freezes the global pipeline
 // - Forwarding_Unit and Hazard_Detection are integrated inside RISCV_Core
-// - Instruction/Data Memory nam ngoai core:
-//     instr_rdata phai co trong CUNG chu ky voi instr_addr (bo nho doc to hop)
-//     data_rdata phai co trong CUNG chu ky voi data_addr, neu chua co thi giu bus_stall = 1
-// - Load/Store byte/half: data_wstrb chon byte lane, load duoc mo rong dau/0 trong MEM_Stage
+// - Instruction and data memories sit outside the core:
+//     instr_rdata must be valid before the next rising edge after instr_addr changes
+//     data_rdata must be valid before the next rising edge after data_addr changes, otherwise hold bus_stall = 1
+//     (the SoC memories read synchronously on the falling edge, so the core still sees the data in the same cycle)
+// - Byte/half load and store: data_wstrb selects the byte lanes, MEM_Stage sign- or zero-extends loads
 //
 // Integration notes:
 // - Keep ALUResult_MEM declared only once
@@ -67,7 +68,7 @@ IF_Stage u_IF_Stage(
     .stall_IF         (PipelineStall),
     .flush_IF         (flush_IF_ID),
     .PCFlushTarget_EX (PCTarget_EX_out),
-    //ROM
+    // ROM
     .instr_addr       (instr_addr),
     .instr_rdata      (instr_rdata),
 
@@ -94,7 +95,7 @@ IF_ID_Reg u_IF_ID_Reg(
     .PC_Plus_4_ID (PC_Plus_4_ID)
 );
 
-//Stage 2: ID
+// Stage 2: ID
 wire        RegWrite_ID_out, MemWrite_ID_out, MemRead_ID_out, Branch_ID_out, Jump_ID_out, Jalr_ID_out, ALUSrc_ID_out;
 wire [1:0]  ResultSrc_ID_out;
 wire [3:0]  ALUControl_ID_out;
@@ -105,14 +106,14 @@ wire [2:0]  funct3_ID_out;
 ID_Stage u_ID_Stage(
     .clk                (clk),
     .PC_ID              (PC_ID),
-    .Instr_ID           (Instr_ID), 
+    .Instr_ID           (Instr_ID),
     .PC_Plus_4_ID       (PC_Plus_4_ID),
-        
+
     // WB Feedback
     .RegWrite_WB        (RegWrite_WB),
     .Result_WB          (Result_WB),
     .Rd_WB              (Rd_WB),
-        
+
     // ID Outputs
     .RegWrite_ID_out    (RegWrite_ID_out),
     .MemWrite_ID_out    (MemWrite_ID_out),
@@ -124,7 +125,7 @@ ID_Stage u_ID_Stage(
     .ResultSrc_ID_out   (ResultSrc_ID_out),
     .ALUControl_ID_out  (ALUControl_ID_out),
 
-    .PC_ID_out          (PC_ID_out),   
+    .PC_ID_out          (PC_ID_out),
     .RD1_ID_out         (RD1_ID_out),
     .RD2_ID_out         (RD2_ID_out),
     .ImmExt_ID_out      (ImmExt_ID_out),
@@ -135,7 +136,7 @@ ID_Stage u_ID_Stage(
     .funct3_ID_out      (funct3_ID_out)
 );
 
-//Pipeline Register: ID -> EX
+// Pipeline Register: ID -> EX
 wire        RegWrite_EX, MemWrite_EX, MemRead_EX, Branch_EX, Jump_EX, Jalr_EX, ALUSrc_EX;
 wire [1:0]  ResultSrc_EX;
 wire [3:0]  ALUControl_EX;
@@ -149,7 +150,7 @@ ID_EX_Reg u_ID_EX_Reg(
     .flush         (flush_ID_EX),
     .stall         (bus_stall),
 
-    //Receive ID Stage Outputs
+    // Receive ID Stage Outputs
     .RegWrite_ID   (RegWrite_ID_out),
     .MemWrite_ID   (MemWrite_ID_out),
     .MemRead_ID    (MemRead_ID_out),
@@ -159,18 +160,18 @@ ID_EX_Reg u_ID_EX_Reg(
     .ALUSrc_ID     (ALUSrc_ID_out),
     .ResultSrc_ID  (ResultSrc_ID_out),
     .ALUControl_ID (ALUControl_ID_out),
-        
+
     .PC_ID         (PC_ID_out),
     .RD1_ID        (RD1_ID_out),
     .RD2_ID        (RD2_ID_out),
     .ImmExt_ID     (ImmExt_ID_out),
     .PC_Plus_4_ID  (PC_Plus_4_ID_out),
-        
+
     .Rs1_ID        (Rs1_ID_out),
     .Rs2_ID        (Rs2_ID_out),
     .Rd_ID         (Rd_ID_out),
     .funct3_ID     (funct3_ID_out),
-        
+
     // Drive EX Wires
     .RegWrite_EX   (RegWrite_EX),
     .MemWrite_EX   (MemWrite_EX),
@@ -181,13 +182,13 @@ ID_EX_Reg u_ID_EX_Reg(
     .ALUSrc_EX     (ALUSrc_EX),
     .ResultSrc_EX  (ResultSrc_EX),
     .ALUControl_EX (ALUControl_EX),
-        
+
     .PC_EX         (PC_EX),
     .RD1_EX        (RD1_EX),
     .RD2_EX        (RD2_EX),
     .ImmExt_EX     (ImmExt_EX),
     .PC_Plus_4_EX  (PC_Plus_4_EX),
-        
+
     .Rs1_EX        (Rs1_EX),
     .Rs2_EX        (Rs2_EX),
     .Rd_EX         (Rd_EX),
@@ -195,7 +196,7 @@ ID_EX_Reg u_ID_EX_Reg(
 );
 
 // Hazard Detection: Load-Use
-// Chi xet Rs1/Rs2 khi lenh o ID thuc su doc thanh ghi do (tranh stall thua voi LUI/AUIPC/JAL)
+// Only check Rs1/Rs2 when the instruction in ID really reads them (no false stall on LUI/AUIPC/JAL)
 wire [6:0] opcode_ID = Instr_ID[6:0];
 wire uses_rs1_ID = (opcode_ID != 7'b0110111) &&   // LUI
                    (opcode_ID != 7'b0010111) &&   // AUIPC
@@ -236,38 +237,38 @@ EX_Stage u_EX_Stage(
     .ALUSrc_EX         (ALUSrc_EX),
     .ResultSrc_EX      (ResultSrc_EX),
     .ALUControl_EX     (ALUControl_EX),
-    
+
     .PC_EX             (PC_EX),
     .RD1_EX            (RD1_EX),
     .RD2_EX            (RD2_EX),
     .ImmExt_EX         (ImmExt_EX),
     .PC_Plus_4_EX      (PC_Plus_4_EX),
-        
+
     .Rd_EX             (Rd_EX),
     .funct3_EX         (funct3_EX),
-        
+
     // Forwarding
     .ForwardA_EX       (ForwardA_EX_internal),
     .ForwardB_EX       (ForwardB_EX_internal),
     .ALUResult_MEM     (ForwardResult_MEM),
     .Result_WB         (Result_WB),
-        
+
     // EX Outputs
     .RegWrite_EX_out   (RegWrite_EX_out),
     .MemWrite_EX_out   (MemWrite_EX_out),
     .MemRead_EX_out    (MemRead_EX_out),
     .ResultSrc_EX_out  (ResultSrc_EX_out),
-        
+
     .ALUResult_EX_out  (ALUResult_EX_out),
     .WriteData_EX_out  (WriteData_EX_out),
     .PC_Plus_4_EX_out  (PC_Plus_4_EX_out),
     .PCTarget_EX_out   (PCTarget_EX_out),
     .Rd_EX_out         (Rd_EX_out),
-        
+
     .PCSrc_EX          (PCSrc_EX)
 );
 
-//Pipeline Register: EX -> MEM
+// Pipeline Register: EX -> MEM
 wire        RegWrite_MEM, MemWrite_MEM, MemRead_MEM;
 wire [1:0]  ResultSrc_MEM;
 wire [31:0] WriteData_MEM, PC_Plus_4_MEM, PCTarget_MEM;
@@ -278,26 +279,26 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .clk            (clk),
     .rst            (rst),
     .stall          (bus_stall),
-        
+
     // Receive EX Stage Outputs
     .RegWrite_EX    (RegWrite_EX_out),
     .MemWrite_EX    (MemWrite_EX_out),
     .MemRead_EX     (MemRead_EX_out),
     .ResultSrc_EX   (ResultSrc_EX_out),
-        
+
     .ALUResult_EX   (ALUResult_EX_out),
     .WriteData_EX   (WriteData_EX_out),
     .PC_Plus_4_EX   (PC_Plus_4_EX_out),
     .PCTarget_EX    (PCTarget_EX_out),
     .Rd_EX          (Rd_EX_out),
     .funct3_EX      (funct3_EX),
-        
+
     // Drive MEM Wires
     .RegWrite_MEM   (RegWrite_MEM),
     .MemWrite_MEM   (MemWrite_MEM),
     .MemRead_MEM    (MemRead_MEM),
     .ResultSrc_MEM  (ResultSrc_MEM),
-        
+
     .ALUResult_MEM  (ALUResult_MEM),
     .WriteData_MEM  (WriteData_MEM),
     .PC_Plus_4_MEM  (PC_Plus_4_MEM),
@@ -318,7 +319,7 @@ Forwarding_Unit u_Forwarding_Unit(
     .ForwardB     (ForwardB_EX_internal)
 );
 
-// MEM stage outputs (khai bao truoc khi dung trong mux forwarding ben duoi)
+// MEM stage outputs (declared before the forwarding mux below uses them)
 wire        RegWrite_MEM_out;
 wire [1:0]  ResultSrc_MEM_out;
 wire [31:0] ALUResult_MEM_out, ReadData_MEM_out, PC_Plus_4_MEM_out, PCTarget_MEM_out;
@@ -326,29 +327,33 @@ wire [4:0]  Rd_MEM_out;
 
 always @(*) begin
     case (ResultSrc_MEM_out)
-        2'b00: ForwardResult_MEM = ALUResult_MEM_out;
-        2'b01: ForwardResult_MEM = ALUResult_MEM_out; // Load: wait for WB (load-use da stall)
-        2'b10: ForwardResult_MEM = PC_Plus_4_MEM_out;
-        2'b11: ForwardResult_MEM = PCTarget_MEM_out;
-        default: ForwardResult_MEM = 32'b0;
+        2'b00:
+            ForwardResult_MEM = ALUResult_MEM_out;
+        2'b01:
+            ForwardResult_MEM = ALUResult_MEM_out; // Load: wait for WB (load-use already stalled)
+        2'b10:
+            ForwardResult_MEM = PC_Plus_4_MEM_out;
+        2'b11:
+            ForwardResult_MEM = PCTarget_MEM_out;
+        default:
+            ForwardResult_MEM = 32'b0;
     endcase
 end
 
 // Stage 4: MEM
 MEM_Stage u_MEM_Stage(
-    .clk                (clk),
     .RegWrite_MEM       (RegWrite_MEM),
     .MemWrite_MEM       (MemWrite_MEM),
     .MemRead_MEM        (MemRead_MEM),
     .ResultSrc_MEM      (ResultSrc_MEM),
-        
+
     .ALUResult_MEM      (ALUResult_MEM),
     .WriteData_MEM      (WriteData_MEM),
     .PC_Plus_4_MEM      (PC_Plus_4_MEM),
     .PCTarget_MEM       (PCTarget_MEM),
     .Rd_MEM             (Rd_MEM),
     .funct3_MEM         (funct3_MEM),
-    //AXI
+    // AXI
     .data_rdata         (data_rdata),
     .data_addr          (data_addr),
     .data_wdata         (data_wdata),
@@ -373,7 +378,7 @@ MEM_WB_Reg u_MEM_WB_Reg(
     .clk            (clk),
     .rst            (rst),
     .stall          (bus_stall),
-        
+
     // Receive MEM Stage Outputs
     .RegWrite_MEM   (RegWrite_MEM_out),
     .ResultSrc_MEM  (ResultSrc_MEM_out),
@@ -382,7 +387,7 @@ MEM_WB_Reg u_MEM_WB_Reg(
     .PC_Plus_4_MEM  (PC_Plus_4_MEM_out),
     .PCTarget_MEM   (PCTarget_MEM_out),
     .Rd_MEM         (Rd_MEM_out),
-        
+
     // Drive WB Wires
     .RegWrite_WB    (RegWrite_WB),
     .ResultSrc_WB   (ResultSrc_WB),
@@ -405,7 +410,7 @@ WB_Stage u_WB_Stage(
     .PC_Plus_4_WB     (PC_Plus_4_WB),
     .PCTarget_WB      (PCTarget_WB),
     .Rd_WB            (Rd_WB),
-        
+
     // WB Outputs
     .RegWrite_WB_out  (RegWrite_WB_out),
     .Rd_WB_out        (Rd_WB_out),

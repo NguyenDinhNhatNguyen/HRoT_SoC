@@ -48,7 +48,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 | ID | Hạn | Nội dung | Chủ trì |
 | --- | --- | --- | --- |
-| I-01 | 01/11 | Cổng ngắt của lõi: tên + mức tích cực (đề xuất `irq_timer`, `irq_ext` mức cao → `mip.MTIP`/`mip.MEIP`) | Phát |
+| I-01 | 01/11 | Cổng ngắt của lõi (đã chốt 25/10): `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | Phát |
 | I-02 | 01/11 | Header địa chỉ firmware `fw/hal/soc_map.h` theo `docs/spec/SoC_Memory_Map.md` (việc N-34), đổi map phải báo trước | Nguyên |
 | I-03 | 08/11 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó | Cả hai |
 | I-04 | 15/11 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm cả 4 KB ROM App) | Phát |
@@ -60,7 +60,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 | Mốc | Ngày | Nội dung |
 | --- | --- | --- |
-| M1 | 01/11 | Phát chốt cổng ngắt lõi (I-01), TIMER0 + WDT xong. Phần TIMER0, WDT xong 25/10, còn chờ I-01 |
+| M1 | 01/11 | Phát chốt cổng ngắt lõi (I-01), TIMER0 + WDT xong. ✅ Xong 25/10 (TIMER0, WDT xong, I-01 đã chốt), còn P-09 để nối ngắt vào lõi |
 | M2 | 22/11 | **RTL FREEZE** — toàn SoC biên dịch sạch Questa/Quartus/Vivado, `make test` PASS, 50 MHz |
 | M3 | 29/11 | Demo secure boot trên DE2 (LED + log UART) |
 | M4 | 06/12 | Báo cáo PPA FPGA + functional coverage |
@@ -72,7 +72,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 **Đã xong**
 - Nguyên: workspace + testbench SV, Forwarding/Hazard, AXI4-Lite master/slave/interconnect (WSTRB, DECERR, SLVERR), SHA-256 đầy đủ (đúng vector NIST), Dual-Port ROM + cách ly Boot ROM/ROM App, SoC_Top + test secure boot đầu–cuối, cầu AXI→APB, SYSCSR (thay Reset Controller), UART0, GPIO0, bộ nhớ đồng bộ, luồng Quartus/Vivado, VP SystemC chạy HAL thật, Makefile gốc. Ngày 25/10 thêm: TIMER0 kiểu CLINT, WDT, sửa alias SHA-256, cấu trúc lại repo, comment và log test tiếng Anh.
-- Phát: lõi 5 tầng + hazard, test ISA 40 CHECK (có/không stall), load/store byte/half (`data_wstrb`), 11 TB đơn vị tự kiểm tra, khung UVM AXI4-Lite (có reset giữa giao dịch), HAL SHA-256 + test plan, toolchain CMake + linker + crt0, UVM SHA-256 ngẫu nhiên + corner case trên DUT thật (P-08, 25/10).
+- Phát: lõi 5 tầng + hazard, test ISA 41 CHECK phủ đủ 37 lệnh RV32I tính toán, nhảy, load/store (có/không stall), load/store byte/half (`data_wstrb`), 11 TB đơn vị tự kiểm tra, khung UVM AXI4-Lite (có reset giữa giao dịch), HAL SHA-256 + test plan, toolchain CMake + linker + crt0, UVM SHA-256 ngẫu nhiên + corner case trên DUT thật (P-08, 25/10).
 
 **Kết quả đo**
 - Mô phỏng (Questa, 25/10): `RISCV_Core_tb` 44/44, chương trình ISA PASS (có/không stall), hazard 0 lỗi, APB 42/42 (thêm TIMER/WDT), `SoC_Top_tb` PASS (firmware thử băm "abc" bằng SHA phần cứng, đọc ROM App qua cổng B, kiểm SLVERR/DECERR, UART, GPIO rồi nhả App, **chưa băm image App, chưa có kịch bản image bị sửa trên RTL**), HAL 9.692 test host PASS, VP image đúng/sai PASS, `sha256_alias_test` PASS. 11 TB đơn vị và UVM PASS trên Verilator nhưng đang FAIL trên Questa do lỗi script (xem `Project_Status.md` mục 4).
@@ -105,18 +105,18 @@ Cập nhật 25/10/2026, 15 rủi ro. Cột "Phụ trách" là người xử lý
 
 | # | Rủi ro | Mức | Hướng xử lý | Phụ trách | Trạng thái |
 | --- | --- | --- | --- | --- | --- |
-| R1 | `make test` không PASS được trên Questa 10.2c (timeout UVM lệch đơn vị, `run_unit.do` dừng sau `ALU_tb`), nên quy ước I-07 đang không thực hiện được | Cao | Sửa `base_test.svh` (tính timeout theo `ns` cố định hoặc so với `$time` trong cùng package) và bỏ `-onfinish stop` hay thay bằng `onbreak {resume}` trong `run_unit.do`, kiểm tra lại trên Questa. Tạm thời chạy `make test < /dev/null` và chấp nhận 5 mục FAIL đã biết | Phát (P-22) | Đề xuất |
-| R2 | Fmax DE2 chỉ dư khoảng 10% (55,17 MHz). Đường găng nằm trong lõi App: `ID_EX.Rs1_EX` → forwarding → so sánh nhánh → `PC` (slack 1,875 ns) | Trung bình | Lõi: nếu Fmax tụt dưới 52 MHz thì tách đường quyết định nhánh (đăng ký kết quả so sánh, chấp nhận thêm 1 chu kỳ phạt khi nhảy) hoặc tính sẵn đích nhảy ở ID. Uncore: mỗi khối mới phải giữ slack ≥ 2 ns, đo lại DE2 sau mỗi khối | Phát (lõi), Nguyên (đo, uncore) | Đang theo dõi |
+| R1 | `make test` không PASS được trên Questa 10.2c (timeout UVM lệch đơn vị, `run_unit.do` dừng sau `ALU_tb`), nên quy ước I-07 đang không thực hiện được | Cao | Sửa `base_test.svh` (tính timeout theo `ns` cố định hoặc so với `$time` trong cùng package) và bỏ `-onfinish stop` hay thay bằng `onbreak {resume}` trong `run_unit.do`, kiểm tra lại trên Questa. Tạm thời chạy `make test < /dev/null` và chấp nhận 5 mục FAIL đã biết | Phát (P-22) | Đã sửa 25/10 (watchdog trong package, mỗi TB đơn vị một `vsim`, stdin `/dev/null`), chờ `make test` trên Questa |
+| R2 | Fmax DE2 chỉ dư khoảng 9% (54,69 MHz, 8.011 LE, đo 25/10 sau N-36), cách ngưỡng 52 MHz khoảng 5%. Đường găng lần đo 55,17 MHz: lõi App, `ID_EX.Rs1_EX` → forwarding → so sánh nhánh → `PC` (slack 1,875 ns), `fpga/reports/` chưa có báo cáo của lần đo 54,69 MHz | Trung bình | Lõi: nếu Fmax tụt dưới 52 MHz thì tách đường quyết định nhánh (đăng ký kết quả so sánh, chấp nhận thêm 1 chu kỳ phạt khi nhảy) hoặc tính sẵn đích nhảy ở ID. Uncore: mỗi khối mới phải giữ slack ≥ 2 ns, đo lại DE2 sau mỗi khối | Phát (lõi), Nguyên (đo, uncore) | Đang theo dõi |
 | R3 | Ngắt phụ thuộc cổng `irq_timer`/`irq_ext` của lõi (I-01, hạn 01/11), mốc M1 có thể trễ | Trung bình | Phía SoC đã có `timer0_irq`, PLIC-lite làm và test độc lập trước (N-19). Nếu I-01 trễ, firmware dùng polling, demo không bị chặn | Phát (I-01), Nguyên | Đang làm |
 | R4 | Golden hash nằm trong RAM ghi được, chưa đúng mô hình Root of Trust | Cao | Kéo N-21 (cổng đọc dữ liệu Boot ROM) lên Tuần 8, Phát đổi `linker.ld` theo I-03 ở Tuần 9 | Nguyên, Phát | Kéo lên Tuần 8 |
-| R5 | VP băm theo độ dài image, còn I-04 chốt băm cả 4 KB ROM App, hai bên ra golden khác nhau | Trung bình | VP băm đủ 4 KB (N-33, diff 3 dòng đã có) | Nguyên | Chờ áp diff |
+| R5 | VP băm theo độ dài image, còn I-04 chốt băm cả 4 KB ROM App, hai bên ra golden khác nhau | Trung bình | VP băm đủ 4 KB (N-33, diff 3 dòng đã có) | Nguyên | Đã xong 25/10 (N-33, commit `a946e2a`) |
 | R6 | Firmware secure boot (P-13) phải chạy trên VP trước RTL nhưng VP chưa có UART, TIMER, WDT | Trung bình | Thêm mô hình UART0 (in log ra console), TIMER0, WDT vào VP ở Tuần 9 (N-32) | Nguyên | Đã lên lịch |
 | R6b | Firmware không biết khi bus Master trả SLVERR/DECERR vì `AXI4_Lite_Master` bỏ qua BRESP/RRESP | Trung bình | Thêm `SYSCSR.BUS_ERR` và `BUS_ERR_ADDR` (N-36). Access fault qua trap làm sau P-09 | Nguyên | Đã xong 25/10 |
 | R7 | Secure boot mức RTL mới kiểm image đúng, firmware thử chỉ băm "abc" | Trung bình | `SoC_Top_tb` băm cả 4 KB ROM App bằng SHA phần cứng, so với golden do `mkhex.py` tính bằng `hashlib`, chạy thêm lần với image bị sửa và kiểm App bị giữ reset (N-35) | Nguyên | Đã lên lịch |
 | R8 | Bộ nhớ đọc ở cạnh xuống không hợp với SRAM macro ASIC (Tuần 13–14) | Trung bình | Nguyên thêm tham số chọn bộ nhớ đồng bộ cạnh lên cho bản ASIC, Phát thêm tín hiệu chờ (`ready`) ở IF/MEM để lõi chịu được 1 chu kỳ trễ. Chốt cách làm trước Tuần 12 | Nguyên, Phát | Đề xuất |
 | R9 | Xuống dòng lẫn LF và CRLF giữa hai máy, diff dễ bị nhiễu | Thấp | Thêm `* text=auto eol=lf` vào `.gitattributes` và `git add --renormalize .` trong một commit riêng, làm lúc cả hai đã push hết | Nguyên | Chờ thời điểm |
-| R10 | WSL của Phát chưa có `make`, `gcc`, toolchain RISC-V | Trung bình | Cài `build-essential`, `python3`, `gcc-riscv64-unknown-elf`, SystemC trước 01/11 | Phát | Đề xuất |
-| R11 | Comment trong `fw/linker.ld` còn ghi `0x4000_0000` là Reset Controller và chờ Nguyên xác nhận RAM | Thấp | Nguyên xác nhận: RAM `0x1000_0000` 4 KB đúng với `SoC_Top`, `0x4000_0000` nay là SYSCSR. Phát sửa comment khi đổi `linker.ld` cho I-03 | Phát | Đã xác nhận |
+| R10 | WSL của Phát chưa có `make`, `gcc`, toolchain RISC-V | Trung bình | Cài `build-essential`, `python3`, `gcc-riscv64-unknown-elf`, SystemC trước 01/11 | Phát | Đã xong 25/10: `build-essential`, `cmake`, `gcc-riscv64-unknown-elf` 14.2 (có multilib `rv32i/ilp32`), SystemC 2.3.4 build từ mã nguồn ở `/usr/local/systemc-2.3.4`. `make fw`, `make vp`, HAL host test PASS. Còn QuestaSim |
+| R11 | Comment trong `fw/linker.ld` còn ghi `0x4000_0000` là Reset Controller và chờ Nguyên xác nhận RAM | Thấp | Nguyên xác nhận: RAM `0x1000_0000` 4 KB đúng với `SoC_Top`, `0x4000_0000` nay là SYSCSR. Phát sửa comment khi đổi `linker.ld` cho I-03 | Phát | Đã sửa 25/10 (comment `linker.ld` ghi SYSCSR, RAM `0x1000_0000` 4 KB đã chốt) |
 | R12 | Bảng chân DE2 đối chiếu theo manual v1.3, Terasic đã có bản 1.6 | Thấp | Xem lại bảng chân trong bản 1.6 trước khi nạp board (Tuần 12) | Nguyên | Đã lên lịch |
 | R13 | Quartus II 13.0sp1 chỉ hỗ trợ một phần SystemVerilog | Thấp | RTL tổng hợp giữ Verilog-2001, SystemVerilog chỉ dùng trong testbench | Cả hai | Đang áp dụng |
 | R14 | Kit Xilinx chưa chốt | Thấp | Luồng Vivado đã chạy với Artix-7, khi chốt chỉ đổi part và gán chân | Nguyên | Đang theo dõi |
@@ -133,4 +133,4 @@ Cập nhật 25/10/2026, 15 rủi ro. Cột "Phụ trách" là người xử lý
 8. **SoC_Top_tb:** tab gốc (Tuần 9) và tab Review ghi "hash đúng → nhả reset App, hash sai → App giữ reset", thực tế firmware thử trong `dv/sw/mkhex.py` chỉ băm chuỗi "abc" rồi luôn nhả App. Kịch bản đúng/sai trên ảnh App hiện chỉ có ở VP → đưa vào việc test firmware toàn SoC (Tuần 11).
 9. **Thay đổi phạm vi so với kế hoạch gốc (giữ theo bản hợp nhất):** việc "bơm dữ liệu nhiễu vào UVM khi chạy Full SoC" (Tuần 10 gốc) được thay bằng UVM agent APB + scoreboard SHA, còn code Application cho App Core chuyển từ Tuần 12 lên Tuần 10.
 
-**Đã sửa trong sheet 25/10:** N-09 ghi lại WNS +3,17 ns (đo 24/10), N-20 đưa hạn 08/11 về đúng cột Hạn và sửa công thức cảnh báo bị lỗi `#REF!`, N-18 đánh dấu xong. **Còn chờ Phát xác nhận:** P-07 (sơ đồ datapath) ghi "Xong" nhưng repo chưa có file sơ đồ trong `docs/` và chưa có commit, P-12 trong sheet là "Chưa làm" trong khi `Project_Status.md` ghi xong 24/10.
+**Đã sửa trong sheet 25/10:** N-09 ghi lại WNS +3,17 ns (đo 24/10), N-20 đưa hạn 08/11 về đúng cột Hạn và sửa công thức cảnh báo bị lỗi `#REF!`, N-18 đánh dấu xong. **Phát đã xác nhận 25/10:** P-07 thêm sơ đồ datapath vào `docs/spec/Core_Datapath.md` (ngày xong 25/10), P-12 sheet đổi sang Xong.

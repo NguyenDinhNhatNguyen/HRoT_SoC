@@ -1,7 +1,7 @@
 /*
- * crt0.S -- Khởi động Master Core: đặt stack, xóa .bss, gọi main().
- * .rodata/.data đã được nạp sẵn vào RAM (xem linker.ld), không cần copy.
- * main() trả về thì dừng tại vòng lặp vô hạn.
+ * crt0.S -- Master Core start-up: set the stack, clear .bss, call main().
+ * .rodata/.data are preloaded into RAM (see linker.ld), no copy needed.
+ * If main() returns, stop in an endless loop.
  */
     .section .text.start, "ax"
     .globl _start

@@ -11,17 +11,17 @@ module Forwarding_Unit (
     output reg [1:0] ForwardB
 );
     always @(*) begin
-        // Giá trị mặc định (không forward)
+        // Default: no forwarding
         ForwardA = 2'b00;
         ForwardB = 2'b00;
 
-        // Xử lý Forward A cho Rs1_EX (Toán hạng 1)
+        // Forward A for Rs1_EX (operand 1)
         if (RegWrite_MEM && (Rd_MEM != 0) && (Rd_MEM == Rs1_EX))
-            ForwardA = 2'b10; // Forward từ tầng MEM
+            ForwardA = 2'b10; // Forward from MEM
         else if (RegWrite_WB && (Rd_WB != 0) && (Rd_WB == Rs1_EX))
-            ForwardA = 2'b01; // Forward từ tầng WB
+            ForwardA = 2'b01; // Forward from WB
 
-        // Xử lý Forward B cho Rs2_EX (Toán hạng 2)
+        // Forward B for Rs2_EX (operand 2), same priority: MEM before WB
         if (RegWrite_MEM && (Rd_MEM != 0) && (Rd_MEM == Rs2_EX))
             ForwardB = 2'b10;
         else if (RegWrite_WB && (Rd_WB != 0) && (Rd_WB == Rs2_EX))

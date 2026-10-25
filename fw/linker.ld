@@ -1,18 +1,20 @@
 /*
- * linker.ld -- Ban do bo nho firmware Master Core (Secure Boot)
+ * linker.ld -- memory map of the Master Core (Secure Boot) firmware
  *
- * Lõi RISC-V là Harvard: lệnh fetch từ ROM qua cổng lệnh, còn load/store đi
- * qua bus dữ liệu. Lõi KHÔNG đọc được ROM bằng lệnh load, nên mọi dữ liệu
- * (.rodata, .data) phải nằm trong RAM và được nạp sẵn từ firmware_dmem.hex
- * (readmemh khi mô phỏng / init BRAM trên FPGA). Không có bước copy ROM->RAM.
+ * The core is Harvard: instructions come from the boot ROM through the fetch port and
+ * loads/stores go over the data bus. A load cannot read the boot ROM, so all data
+ * (.rodata, .data) lives in RAM and is preloaded from firmware_dmem.hex ($readmemh in
+ * simulation, BRAM init on FPGA). There is no ROM-to-RAM copy at boot.
  *
  *   ROM  0x0000_0000  4 KB   .text           -> firmware_imem.hex
  *   RAM  0x1000_0000  4 KB   .rodata .data   -> firmware_dmem.hex
- *                            .bss (crt0 xóa về 0), stack ở cuối RAM
+ *                            .bss (cleared by crt0), then the 1 KB stack right after it
+ *                            (__stack_top = end of .stack, not the end of RAM)
  *
- * ĐỀ XUẤT, cần Nguyên xác nhận khi ghép SoC_Top: địa chỉ RAM 0x1000_0000 trên
- * bus dữ liệu của Master (ngoại vi: 0x4000_0000 Reset Controller,
- * 0x5000_0000 SHA-256). Kích thước khớp Instruction_Memory / Data_Memory (1024 word).
+ * Confirmed with SoC_Top on 25/10 (docs/spec/SoC_Memory_Map.md, fw/hal/soc_map.h): RAM is
+ * 4 KB at 0x1000_0000, 0x4000_0000 is the APB bus with SYSCSR at its base (it replaced the
+ * old Reset Controller), 0x5000_0000 is SHA-256, 0x6000_0000 is App ROM port B.
+ * I-03 (week 9) moves .rodata into the boot ROM once N-21 adds its read-only data port.
  */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
@@ -29,7 +31,7 @@ SECTIONS
 {
     .text :
     {
-        KEEP(*(.text.start))            /* crt0: _start phải ở địa chỉ reset 0x0 */
+        KEEP(*(.text.start))            /* crt0: _start must sit at the reset address 0x0 */
         *(.text .text.*)
     } > ROM
 

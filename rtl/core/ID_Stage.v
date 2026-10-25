@@ -2,15 +2,15 @@
 
 module ID_Stage(
     input        clk,
-    //Input tu IF_ID_Reg
+    // Inputs from IF_ID_Reg
     input [31:0] PC_ID,
     input [31:0] Instr_ID,
     input [31:0] PC_Plus_4_ID,
-    //Tin hieu phan hoi tu tang WB (Write-Back) de ghi thanh ghi
+    // Register write-back from WB
     input        RegWrite_WB,
     input [31:0] Result_WB,
     input [4:0]  Rd_WB,
-    //Control  chuyen sang ID_EX_Reg
+    // Control to ID_EX_Reg
     output        RegWrite_ID_out,
     output        MemWrite_ID_out,
     output        MemRead_ID_out,
@@ -20,13 +20,13 @@ module ID_Stage(
     output        ALUSrc_ID_out,
     output [1:0]  ResultSrc_ID_out,
     output [3:0]  ALUControl_ID_out,
-    //Data outputs sang ID_EX_Reg
+    // Data to ID_EX_Reg
     output [31:0] PC_ID_out,
     output [31:0] RD1_ID_out,
     output [31:0] RD2_ID_out,
     output [31:0] ImmExt_ID_out,
     output [31:0] PC_Plus_4_ID_out,
-    //Address outputs sang ID_EX_Reg
+    // Register addresses to ID_EX_Reg
     output [4:0]  Rs1_ID_out,
     output [4:0]  Rs2_ID_out,
     output [4:0]  Rd_ID_out,

@@ -20,7 +20,9 @@
 - `instr_rdata` / `data_rdata` phải hợp lệ **trước cạnh lên kế tiếp** sau khi địa chỉ đổi. Bộ nhớ trong SoC đọc đồng bộ ở **cạnh xuống** (suy ra M4K/BRAM), nên lõi vẫn thấy dữ liệu trong cùng chu kỳ, đổi lại đường đọc chỉ còn nửa chu kỳ (10 ns @ 50 MHz).
 - Truy cập qua bus chưa xong thì `bus_stall = 1` (đóng băng toàn pipeline). Trong `SoC_Top`: `bus_stall = (data_we | data_re) & ~resp_valid` (tổ hợp).
 - Store: `data_wdata` đã lặp byte/half lên mọi lane, `data_wstrb[3:0]` chọn lane. Load: `data_rdata` là word căn lề, lõi tự dịch và mở rộng dấu/0.
-- Truy cập lệch lề không được hỗ trợ (không trap). Chưa có CSR/ECALL/FENCE/ngắt (giải mã thành NOP) — Zicsr + trap + `irq_timer`/`irq_ext` là việc P-09 (giao diện I-01).
+- Truy cập lệch lề không được hỗ trợ (không trap). Chưa có CSR/ECALL/FENCE/ngắt (giải mã thành NOP), Zicsr + trap là việc P-09.
+- **Cổng ngắt (I-01, chốt 25/10):** `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ.
+- **ASIC (R8, chốt trước Tuần 12):** khi Nguyên thêm bộ nhớ đọc cạnh lên, lõi cần tín hiệu chờ ở IF và MEM để chịu 1 chu kỳ trễ. Ở MEM dùng lại `bus_stall`, ở IF thêm cổng mới (tên chốt cùng P-09).
 - Reset active-high, PC reset = `0x0`. Register file không reset (x1..x31 là X đến khi được ghi).
 
 ## 3. Bản đồ bộ nhớ Master (thế giới Secure)
@@ -60,7 +62,7 @@ Trên Questa 10.2c, chạy `make test < /dev/null` cho tới khi `sim/run_unit.d
 
 ## 5. Quy ước code
 
-- RTL/TB Verilog: comment và chuỗi in ra bằng tiếng Anh (từ 25/10/2026, file cũ của Phát chưa đổi). Mỗi file có `` `timescale 1ns / 1ps ``, kết thúc bằng newline, xuống dòng LF.
+- RTL/TB Verilog: comment và chuỗi in ra bằng tiếng Anh (từ 25/10/2026, toàn bộ file RTL core, DV và firmware của Phát đã chuyển sang ngày 25/10). Mỗi file có `` `timescale 1ns / 1ps ``, kết thúc bằng newline, xuống dòng LF.
 - TB tự kiểm tra, in một dòng `SUMMARY <TÊN>: PASS = x | FAIL = y` (hoặc `<tb> RESULT: PASS|FAIL`) và gọi `$finish`. `regress.sh` dựa vào dòng này.
 - `*.svh` chỉ được `` `include `` vào `hrot_dv_pkg.sv`, không biên dịch riêng.
 - RTL reset active-high, còn interface UVM `axi4_lite_if` reset active-low (`rst_n`).

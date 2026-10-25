@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module EX_Stage(
-    //Control va Data tu ID_EX
+    // Control and data from ID_EX_Reg
     input         RegWrite_EX,
     input         MemWrite_EX,
     input         MemRead_EX,
@@ -20,12 +20,12 @@ module EX_Stage(
 
     input  [4:0]  Rd_EX,
     input  [2:0]  funct3_EX,
-    //Control input tu Forwarding Unit (giai quyet Data )
+    // Forwarding select from Forwarding_Unit (data hazards)
     input  [1:0]  ForwardA_EX,
     input  [1:0]  ForwardB_EX,
-    input  [31:0] ALUResult_MEM,     // Dữ liệu đi tắt từ tầng MEM
-    input  [31:0] Result_WB,         // Dữ liệu đi tắt từ tầng WB
-    //Control/Data output day sang thanh ghi EX_MEM
+    input  [31:0] ALUResult_MEM,     // Value forwarded from MEM
+    input  [31:0] Result_WB,         // Value forwarded from WB
+    // Control and data to EX_MEM_Reg
     output        RegWrite_EX_out,
     output        MemWrite_EX_out,
     output        MemRead_EX_out,
@@ -36,7 +36,7 @@ module EX_Stage(
     output [31:0] PC_Plus_4_EX_out,
     output [31:0] PCTarget_EX_out,
     output [4:0]  Rd_EX_out,
-    //Output vong phan hoi ve tang IF
+    // Feedback to IF (redirect PC)
     output        PCSrc_EX
 );
 
@@ -54,9 +54,13 @@ wire Zero_EX;
 wire lt_EX;
 wire ltu_EX;
 
-assign SrcA_EX = (ForwardA_EX == 2'b10) ? ALUResult_MEM : (ForwardA_EX == 2'b01) ? Result_WB : RD1_EX;
+assign SrcA_EX = (ForwardA_EX == 2'b10) ? ALUResult_MEM :
+                 (ForwardA_EX == 2'b01) ? Result_WB     :
+                                          RD1_EX;
 
-assign WriteData_EX_out = (ForwardB_EX == 2'b10) ? ALUResult_MEM : (ForwardB_EX == 2'b01) ? Result_WB : RD2_EX;
+assign WriteData_EX_out = (ForwardB_EX == 2'b10) ? ALUResult_MEM :
+                          (ForwardB_EX == 2'b01) ? Result_WB     :
+                                                   RD2_EX;
 
 ALU_Mux u_ALU_Mux(
     .WD     (WriteData_EX_out),

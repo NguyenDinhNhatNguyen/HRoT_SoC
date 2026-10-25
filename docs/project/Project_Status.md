@@ -19,8 +19,8 @@ Kết quả kiểm tra gần nhất trên Questa (`make test`, 25/10):
 | SoC secure boot | PASS |
 | VP (image đúng và image bị sửa) | PASS |
 | `sha256_alias_test` (chạy riêng) | PASS |
-| 11 TB đơn vị | FAIL trên Questa, chỉ 1/11 TB chạy (mục 4, chờ Phát) |
-| 4 test UVM trong `make test` | FAIL trên Questa vì `PH_TIMEOUT` (mục 4, chờ Phát) |
+| 11 TB đơn vị | FAIL trên Questa, chỉ 1/11 TB chạy. Phát đã sửa 25/10 (P-22), chờ chạy lại trên Questa |
+| 4 test UVM trong `make test` | FAIL trên Questa vì `PH_TIMEOUT`. Phát đã sửa 25/10 (P-22), chờ chạy lại trên Questa |
 
 Trên Verilator (Phát chạy, 23–25/10): UVM AXI4-Lite 15/15 PASS. UVM SHA-256 trên DUT thật: KAT, CTL (khoảng 960 check), RAND 40 message × 3 seed (khoảng 4.300–4.900 check), FULL, reset giữa message × 3, tất cả PASS, 0 lỗi.
 
@@ -29,14 +29,14 @@ Trên Verilator (Phát chạy, 23–25/10): UVM AXI4-Lite 15/15 PASS. UVM SHA-25
 | ID | Việc | Hạn | Trạng thái |
 | --- | --- | --- | --- |
 | P-01…P-06 | Lõi 5 tầng, hazard + test ISA, khung UVM, HAL + test plan, toolchain, load/store byte/half | ≤ 25/10 | ✅ Xong |
-| **P-07** | Sơ đồ khối datapath 5 tầng trong `docs/` | 13/09 | ❌ **Quá hạn** |
+| P-07 | Sơ đồ khối datapath 5 tầng trong `docs/` | 13/09 | ✅ Vẽ từ Tuần 1, đưa vào repo 25/10: `docs/spec/Core_Datapath.md` + hình, có bảng đối chiếu RTL và 5 điểm nên sửa khi vẽ lại cho báo cáo |
 | P-08 | UVM sequence ngẫu nhiên cho SHA-256 (corner case) | 25/10 | ✅ Xong 25/10 (commit `bb59f25`). `sha256_alias_test` PASS sau khi Nguyên sửa RTL 25/10 |
-| **P-09** | Zicsr + trap máy + cổng `irq_timer`/`irq_ext` | 01/11 | Chưa làm, **chặn việc nối ngắt TIMER0 vào lõi và N-19**, thuộc mốc M1 |
+| **P-09** | Zicsr + trap máy + cổng `irq_timer`/`irq_ext` | 01/11 | Chưa làm, **chặn việc nối ngắt TIMER0 vào lõi và N-19**, thuộc mốc M1. Cổng đã chốt (I-01). Thêm sau đó: access fault qua trap (`mcause` 5/7) với cổng `data_err` |
 | P-10 | Dọn `dv/tb` sang `dv/env`, `dv/agents` | 01/11 | Chưa làm. Testbench của Nguyên đã chuyển sang `dv/tb/soc/` |
 | P-11 | Driver UART/GPIO theo `SoC_Memory_Map.md` | 01/11 | Chưa làm (ngoại vi đã có) |
-| P-12 | Cập nhật tài liệu này + `Dev_Guide.md`, thêm test của Phát vào `make test` | 01/11 | ✅ Xong 24/10 (sheet còn ghi "Chưa làm", Phát xác nhận) |
-| P-22 | Sửa 2 lỗi script trên Questa 10.2c (mục 4) | 01/11 | Đề xuất 25/10 |
-| P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | Chờ P-11, I-03 |
+| P-12 | Cập nhật tài liệu này + `Dev_Guide.md`, thêm test của Phát vào `make test` | 01/11 | ✅ Xong (làm 24/10, vào `main` cùng commit P-08 `bb59f25`), sheet đã cập nhật 25/10 |
+| P-22 | Sửa 2 lỗi script trên Questa 10.2c (mục 4) | 01/11 | Đã sửa 25/10, kiểm trên Verilator, **chờ chạy `make test` trên Questa để đóng** |
+| P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | Chờ P-11, I-03. Sau khi băm ROM App đọc `SYSCSR.BUS_ERR`: `VALID = 1` thì in log qua UART và giữ App trong reset, xong ghi 1 vào bit0 để xóa (N-36) |
 | P-14 | Test assembly ngắt timer/external | 08/11 | Chờ P-09 (TIMER0 đã có) |
 | P-15…P-17 | FW dùng Secure DMA · FW App + `app_firmware.hex` + sinh golden hash · UVM agent APB + scoreboard SHA (DPI) | 15/11 | Chưa làm |
 | P-18…P-21 | Test toàn SoC + regression UVM · coverage · Genus · Innovus + so sánh PPA | 22/11 → 13/12 | Chưa làm |
@@ -45,7 +45,7 @@ Trên Verilator (Phát chạy, 23–25/10): UVM AXI4-Lite 15/15 PASS. UVM SHA-25
 
 | ID | Nội dung | Hạn | Trạng thái |
 | --- | --- | --- | --- |
-| I-01 | Cổng ngắt của lõi (đề xuất `irq_timer`, `irq_ext` mức cao → `mip.MTIP`/`mip.MEIP`) | 01/11 | **Phát chủ trì**, chưa chốt. Phía SoC đã có `timer0_irq` mức cao chờ nối |
+| I-01 | Cổng ngắt của lõi: `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | 01/11 | ✅ **Đã chốt 25/10** (Phát). Phía SoC nối `timer0_irq` → `irq_timer` khi có P-09 |
 | I-02 | Header địa chỉ firmware theo `SoC_Memory_Map.md`, đổi map phải báo trước | 01/11 | Nguyên |
 | I-03 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó | 08/11 | Cả hai |
 | I-04 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm **cả 4 KB** ROM App) | 15/11 | Phát |
@@ -60,9 +60,10 @@ Các lỗi SoC/uncore liệt kê ở bản trước (SoC không compile, Master 
 - **Việc mới của Nguyên (25/10):** N-33 VP băm cả 4 KB ROM App (I-04), N-34 header `fw/hal/soc_map.h` (I-02), N-32 VP thêm UART0/TIMER0/WDT cho firmware P-13, N-35 `SoC_Top_tb` băm image App và thêm kịch bản image bị sửa trên RTL, N-36 báo lỗi bus AXI cho firmware qua `SYSCSR.BUS_ERR`. N-33, N-34, N-36 đã xong 25/10 (N-36: commit `d2315b2`, APB 49/49, DE2 8.011 LE, 54,69 MHz). N-19, N-20, N-21 kéo lên làm từ 26/10. N-18 xong: 52/52 chân trong `fpga/intel_de2/de2_pins.tcl` khớp bảng chân của DE2 User Manual v1.3.
 - **Cấu trúc repo đổi từ 25/10:** `doc/` thành `docs/` (chia `spec`, `verification`, `guides`, `project`), `rtl/uncore/` tách thành `rtl/bus`, `rtl/periph`, `rtl/mem`, `rtl/crypto`, `syn/` thành `fpga/` (thêm `fpga/reports`), `mkhex.py` sang `dv/sw/`. Phải `git pull` trước khi sửa tiếp.
 - **Lỗi RTL SHA-256 (P-08 phát hiện), đã sửa 25/10:** `SHA256_Wrapper` chỉ giải mã `addr[7:0]` trong khi `SoC_Top` cấp cửa sổ 64 KB, nên offset ≥ `0x100` bị alias vào thanh ghi thật. Wrapper giờ giải mã `addr[15:8] == 0`, `sha256_alias_test` PASS trên Questa (chạy với `+TEST_TIMEOUT_US=100000000`, xem mục dưới).
-- **Ba lỗi khi chạy trên Questa 10.2c (Nguyên phát hiện 25/10, chờ Phát sửa, trên Verilator không gặp):**
+- **Ba lỗi khi chạy trên Questa 10.2c (Nguyên phát hiện 25/10, trên Verilator không gặp). Lỗi 1 và 2 Phát đã sửa 25/10, chờ chạy lại trên Questa:**
   1. Timeout UVM tính bằng `time'(real'(tmo_us) * 1us)` trong `dv/tests/base_test.svh` ra 1,6 µs thay vì 1600 µs, do lệch timescale giữa package và `uvm_pkg`. 4 test UVM trong `make test` chết vì `PH_TIMEOUT`.
   2. `vsim -onfinish stop` trong `sim/run_unit.do` làm macro dừng sau `ALU_tb` ở chế độ `-c`, chỉ 1/11 TB chạy. Chạy `make test` trong terminal thì Questa đứng chờ ở dấu nhắc `VSIM(paused)>` và cả regression bị treo. Tạm thời chạy `make test < /dev/null`.
+     Cách sửa (25/10): `base_test.svh` bỏ `uvm_top.set_timeout()` (đối số bị đọc theo đơn vị thời gian của `uvm_pkg`, trên Questa là 1 ps theo `-t 1ps`) và dùng watchdog `#(timeout_us * 1us)` ngay trong package của test nên luôn đúng đơn vị. `regress.sh` chạy mỗi TB đơn vị bằng một tiến trình `vsim` riêng (`set UNIT <tb>`, cùng kiểu với `run_rtl.do`) và mọi lệnh `vsim` đọc stdin từ `/dev/null` nên không còn treo ở `VSIM(paused)>`.
   3. (Đã sửa, phía Nguyên) `sim/run_vp.sh` trước đây chỉ tìm thư viện ở `$SYSTEMC_HOME/lib-linux64`, nên link lỗi khi `SYSTEMC_HOME` trỏ tới bản 2.3.4 (thư viện nằm trong `lib/`). Script giờ thử cả hai.
 - **Comment và chuỗi in ra của testbench viết bằng tiếng Anh** từ 25/10. File của Nguyên đã đổi, file của Phát đổi dần khi sửa tới.
 - **VP băm theo độ dài image** (`cpu.app_len`), còn I-04 chốt băm cả 4 KB ROM App. Cần thống nhất trước P-13/P-16.

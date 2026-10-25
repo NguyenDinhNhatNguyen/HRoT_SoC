@@ -18,28 +18,55 @@ static const uint32_t K[64] = {
 
 void sha256_ref_compress(uint32_t h[8], const uint32_t w_in[16])
 {
-    uint32_t w[64], a,b,c,d,e,f,g,hh, t1,t2;
+    uint32_t w[64];
+    uint32_t a, b, c, d, e, f, g, hh;
+    uint32_t t1, t2;
     int i;
-    for (i = 0; i < 16; i++) w[i] = w_in[i];
+    for (i = 0; i < 16; i++)
+        w[i] = w_in[i];
     for (i = 16; i < 64; i++) {
         uint32_t s0 = ROR(w[i-15],7) ^ ROR(w[i-15],18) ^ (w[i-15] >> 3);
         uint32_t s1 = ROR(w[i-2],17) ^ ROR(w[i-2],19)  ^ (w[i-2] >> 10);
         w[i] = w[i-16] + s0 + w[i-7] + s1;
     }
-    a=h[0]; b=h[1]; c=h[2]; d=h[3]; e=h[4]; f=h[5]; g=h[6]; hh=h[7];
+    a = h[0];
+    b = h[1];
+    c = h[2];
+    d = h[3];
+    e = h[4];
+    f = h[5];
+    g = h[6];
+    hh = h[7];
     for (i = 0; i < 64; i++) {
         t1 = hh + (ROR(e,6)^ROR(e,11)^ROR(e,25)) + ((e&f)^(~e&g)) + K[i] + w[i];
         t2 = (ROR(a,2)^ROR(a,13)^ROR(a,22)) + ((a&b)^(a&c)^(b&c));
-        hh=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
+        hh = g;
+        g = f;
+        f = e;
+        e = d + t1;
+        d = c;
+        c = b;
+        b = a;
+        a = t1 + t2;
     }
-    h[0]+=a; h[1]+=b; h[2]+=c; h[3]+=d; h[4]+=e; h[5]+=f; h[6]+=g; h[7]+=hh;
+    h[0] += a;
+    h[1] += b;
+    h[2] += c;
+    h[3] += d;
+    h[4] += e;
+    h[5] += f;
+    h[6] += g;
+    h[7] += hh;
 }
 
 void sha256_ref(const uint8_t *msg, size_t len, uint8_t out[32])
 {
     uint32_t h[8], w[16];
     uint8_t blk[128];
-    size_t full = len / 64, rem = len % 64, i, nblk;
+    size_t full = len / 64;
+    size_t rem = len % 64;
+    size_t i;
+    size_t nblk;
     uint64_t bits = (uint64_t)len * 8;
     memcpy(h, SHA256_REF_IV, sizeof h);
     for (i = 0; i < full; i++) {
@@ -50,10 +77,12 @@ void sha256_ref(const uint8_t *msg, size_t len, uint8_t out[32])
         sha256_ref_compress(h, w);
     }
     memset(blk, 0, sizeof blk);
-    if (rem) memcpy(blk, msg + 64*full, rem);
+    if (rem)
+        memcpy(blk, msg + 64*full, rem);
     blk[rem] = 0x80;
     nblk = (rem < 56) ? 1 : 2;
-    for (size_t j = 0; j < 8; j++) blk[64*nblk - 1 - j] = (uint8_t)(bits >> (8*j));
+    for (size_t j = 0; j < 8; j++)
+        blk[64*nblk - 1 - j] = (uint8_t)(bits >> (8*j));
     for (i = 0; i < nblk; i++) {
         for (int j = 0; j < 16; j++) {
             const uint8_t *p = blk + 64*i + 4*j;
@@ -62,7 +91,9 @@ void sha256_ref(const uint8_t *msg, size_t len, uint8_t out[32])
         sha256_ref_compress(h, w);
     }
     for (int j = 0; j < 8; j++) {
-        out[4*j]=(uint8_t)(h[j]>>24); out[4*j+1]=(uint8_t)(h[j]>>16);
-        out[4*j+2]=(uint8_t)(h[j]>>8); out[4*j+3]=(uint8_t)h[j];
+        out[4*j]     = (uint8_t)(h[j] >> 24);
+        out[4*j + 1] = (uint8_t)(h[j] >> 16);
+        out[4*j + 2] = (uint8_t)(h[j] >> 8);
+        out[4*j + 3] = (uint8_t)h[j];
     }
 }

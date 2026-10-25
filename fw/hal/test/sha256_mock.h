@@ -1,23 +1,34 @@
-/* Mô hình hành vi ngoại vi SHA-256 (đúng "hợp đồng" ở sha256_regs.h) + chèn lỗi. */
+/* Behavioural model of the SHA-256 peripheral (follows the contract in sha256_regs.h) plus fault injection. */
 #ifndef SHA256_MOCK_H
 #define SHA256_MOCK_H
 #include <stdint.h>
 typedef struct {
-    /* Cấu hình lỗi / độ trễ */
-    uint32_t busy_polls;      /* Số lần đọc STATUS thấy BUSY trước khi DONE (mô phỏng 64 chu kỳ) */
-    int      never_done;      /* 1: không bao giờ DONE (kiểm tra timeout)                        */
-    int      stuck_busy;      /* 1: BUSY dính 1 (kiểm tra ERR_BUSY)                              */
-    int      corrupt_hash;    /* 1: đảo 1 bit của HASH[0] (kiểm tra selftest bắt lỗi)            */
-    /* Trạng thái nội bộ */
-    uint32_t block[16], h[8], digest[8];
-    uint32_t pending, done, busy;
-    /* Thống kê để kiểm tra hành vi HAL */
-    uint32_t n_start, n_init, n_block_wr, n_ctrl_wr, n_hash_rd, n_status_rd;
-    uint32_t init_on_first_only_ok;  /* 1 nếu INIT chỉ xuất hiện ở START đầu tiên sau reset thống kê */
+    /* Fault / delay configuration */
+    uint32_t busy_polls;      /* STATUS reads that return BUSY before DONE (models the 66-cycle run) */
+    int      never_done;      /* 1: never DONE (timeout test)                                        */
+    int      stuck_busy;      /* 1: BUSY stuck at 1 (ERR_BUSY test)                                  */
+    int      corrupt_hash;    /* 1: flip 1 bit of HASH[0] (selftest must catch it)                   */
+    /* Internal state */
+    uint32_t block[16];
+    uint32_t h[8];
+    uint32_t digest[8];
+    uint32_t pending;
+    uint32_t done;
+    uint32_t busy;
+    /* Counters used to check HAL behaviour */
+    uint32_t n_start;
+    uint32_t n_init;
+    uint32_t n_block_wr;
+    uint32_t n_ctrl_wr;
+    uint32_t n_hash_rd;
+    uint32_t n_status_rd;
+    uint32_t init_on_first_only_ok;  /* 1 if INIT only appears on the first START after a reset */
     uint32_t block_wr_while_busy;
-    uint32_t rom_rd_n, rom_rd_misaligned;      /* ghi nhận đọc ROM */
-    uintptr_t rom_rd_lo, rom_rd_hi;            /* [lo, hi) vùng đã đọc */
+    uint32_t rom_rd_n;                         /* ROM read count */
+    uint32_t rom_rd_misaligned;                /* misaligned ROM reads */
+    uintptr_t rom_rd_lo;                       /* [lo, hi) range read */
+    uintptr_t rom_rd_hi;
 } sha256_mock_t;
 extern sha256_mock_t g_mock;
-void sha256_mock_reset(void);   /* Xóa toàn bộ, kể cả cấu hình lỗi */
+void sha256_mock_reset(void);   /* Clear everything, fault configuration included */
 #endif
