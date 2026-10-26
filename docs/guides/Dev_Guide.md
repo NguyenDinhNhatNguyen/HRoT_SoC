@@ -57,7 +57,7 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 | Tạo lại hex test lõi | lệnh ở đầu `dv/tests/asm/core_isa_test.S` và `core_trap_test.S` (test trap cần `-march=rv32i_zicsr`) |
 | `make de2` / `make xilinx PART=<part>` | Quartus / Vivado, kết quả ở `fpga/*/build/`, báo cáo đã lưu ở `fpga/reports/` |
 
-Trên Questa 10.2c, chạy `make test < /dev/null` cho tới khi `sim/run_unit.do` được sửa (xem `Project_Status.md` mục 4), nếu không Questa sẽ đứng chờ ở dấu nhắc `VSIM(paused)>`. `sim/run_vp.sh` nhận cả SystemC 2.3.3 (`lib-linux64/`) lẫn 2.3.4 (`lib/`) qua biến `SYSTEMC_HOME`.
+Từ P-22 (26/10), `regress.sh` chạy mỗi TB đơn vị bằng một `vsim` riêng và cho mọi `vsim` đọc stdin từ `/dev/null`, nên `make test` không còn đứng chờ ở dấu nhắc `VSIM(paused)>`. `sim/run_vp.sh` nhận cả SystemC 2.3.3 (`lib-linux64/`) lẫn 2.3.4 (`lib/`) qua biến `SYSTEMC_HOME`.
 
 **Ngoài Questa (công cụ mã nguồn mở, image docker `hpretl/iic-osic-tools`):** công cụ ở `/foss/tools/<tool>/bin`, iverilog cần `LD_LIBRARY_PATH=/foss/tools/iverilog/lib`. UVM trên Verilator cần thư viện `chipsalliance/uvm-verilator` và **z3 trong PATH** (thiếu z3 thì mọi `randomize()` thất bại), build mất khoảng 8 phút. **Máy WSL dễ lag: chạy job nặng với `docker run --cpus=2 --memory=4g` và `nice -n 19`.**
 

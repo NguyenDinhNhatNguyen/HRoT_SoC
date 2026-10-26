@@ -96,7 +96,7 @@ COUNT về 0 khi đang bật → reset toàn thế giới Secure qua SYSCSR, `RS
 | `0x04` | ENABLE | RW | [7:0] bật từng nguồn |
 | `0x08` | CLAIM | RO | 1 + chỉ số nguồn nhỏ nhất đang pending và được bật, 0 nếu không có |
 
-Không có ưu tiên riêng, ngưỡng hay chốt claim: nguồn còn pending tới khi thiết bị của nó tự xóa. `irq_ext` = OR của (PENDING & ENABLE), nối vào `irq_ext` của lõi Master khi P-09 xong (I-01).
+Không có ưu tiên riêng, ngưỡng hay chốt claim: nguồn còn pending tới khi thiết bị của nó tự xóa. `irq_ext` = OR của (PENDING & ENABLE), nối vào `irq_ext` của lõi Master (lõi có cổng từ P-09 ngày 26/10, còn chờ nối trong `SoC_Top`, I-01).
 
 ## Mailbox (Secure `0x4000_6000`, App `0x4000_3000` trên bus App)
 
@@ -134,7 +134,7 @@ SRC, NBLK và các tùy chọn CTRL bị khóa khi `BUSY`. Kết quả đọc �
 | `0x4000_3000` | MAILBOX (phía App) |
 | địa chỉ khác | RAM App 4 KB (alias như trước) |
 
-Lõi App không có đường nào sang bus Secure. Bus APB của App truy cập trong một chu kỳ (lõi không stall) và bỏ qua `PSLVERR` cho tới khi lõi có trap (P-09). Boot Guard xóa RAM App khi `LOCK`.
+Lõi App không có đường nào sang bus Secure. Bus APB của App truy cập trong một chu kỳ (lõi không stall) và bỏ qua `PSLVERR` cho tới khi lõi có access fault qua trap (làm sau P-09). Boot Guard xóa RAM App khi `LOCK`.
 
 ## Ngắt
 
@@ -144,7 +144,7 @@ Lõi App không có đường nào sang bus Secure. Bus APB của App truy cập
 | GPIO0 | `gpio0_irq` | PLIC-lite nguồn 1 |
 | Secure DMA | `dma_irq` | PLIC-lite nguồn 2 |
 | Mailbox (từ App đang chờ) | `mbox_irq_s` | PLIC-lite nguồn 3 |
-| TIMER0 | `timer0_irq` | thẳng vào `irq_timer` của lõi Master (chờ P-09, I-01), không qua PLIC |
-| PLIC-lite | `plic_irq` | `irq_ext` của lõi Master (chờ P-09, I-01) |
-| TIMER1 | `timer1_irq` | `irq_timer` của lõi App (chờ P-09) |
-| UART1, GPIO1, Mailbox (từ Secure đang chờ) | OR của `uart1_irq`, `gpio1_irq`, `mbox_irq_a` | `irq_ext` của lõi App (chờ P-09) |
+| TIMER0 | `timer0_irq` | thẳng vào `irq_timer` của lõi Master (lõi có cổng từ P-09, chờ nối trong `SoC_Top`, I-01), không qua PLIC |
+| PLIC-lite | `plic_irq` | `irq_ext` của lõi Master (lõi có cổng từ P-09, chờ nối trong `SoC_Top`, I-01) |
+| TIMER1 | `timer1_irq` | `irq_timer` của lõi App (lõi có cổng từ P-09, chờ nối trong `SoC_Top`) |
+| UART1, GPIO1, Mailbox (từ Secure đang chờ) | OR của `uart1_irq`, `gpio1_irq`, `mbox_irq_a` | `irq_ext` của lõi App (lõi có cổng từ P-09, chờ nối trong `SoC_Top`) |
