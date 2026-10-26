@@ -40,10 +40,10 @@ vlog -sv -work work {*}$UVM_FLAGS +incdir+$DV/agents +incdir+$DV/env +incdir+$DV
 if {$DUT eq "sha256"} {
   vlog -sv -work work ../rtl/bus/AXI4_Lite_Slave_Template.v ../rtl/crypto/SHA256_Core.v \
        ../rtl/crypto/SHA256_Wrapper.v
-  vlog -sv -work work {*}$UVM_FLAGS $DV/tb/tb_sha256_top.sv
+  vlog -sv -work work {*}$UVM_FLAGS $DV/env/tb_sha256_top.sv
   set TOP tb_sha256_top
 } else {
-  vlog -sv -work work {*}$UVM_FLAGS $DV/tb/axi4_lite_slave_model.sv $DV/tb/tb_top.sv
+  vlog -sv -work work {*}$UVM_FLAGS $DV/agents/axi4_lite_slave_model.sv $DV/env/tb_top.sv
   set TOP tb_top
 }
 

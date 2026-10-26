@@ -1,4 +1,5 @@
-# SHA-256 HAL unit test on the host (WSL2/Linux). No RISC-V toolchain needed.
+# HAL unit tests on the host (WSL2/Linux): SHA-256 HAL and the UART/GPIO drivers (P-11).
+# No RISC-V toolchain needed except for the rv32 target.
 HAL   := ..
 CFLAGS := -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined \
           -I$(HAL) -I. -DHAL_HOST_MODEL
@@ -7,7 +8,15 @@ SRC   := hal_host_test.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c
 hal_host_test: $(SRC) $(wildcard *.h) $(HAL)/sha256_hal.h $(HAL)/sha256_regs.h
 	$(CC) $(CFLAGS) $(SRC) -o $@
 
-test: hal_host_test
+DRV_SRC := drv_host_test.c drv_mock.c $(HAL)/uart.c $(HAL)/gpio.c
+
+drv_host_test: $(DRV_SRC) drv_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/hal_io.h $(HAL)/soc_map.h
+	$(CC) $(CFLAGS) $(DRV_SRC) -o $@
+
+# The driver test runs first: if it fails, make stops before hal_host_test prints the
+# "==== PASSED" line that sim/regress.sh looks for
+test: drv_host_test hal_host_test
+	./drv_host_test
 	./hal_host_test
 
 # Independent cross-check against sha256sum on the edge lengths
@@ -18,13 +27,16 @@ crosscheck: hal_host_test
 	  if [ "$$a" = "$$b" ]; then echo "OK   len=$$n"; else echo "FAIL len=$$n"; fail=1; fi; done; \
 	  rm -f /tmp/hal_xc.bin; exit $$fail
 
-# Check the HAL builds for RV32I and pulls in no libc/libgcc
+# Check the HAL and the drivers build for RV32I and pull in no libc/libgcc
+RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o
 rv32:
-	riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib \
-	  -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -c $(HAL)/sha256_hal.c -o /tmp/sha256_hal_rv32.o
-	@riscv64-unknown-elf-nm -u /tmp/sha256_hal_rv32.o | grep . && { echo "FAIL: undefined symbols"; exit 1; } || echo "OK: no undefined symbols"
-	@riscv64-unknown-elf-size /tmp/sha256_hal_rv32.o
+	@for m in sha256_hal uart gpio; do \
+	  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib \
+	    -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -c $(HAL)/$$m.c -o /tmp/$${m}_rv32.o || exit 1; \
+	done
+	@riscv64-unknown-elf-nm -u $(RV32_OBJ) | grep -v ':$$' | grep . && { echo "FAIL: undefined symbols"; exit 1; } || echo "OK: no undefined symbols"
+	@riscv64-unknown-elf-size $(RV32_OBJ)
 
 clean:
-	rm -f hal_host_test /tmp/sha256_hal_rv32.o
+	rm -f hal_host_test drv_host_test $(RV32_OBJ)
 .PHONY: test crosscheck rv32 clean

@@ -4,7 +4,7 @@ RTL Verilog-2001 (Quartus II 13.0sp1 đọc được), dùng chung cho mô phỏ
 
 | Thư mục | File | Ghi chú |
 | --- | --- | --- |
-| `core/` | 23 khối của lõi RV32I 5 tầng | Phát |
+| `core/` | 26 khối của lõi RV32I 5 tầng, có Zicsr và trap máy (`Sys_Decoder`, `CSR_Unit`, `Pipe_Reg`, P-09) | Phát |
 | `bus/` | `AXI4_Lite_Master`, `AXI4_Lite_Slave_Template`, `AXI4_Lite_to_APB`, `APB_Decoder`, `Secure_DMA`, `DMA_Firewall` | Interconnect AXI 1 master (CPU và DMA dùng chung) – 6 slave nằm trong `SoC_Top.v`. DMA đi qua tường lửa |
 | `periph/` | `SYSCSR`, `UART`, `GPIO`, `TIMER`, `WDT`, `PLIC`, `Mailbox`, `Sync_FIFO` | APB slave, 0 wait state. Mailbox có hai cổng APB (Secure và App) |
 | `mem/` | `Data_Memory` (RAM), `Dual_Port_ROM` (ROM App và Boot ROM, cổng B chỉ đọc qua AXI) | Đọc/ghi ở cạnh xuống để suy ra M4K/BRAM |

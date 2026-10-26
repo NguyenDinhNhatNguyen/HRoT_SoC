@@ -8,10 +8,10 @@
 | --- | --- | --- |
 | `rtl/core/`, `rtl/top/RISCV_Core.v` | Lõi RV32I 5 tầng (forwarding, load-use stall, flush ở EX, load/store byte/half) | Phát |
 | `rtl/bus/`, `rtl/periph/`, `rtl/mem/`, `rtl/crypto/`, `rtl/top/SoC_Top.v` | AXI4-Lite master dùng chung (CPU và Secure DMA) + interconnect, cầu AXI→APB, SYSCSR (BUS_ERR, Boot Guard), UART, GPIO, TIMER, WDT, PLIC-lite, Mailbox, Secure DMA + tường lửa, SHA-256, bộ nhớ, bus APB thế giới App | Nguyên |
-| `dv/tb/` · `dv/tb/soc/` | TB đơn vị, TB lõi (`RISCV_Core_tb`, `RISCV_Core_prog_tb`, `RISCV_Core_hazard_tb`) · `APB_Periph_tb`, `SoC_Top_tb` | Phát (lõi, UVM) · Nguyên (IP, SoC) |
-| `dv/agents`, `dv/env`, `dv/tests`, `dv/hrot_dv_pkg.sv` | Môi trường UVM AXI4-Lite | Phát |
-| `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình ISA tự kiểm tra cho lõi · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
-| `fw/` | HAL SHA-256, crt0, linker script, Secure Boot | Phát |
+| `dv/tb/` · `dv/tb/soc/` | TB đơn vị, TB lõi (`RISCV_Core_tb`, `RISCV_Core_prog_tb`, `RISCV_Core_hazard_tb`), chỉ TB trực tiếp · `APB_Periph_tb`, `SoC_Top_tb` | Phát (lõi) · Nguyên (IP, SoC) |
+| `dv/agents`, `dv/env`, `dv/tests`, `dv/hrot_dv_pkg.sv` | Môi trường UVM AXI4-Lite và SHA-256. Từ 26/10 (P-10) slave mô hình nằm ở `dv/agents`, hai top UVM (`tb_top.sv`, `tb_sha256_top.sv`) nằm ở `dv/env` | Phát |
+| `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình tự kiểm tra cho lõi (`core_isa_test`, `core_trap_test`) · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
+| `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), crt0, linker script, Secure Boot | Phát |
 | `vp/` | Virtual Platform SystemC/TLM-2.0 (chạy HAL thật) | Nguyên |
 | `fpga/` (`intel_de2`, `xilinx`, `reports`) · `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC | Nguyên · Phát |
 
@@ -20,8 +20,9 @@
 - `instr_rdata` / `data_rdata` phải hợp lệ **trước cạnh lên kế tiếp** sau khi địa chỉ đổi. Bộ nhớ trong SoC đọc đồng bộ ở **cạnh xuống** (suy ra M4K/BRAM), nên lõi vẫn thấy dữ liệu trong cùng chu kỳ, đổi lại đường đọc chỉ còn nửa chu kỳ (10 ns @ 50 MHz).
 - Truy cập qua bus chưa xong thì `bus_stall = 1` (đóng băng toàn pipeline). Trong `SoC_Top`: `bus_stall = (data_we | data_re) & ~resp_valid` (tổ hợp).
 - Store: `data_wdata` đã lặp byte/half lên mọi lane, `data_wstrb[3:0]` chọn lane. Load: `data_rdata` là word căn lề, lõi tự dịch và mở rộng dấu/0.
-- Truy cập lệch lề không được hỗ trợ (không trap). Chưa có CSR/ECALL/FENCE/ngắt (giải mã thành NOP), Zicsr + trap là việc P-09.
-- **Cổng ngắt (I-01, chốt 25/10):** `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ.
+- Truy cập lệch lề không được hỗ trợ (không trap).
+- **Zicsr và trap máy (P-09, 26/10):** CSR `mstatus` (MIE, MPIE, MPP đọc 11), `misa` (RV32I), `mie` (MTIE, MEIE), `mip` (MTIP, MEIP, chỉ đọc), `mtvec` (chỉ chế độ direct), `mscratch`, `mepc`, `mcause`, `mtval`, `mvendorid`/`marchid`/`mimpid`/`mhartid` (đọc 0). CSR khác hoặc ghi vào CSR chỉ đọc là lệnh không hợp lệ. Trap: ngắt (`mcause` 0x8000000B / 0x80000007), lệnh không hợp lệ (2), EBREAK (3), ECALL (11), `mtval` = 0. MRET khôi phục MIE từ MPIE. FENCE, FENCE.I, WFI chạy như NOP. Trap xử lý ở tầng MEM: lệnh cũ hơn đã xong, lệnh mới hơn bị hủy. Ngắt chỉ nhận trên lệnh không truy cập bộ nhớ, nên một lệnh load/store không bao giờ bị cắt hay chạy lại. Sau reset `mstatus.MIE = 0` và `mie = 0`, nên firmware cũ chạy như trước.
+- **Cổng ngắt (I-01, chốt 25/10, có trong lõi từ P-09):** `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Phía `SoC_Top` chưa nối hai cổng này (comment `TODO(P-09)`, việc của Nguyên theo R16), cổng để hở thì ngắt không bao giờ xảy ra. Dự trữ cho sau P-09, chưa có trong lõi: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ.
 - **ASIC (R8, chốt trước Tuần 12):** khi Nguyên thêm bộ nhớ đọc cạnh lên, lõi cần tín hiệu chờ ở IF và MEM để chịu 1 chu kỳ trễ. Ở MEM dùng lại `bus_stall`, ở IF thêm cổng mới (tên chốt cùng P-09).
 - Reset active-high, PC reset = `0x0`. Register file không reset (x1..x31 là X đến khi được ghi).
 
@@ -48,12 +49,12 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 | --- | --- |
 | `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256), HAL host, APB, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`), VP. Log ở `build/logs/` |
 | `make sim-unit` | 11 TB đơn vị (`sim/run_unit.do`), mỗi TB in `SUMMARY <TÊN>: PASS = x \| FAIL = y` |
-| `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
+| `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định, chạy `core_isa_test` và `core_trap_test`) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
 | `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do` |
 | `make sim-ip` / `make sim-soc` / `make vp` | APB (SYSCSR, GPIO, UART, TIMER, WDT, PLIC-lite, Mailbox) / toàn SoC (thêm tham số `set PLUSARGS +TAMPER` trong `sim/run_soc.do` để chạy ảnh bị sửa) / Virtual Platform |
 | `make fw` | `fw/build/firmware_imem.hex`, `firmware_dmem.hex`, `.dis`, `.map` |
-| `make -C fw/hal/test test` · `crosscheck` · `rv32` | HAL trên host · so với `sha256sum` · build rv32i |
-| Tạo lại hex ISA test | lệnh ở đầu `dv/tests/asm/core_isa_test.S` |
+| `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và driver |
+| Tạo lại hex test lõi | lệnh ở đầu `dv/tests/asm/core_isa_test.S` và `core_trap_test.S` (test trap cần `-march=rv32i_zicsr`) |
 | `make de2` / `make xilinx PART=<part>` | Quartus / Vivado, kết quả ở `fpga/*/build/`, báo cáo đã lưu ở `fpga/reports/` |
 
 Trên Questa 10.2c, chạy `make test < /dev/null` cho tới khi `sim/run_unit.do` được sửa (xem `Project_Status.md` mục 4), nếu không Questa sẽ đứng chờ ở dấu nhắc `VSIM(paused)>`. `sim/run_vp.sh` nhận cả SystemC 2.3.3 (`lib-linux64/`) lẫn 2.3.4 (`lib/`) qua biến `SYSTEMC_HOME`.

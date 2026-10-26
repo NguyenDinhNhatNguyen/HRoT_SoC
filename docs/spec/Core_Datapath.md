@@ -1,6 +1,6 @@
 # Sơ đồ khối datapath lõi RISC-V 5 tầng
 
-> Người giữ: Phát (P-07). Cập nhật: 25/10/2026. RTL: `rtl/core/`, ghép tầng ở `rtl/top/RISCV_Core.v`.
+> Người giữ: Phát (P-07). Cập nhật: 26/10/2026 (thêm phần CSR và trap của P-09). RTL: `rtl/core/`, ghép tầng ở `rtl/top/RISCV_Core.v`.
 
 ![Sơ đồ khối datapath 5 tầng](img/core_datapath_5stage.webp)
 
@@ -19,6 +19,9 @@
 | WB | Result_Mux | `WB_Stage` (`Result_Mux`) | Chọn ALU / dữ liệu load / PC+4 / PCTarget |
 | — | Hazard_Unit | `Hazard_Detection` | Phát hiện load-use |
 | — | Forwarding_Unit | `Forwarding_Unit` | ForwardA / ForwardB cho EX, ưu tiên MEM hơn WB |
+| ID | (chưa có trong sơ đồ, P-09) | `Sys_Decoder` | Giải mã lệnh SYSTEM (Zicsr, ECALL, EBREAK, MRET, WFI) và phát hiện lệnh không hợp lệ. Lệnh không hợp lệ bị tắt mọi tác dụng (ghi thanh ghi, bộ nhớ, rẽ nhánh), chỉ gây trap khi tới MEM |
+| IF/ID, ID/EX, EX/MEM | (chưa có trong sơ đồ, P-09) | `Pipe_Reg` | Thanh ghi phụ mang bit `valid`, thông tin CSR/trap và PC xuống MEM, cùng luật stall/flush với thanh ghi pipeline chính |
+| MEM | (chưa có trong sơ đồ, P-09) | `CSR_Unit` | CSR máy (`mstatus`, `misa`, `mie`, `mip`, `mtvec`, `mscratch`, `mepc`, `mcause`, `mtval`, `mhartid`…) và quyết định trap trên lệnh ở MEM |
 
 ## Tín hiệu điều khiển pipeline (theo `RISCV_Core.v`)
 
@@ -28,6 +31,9 @@
 | `PCSrc_EX` | `Branch_Unit` (nhánh lấy, JAL, JALR) | PC nhảy tới `PCTarget_EX`, flush IF/ID và ID/EX |
 | `bus_stall` | Bên ngoài lõi (`SoC_Top`: `(data_we \| data_re) & ~resp_valid`) | Đóng băng toàn pipeline: PC, IF/ID, ID/EX, EX/MEM, MEM/WB |
 | `ForwardA`, `ForwardB` | `Forwarding_Unit` | Chọn toán hạng EX từ thanh ghi, MEM (`ForwardResult_MEM`) hoặc WB (`Result_WB`) |
+| `trap_redirect` | `CSR_Unit` (trap hoặc MRET ở MEM, chỉ khi không `bus_stall`) | PC nhảy tới `mtvec` (trap) hoặc `mepc` (MRET), flush IF/ID, ID/EX và biến lệnh rời EX thành bubble. Ưu tiên hơn `PCSrc_EX` |
+| `trap_kill` | `CSR_Unit` (trap) | Hủy lệnh ở MEM: không ghi thanh ghi. Ngắt chỉ nhận trên lệnh hợp lệ không truy cập bộ nhớ, nên không giao dịch bus nào bị cắt hay lặp |
+| `LoadUseStall` cho lệnh CSR | `Hazard_Detection` với `MemRead_EX \| csr_op_EX` | Lệnh CSR có kết quả ở MEM như lệnh load, lệnh phụ thuộc ngay sau chờ 1 chu kỳ |
 
 ## Điểm sơ đồ khác RTL (đề xuất khi vẽ lại)
 
@@ -38,3 +44,4 @@ Sơ đồ đúng ở mức khối. Các điểm sau đơn giản hóa so với R
 3. **Bộ nhớ:** Instruction_Memory và Data_Memory vẽ trong tầng IF và MEM. Trong RTL hai khối này nằm ngoài lõi (Boot ROM và bus AXI4-Lite của `SoC_Top`), nên vẽ ở mép tầng, nối qua cổng của lõi.
 4. **Nhãn sót:** mũi tên MEM → MEM_WB_Reg còn chữ "Text".
 5. **Đầu vào của Hazard_Unit và Forwarding_Unit** (`MemRead_EX`, `Rd_EX`, `Rs1/Rs2`, `Rd_MEM`, `Rd_WB`, `RegWrite_*`) chưa vẽ.
+6. **Phần P-09 (26/10):** `Sys_Decoder`, `CSR_Unit`, các `Pipe_Reg` phụ, cổng `irq_timer`/`irq_ext` và đường `trap_redirect` về IF chưa có trong hình.

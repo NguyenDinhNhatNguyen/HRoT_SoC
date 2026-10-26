@@ -23,7 +23,7 @@
 
 ## 3. Kiến trúc kiểm chứng
 
-Tái sử dụng agent AXI4-Lite đã có (driver, monitor, sequencer, SVA trong `axi4_lite_if`). Top `dv/tb/tb_sha256_top.sv` nối agent thẳng vào DUT thật.
+Tái sử dụng agent AXI4-Lite đã có (driver, monitor, sequencer, SVA trong `axi4_lite_if`). Top `dv/env/tb_sha256_top.sv` nối agent thẳng vào DUT thật.
 
 | Thành phần | Vai trò | Tình trạng |
 | --- | --- | --- |

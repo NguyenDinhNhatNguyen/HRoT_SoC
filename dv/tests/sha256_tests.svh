@@ -1,4 +1,4 @@
-// UVM tests for SHA256_Wrapper (P-08). Run with the top dv/tb/tb_sha256_top.sv:
+// UVM tests for SHA256_Wrapper (P-08). Run with the top dv/env/tb_sha256_top.sv:
 //   vsim -c -do "set DUT sha256; set TEST sha256_full_test; do run_uvm.do"
 // sha256_kat_test | sha256_ctl_test | sha256_rand_test (+NUM_MSGS=<n>) | sha256_full_test
 // sha256_alias_test: offsets >= 0x100 read 0 and do not alias (passes since RTL fix a968cce)

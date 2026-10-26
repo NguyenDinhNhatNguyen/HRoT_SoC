@@ -14,7 +14,7 @@ module IF_ID_Reg(
     output reg [31:0] PC_Plus_4_ID
 );
 
-always @(posedge clk or posedge rst) begin
+always @(posedge clk) begin // synchronous reset: rst || flush on an async edge fails Quartus (error 10200)
     if (rst || flush) begin
         PC_ID        <= 32'b0;
         Instr_ID     <= 32'h00000013; // NOP (addi x0, x0, 0)

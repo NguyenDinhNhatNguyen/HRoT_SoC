@@ -49,7 +49,7 @@ module ID_EX_Reg(
     output reg [2:0]   funct3_EX
 );
 
-always @(posedge clk or posedge rst) begin
+always @(posedge clk) begin // synchronous reset: rst || flush on an async edge fails Quartus (error 10200)
     if (rst || flush) begin
         // Control signals
         RegWrite_EX   <= 1'b0;

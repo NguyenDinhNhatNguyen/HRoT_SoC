@@ -37,7 +37,9 @@ module EX_Stage(
     output [31:0] PCTarget_EX_out,
     output [4:0]  Rd_EX_out,
     // Feedback to IF (redirect PC)
-    output        PCSrc_EX
+    output        PCSrc_EX,
+    // Forwarded rs1 value, the CSR write operand (P-09)
+    output [31:0] SrcA_EX_out
 );
 
 assign RegWrite_EX_out  = RegWrite_EX;
@@ -57,6 +59,8 @@ wire ltu_EX;
 assign SrcA_EX = (ForwardA_EX == 2'b10) ? ALUResult_MEM :
                  (ForwardA_EX == 2'b01) ? Result_WB     :
                                           RD1_EX;
+
+assign SrcA_EX_out = SrcA_EX;
 
 assign WriteData_EX_out = (ForwardB_EX == 2'b10) ? ALUResult_MEM :
                           (ForwardB_EX == 2'b01) ? Result_WB     :
