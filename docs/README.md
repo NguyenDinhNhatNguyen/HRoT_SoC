@@ -11,5 +11,6 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | `guides/` | [Dev_Guide.md](guides/Dev_Guide.md) | Phân công, giao kèo của lõi, cách chạy kiểm tra, quy ước code | Phát |
 | `project/` | [Project_Plan.md](project/Project_Plan.md) | Kế hoạch tổng thể, mốc, lộ trình theo tuần | Phát |
 | `project/` | [Project_Status.md](project/Project_Status.md) | Trạng thái kỹ thuật hiện tại và các điểm cần lưu ý | Phát |
+| `project/` | [FPGA_Results.md](project/FPGA_Results.md) | Số đo DE2 và Artix-7 (LE/LUT, thanh ghi, bộ nhớ, Fmax, slack, đường găng) của mọi lần tổng hợp, để so sánh giữa các phiên bản | Phát |
 
 Đổi bản đồ địa chỉ hay giao diện giữa hai người: sửa file trong `spec/`, cập nhật tab "Mốc & Giao diện" trong sheet và báo người còn lại trước.
