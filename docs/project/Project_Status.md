@@ -5,9 +5,9 @@
 ## 1. Tổng quan
 
 - Toàn dự án 45/61 việc (74%): Nguyên 31/36, Phát 14/23. Ngày 26/10 Phát làm xong P-09, P-10, P-11, P-23. Ngày 26/10 Nguyên làm xong N-19…N-25, N-27, N-32 và N-35. Ngày 25/10 thêm 6 việc phát sinh (N-32…N-36, P-22), danh sách rủi ro và hướng xử lý ở `Project_Plan.md` mục 8. RTL FREEZE: **22/11/2026** (mốc M2).
-- SoC biên dịch và chạy được: Master boot từ Boot ROM riêng, băm cả 4 KB ROM App bằng CPU và bằng Secure DMA (qua tường lửa), so với golden hash đọc từ Boot ROM, rồi nhả App qua SYSCSR, hoặc khóa App bằng Boot Guard và xóa RAM App khi hash sai. Bus APB Secure có SYSCSR, UART0, GPIO0, TIMER0, WDT, PLIC-lite, Mailbox và Secure DMA. Thế giới App có bus APB riêng với UART1, GPIO1, TIMER1 và Mailbox. `SoC_Top_tb` chạy cả ảnh đúng lẫn ảnh bị sửa trên RTL (firmware thử `dv/sw/mkhex.py`). Dây ngắt của hai lõi đã có trong `SoC_Top` và lõi đã có cổng `irq_timer`/`irq_ext` (P-09, 26/10), còn chờ nối theo comment `TODO(P-09)` (I-01).
-- FPGA (26/10, đo với lõi đã đổi reset đồng bộ ở `IF_ID_Reg` và `ID_EX_Reg`, xem mục 4): DE2 9.358 LE (28%), 4.390 thanh ghi, 135 Kbit M4K, Fmax 53,02 MHz. Artix-7 xc7a35t 5.530 LUT (27%), 4.092 FF, WNS +3,519 ns @ 50 MHz. Đường găng DE2 nằm trong lõi (`Rd_WB` → forwarding ở ID → `RD2_EX`, slack +1,14 ns), không có đường nào của uncore trong top. Báo cáo ở `fpga/reports/`. Lần đo mới nhất (DE2, commit `9f9e66a`, có P-09): 10.270 LE (31%), Fmax 53,73 MHz. Số của mọi lần đo: [FPGA_Results.md](FPGA_Results.md).
-- Firmware Secure Boot thật **chưa có**: `SoC_Top_tb` chạy firmware thử viết tay (`dv/sw/mkhex.py`), còn `fw/secure_boot/main.c` là code giả (việc P-13).
+- SoC biên dịch và chạy được: Master boot từ Boot ROM riêng, băm cả 4 KB ROM App bằng CPU và bằng Secure DMA (qua tường lửa), so với golden hash đọc từ Boot ROM, rồi nhả App qua SYSCSR, hoặc khóa App bằng Boot Guard và xóa RAM App khi hash sai. Bus APB Secure có SYSCSR, UART0, GPIO0, TIMER0, WDT, PLIC-lite, Mailbox và Secure DMA. Thế giới App có bus APB riêng với UART1, GPIO1, TIMER1 và Mailbox. `SoC_Top_tb` chạy cả ảnh đúng lẫn ảnh bị sửa trên RTL (firmware thử `dv/sw/mkhex.py`). Dây ngắt của hai lõi đã nối vào cổng `irq_timer`/`irq_ext` của lõi (P-14, 27/10, I-01), `SoC_Irq_tb` kiểm ngắt timer, PLIC và Mailbox trên cả hai lõi.
+- FPGA (26/10, đo với lõi đã đổi reset đồng bộ ở `IF_ID_Reg` và `ID_EX_Reg`, xem mục 4): DE2 9.358 LE (28%), 4.390 thanh ghi, 135 Kbit M4K, Fmax 53,02 MHz. Artix-7 xc7a35t 5.530 LUT (27%), 4.092 FF, WNS +3,519 ns @ 50 MHz. Đường găng DE2 nằm trong lõi (`Rd_WB` → forwarding ở ID → `RD2_EX`, slack +1,14 ns), không có đường nào của uncore trong top. Báo cáo ở `fpga/reports/`. Lần đo mới nhất (DE2, 27/10, có P-09 và dây ngắt đã nối ở P-14): 10.509 LE (32%), Fmax 54,21 MHz. Số của mọi lần đo: [FPGA_Results.md](FPGA_Results.md).
+- Firmware Secure Boot thật có từ 27/10 (P-13): `fw/secure_boot/secure_boot.c` băm cả 4 KB ROM App bằng HAL, so golden ở `0xFE0` trong Boot ROM, nhả App hoặc khóa bằng Boot Guard, log qua UART0, kết quả ra LED GPIO0. Chạy trên VP (`vp_sim --fw`) và trên RTL (`SoC_Fw_tb`). `SoC_Top_tb` vẫn dùng firmware thử viết tay (`dv/sw/mkhex.py`).
 
 Kết quả kiểm tra gần nhất trên Questa (`make test`, 26/10, toàn bộ PASS):
 
@@ -39,8 +39,8 @@ Ngày 26/10 (Phát chạy bằng iverilog và Verilator, **chưa chạy trên Qu
 | P-12 | Cập nhật tài liệu này + `Dev_Guide.md`, thêm test của Phát vào `make test` | 01/11 | ✅ Xong (làm 24/10, vào `main` cùng commit P-08 `bb59f25`), sheet đã cập nhật 25/10 |
 | P-23 | Sửa lỗi Quartus 10200 ở `IF_ID_Reg.v` và `ID_EX_Reg.v`: đổi `always @(posedge clk or posedge rst)` thành `always @(posedge clk)` (mục 4, R15) | 01/11 | ✅ Xong 26/10 (commit `9f9e66a`). Chạy lại iverilog: TB đơn vị, lõi, SoC (ảnh đúng và `+TAMPER`) PASS. `make de2` trên máy Phát 26/10 (bản có cả P-09): biên dịch sạch, không còn lỗi 10200, DE2 10.270 LE (31%), 4.840 thanh ghi, Fmax 53,73 MHz, đường găng vẫn trong lõi (`Rd_WB` → forwarding ở ID → `RD1_EX`, slack +1,39 ns) |
 | P-22 | Sửa 2 lỗi script trên Questa 10.2c (mục 4) | 01/11 | ✅ Xong: Phát sửa 25/10 (commit `fb0b577`), Nguyên chạy `make test` trên Questa 26/10, 11 TB đơn vị và 4 test UVM PASS |
-| P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | Chờ I-03 (P-11 xong 26/10, in log bằng `uart.h`). Sau khi băm ROM App đọc `SYSCSR.BUS_ERR`: `VALID = 1` thì in log qua UART và giữ App trong reset, xong ghi 1 vào bit0 để xóa (N-36) |
-| P-14 | Test assembly ngắt timer/external | 08/11 | Lõi đã có cổng ngắt (P-09, đã test ở mức lõi). Còn chờ Nguyên nối dây ngắt trong `SoC_Top.v` để test trên SoC |
+| P-13 | Firmware secure boot thật (HAL + UART + golden + LOCK), chạy VP rồi RTL | 08/11 | ✅ Xong 27/10, chưa commit: `fw/secure_boot/secure_boot.c` theo đúng ghi chú (BUS_ERR → log, giữ App, xóa bit0. Golden băm đủ 4 KB ROM App). `linker.ld` đặt `.rodata` vào Boot ROM, golden ở `0xFE0` (I-03). Firmware build `-Os` (3,5/4 KB ROM). Test: `sb_host_test` 30/0 (8 nhánh, gồm lỗi bus, SHA hỏng, LOCK không xong), VP `--fw` ảnh đúng và bị sửa PASS, `SoC_Fw_tb` ảnh đúng và `+TAMPER` PASS |
+| P-14 | Test assembly ngắt timer/external | 08/11 | ✅ Xong 27/10, chưa commit: nối 4 dây ngắt trong `SoC_Top.v` (Phát làm, đã báo Nguyên). `SoC_Irq_tb` + `soc_irq_master.S`, `soc_irq_app.S`: TIMER0, GPIO0 qua PLIC, MEI trước MTI, Mailbox hai chiều, TIMER1. Master 5 ngắt, App 2 ngắt, PASS. Tháo từng dây hoặc đảo ưu tiên đều làm test FAIL |
 | P-15…P-17 | FW dùng Secure DMA · FW App + `app_firmware.hex` + sinh golden hash · UVM agent APB + scoreboard SHA (DPI) | 15/11 | Chưa làm |
 | P-18…P-21 | Test toàn SoC + regression UVM · coverage · Genus · Innovus + so sánh PPA | 22/11 → 13/12 | Chưa làm |
 
@@ -48,9 +48,9 @@ Ngày 26/10 (Phát chạy bằng iverilog và Verilator, **chưa chạy trên Qu
 
 | ID | Nội dung | Hạn | Trạng thái |
 | --- | --- | --- | --- |
-| I-01 | Cổng ngắt của lõi: `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | 01/11 | ✅ **Đã chốt 25/10** (Phát). Lõi có cổng từ P-09 (26/10, commit `9f9e66a`), phía `SoC_Top` còn chờ nối |
+| I-01 | Cổng ngắt của lõi: `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | 01/11 | ✅ **Đã chốt 25/10** (Phát). Lõi có cổng từ P-09 (26/10, commit `9f9e66a`), nối trong `SoC_Top` từ 27/10 (P-14) |
 | I-02 | Header địa chỉ firmware theo `SoC_Memory_Map.md`, đổi map phải báo trước | 01/11 | Nguyên |
-| I-03 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó | 08/11 | Cả hai |
+| I-03 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó | 08/11 | ✅ Xong 27/10: `.rodata` trong Boot ROM, golden ở `0xFE0` (32 byte cuối ROM, `SB_GOLDEN_ADDR`) |
 | I-04 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm **cả 4 KB** ROM App) | 15/11 | Phát |
 | I-05 | SHA-256: 66 chu kỳ START→DONE, offset trống OKAY/0, ngoài slave DECERR | — | ✅ Đã chốt, RTL đã khớp từ 25/10 |
 | I-06 | UART `BAUD_DIV` mặc định 26 = 115200 baud @ 50 MHz | — | ✅ Đã chốt |
@@ -74,12 +74,12 @@ Các lỗi SoC/uncore liệt kê ở bản trước (SoC không compile, Master 
 - **Comment và chuỗi in ra của testbench viết bằng tiếng Anh** từ 25/10. File của Nguyên đã đổi, file của Phát đổi hết ngày 25/10 (commit `fb0b577`).
 - **VP băm cả 4 KB ROM App** theo I-04 từ 25/10 (N-33, commit `a946e2a`).
 - **Bộ nhớ đọc ở cạnh xuống** chạy tốt trên FPGA nhưng không hợp với SRAM macro khi làm ASIC (P-20/P-21). Cần phương án: thêm 1 tầng chờ ở IF/MEM, hoặc dùng flip-flop cho bộ nhớ nhỏ.
-- **Golden hash đặt được trong Boot ROM từ 26/10 (N-21):** lệnh `lw` đọc được ROM ở `0x0000_0000` qua cổng B (chỉ đọc, ghi trả `SLVERR`). P-13 và I-03 chỉ còn việc đổi `linker.ld` để `.rodata` và golden nằm trong ROM.
+- **Golden hash đặt được trong Boot ROM từ 26/10 (N-21):** lệnh `lw` đọc được ROM ở `0x0000_0000` qua cổng B (chỉ đọc, ghi trả `SLVERR`). Từ 27/10 `linker.ld` đặt `.rodata` trong ROM và chừa `0xFE0`–`0xFFF` cho golden (P-13, I-03). Golden lúc này do TB (`fw/tools/golden.py`) hoặc VP ghi vào, bước tự sinh lúc build là I-04 (P-16).
 - **Xuống dòng:** `.gitattributes` ép LF cho `*.sh`, `Makefile`, `*.tcl`. Nên thêm `* text=auto eol=lf` để file `.v/.sv/.c/.md` không bị đổi qua lại LF↔CRLF giữa hai máy.
 - **WSL của Phát** đã cài `make`, `gcc`, `cmake`, toolchain RISC-V và SystemC 2.3.4 (25/10), chạy được `make fw`, `make vp` và test HAL. Chưa có QuestaSim, nên các lần chạy `make test` trên Questa do Nguyên làm.
 
 ## 5. Lỗ hổng so với lộ trình Tuần 16
 
-- Kiểm chứng secure boot mức SoC với firmware thật (P-13, P-18): `SoC_Top_tb` kiểm cả ảnh đúng lẫn ảnh bị sửa nhưng bằng firmware thử viết tay. Còn thiếu: firmware C thật chạy trên RTL và kịch bản lõi SHA hỏng → selftest bắt được.
+- Kiểm chứng secure boot mức SoC với firmware thật (P-13, P-18): `SoC_Top_tb` kiểm cả ảnh đúng lẫn ảnh bị sửa nhưng bằng firmware thử viết tay. Từ 27/10 firmware C thật chạy trên RTL (`SoC_Fw_tb`), kịch bản lõi SHA hỏng mới kiểm trên host (`sb_host_test`).
 - Hạ tầng coverage (P-19): covergroup, `+cover`, `vcover merge`, báo cáo. Monitor UVM cần ghi thời điểm và thứ tự AW–W.
 - GLS (P-20): `RISCV_Core_prog_tb` dùng lại được (bọc phần dump thanh ghi bằng `ifndef GLS`), `RISCV_Core_tb` chỉ chạy RTL.

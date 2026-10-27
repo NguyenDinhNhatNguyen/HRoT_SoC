@@ -2,26 +2,26 @@
  * linker.ld -- memory map of the Master Core (Secure Boot) firmware
  *
  * The core is Harvard: instructions come from the boot ROM through the fetch port and
- * loads/stores go over the data bus. A load cannot read the boot ROM, so all data
- * (.rodata, .data) lives in RAM and is preloaded from firmware_dmem.hex ($readmemh in
- * simulation, BRAM init on FPGA). There is no ROM-to-RAM copy at boot.
+ * loads/stores go over the data bus. Since N-21 a load can also read the boot ROM (read-only
+ * data port at 0x0000_0000), so constants stay in ROM where nothing can overwrite them (I-03).
  *
- *   ROM  0x0000_0000  4 KB   .text           -> firmware_imem.hex
- *   RAM  0x1000_0000  4 KB   .rodata .data   -> firmware_dmem.hex
+ *   ROM  0x0000_0000  4 KB   .text .rodata   -> firmware_imem.hex
+ *        0x0000_0FE0  32 B   golden hash of the App ROM (secure_boot.h SB_GOLDEN_ADDR), filled
+ *                            in after the build (testbench, VP, later the I-04 build step)
+ *   RAM  0x1000_0000  4 KB   .data           -> firmware_dmem.hex
  *                            .bss (cleared by crt0), then the 1 KB stack right after it
  *                            (__stack_top = end of .stack, not the end of RAM)
  *
  * Confirmed with SoC_Top on 25/10 (docs/spec/SoC_Memory_Map.md, fw/hal/soc_map.h): RAM is
  * 4 KB at 0x1000_0000, 0x4000_0000 is the APB bus with SYSCSR at its base (it replaced the
  * old Reset Controller), 0x5000_0000 is SHA-256, 0x6000_0000 is App ROM port B.
- * I-03 (week 9) moves .rodata into the boot ROM once N-21 adds its read-only data port.
  */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
 MEMORY
 {
-    ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K
+    ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K - 32     /* the last 32 bytes hold the golden hash */
     RAM (rw)  : ORIGIN = 0x10000000, LENGTH = 4K
 }
 
@@ -40,7 +40,7 @@ SECTIONS
         . = ALIGN(4);
         *(.srodata .srodata.*)
         *(.rodata .rodata.*)
-    } > RAM
+    } > ROM
 
     .data :
     {

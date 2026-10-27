@@ -18,7 +18,7 @@ set(OBJDUMP "${TOOLCHAIN_PREFIX}objdump")
 set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld)
 set(RAM_BASE 0x10000000)   # must match the RAM ORIGIN in linker.ld
 
-add_compile_options(-march=rv32i -mabi=ilp32 -O2 -ffreestanding
+add_compile_options(-march=rv32i -mabi=ilp32 -Os -ffreestanding
                     -fno-tree-loop-distribute-patterns
                     -ffunction-sections -fdata-sections -Wall -Wextra)
 add_link_options(-march=rv32i -mabi=ilp32 -nostdlib -nostartfiles
@@ -36,22 +36,27 @@ target_include_directories(hal_drivers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hal)
 add_executable(secure_boot.elf
     startup/crt0.S
     secure_boot/main.c
+    secure_boot/secure_boot.c
 )
+target_include_directories(secure_boot.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/secure_boot)
 # libgcc provides __mulsi3/__divsi3... when C code multiplies or divides (rv32i has no M)
 target_link_libraries(secure_boot.elf PRIVATE hal_sha256 hal_drivers gcc)
 target_link_options(secure_boot.elf PRIVATE -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/firmware.map)
 set_target_properties(secure_boot.elf PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 
 # Output files for simulation / FPGA ($readmemh into a 32-bit word array):
-#   firmware_imem.hex : .text, word 0 = address 0x0
-#   firmware_dmem.hex : .rodata/.data, word 0 = address RAM_BASE
+#   firmware.bin      : .text and .rodata (the Boot ROM image without the golden hash)
+#   firmware_imem.hex : .text and .rodata, word 0 = address 0x0
+#   firmware_dmem.hex : .data, word 0 = address RAM_BASE (one zero word if .data is empty, so
+#                       $readmemh and the FPGA tools always get a non-empty file)
 add_custom_command(TARGET secure_boot.elf POST_BUILD
-    COMMAND ${OBJCOPY} -O binary -j .text $<TARGET_FILE:secure_boot.elf> ${CMAKE_CURRENT_BINARY_DIR}/firmware.bin
-    COMMAND ${OBJCOPY} -O verilog --verilog-data-width=4 -j .text
+    COMMAND ${OBJCOPY} -O binary -j .text -j .rodata $<TARGET_FILE:secure_boot.elf> ${CMAKE_CURRENT_BINARY_DIR}/firmware.bin
+    COMMAND ${OBJCOPY} -O verilog --verilog-data-width=4 -j .text -j .rodata
             $<TARGET_FILE:secure_boot.elf> ${CMAKE_CURRENT_BINARY_DIR}/firmware_imem.hex
-    COMMAND ${OBJCOPY} -O verilog --verilog-data-width=4 -j .rodata -j .data
+    COMMAND ${OBJCOPY} -O verilog --verilog-data-width=4 -j .data
             --change-addresses=-${RAM_BASE}
             $<TARGET_FILE:secure_boot.elf> ${CMAKE_CURRENT_BINARY_DIR}/firmware_dmem.hex
+    COMMAND ${CMAKE_COMMAND} -DFILE=${CMAKE_CURRENT_BINARY_DIR}/firmware_dmem.hex -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/nonempty_hex.cmake
     COMMAND ${OBJDUMP} -d $<TARGET_FILE:secure_boot.elf> > ${CMAKE_CURRENT_BINARY_DIR}/firmware.dis
     COMMENT "Writing firmware.bin, firmware_imem.hex, firmware_dmem.hex and firmware.dis..."
 )

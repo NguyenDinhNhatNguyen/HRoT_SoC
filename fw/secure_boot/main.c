@@ -1,6 +1,11 @@
-int main() {
-    int a = 5;
-    int b = 10;
-    int c = a + b;
-    return c;
+/*
+ * main.c -- Master Core firmware: run Secure Boot once, then idle (P-13)
+ */
+#include "secure_boot.h"
+
+int main(void)
+{
+    (void)secure_boot_run();
+    for (;;) {
+    }
 }

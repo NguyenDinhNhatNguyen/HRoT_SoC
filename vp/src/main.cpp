@@ -1,8 +1,9 @@
 // HRoT_SoC virtual platform (Secure world): a stand-in CPU running the real HAL, plus the bus,
 // Boot ROM, SYSCSR, UART0, TIMER0, WDT, Secure DMA, SHA-256 and the App ROM.
-//   vp_sim <app.hex> [--tamper]
+//   vp_sim <app.hex> [--tamper] [--fw]
 //   --tamper flips one ROM bit after the image is "signed", so secure boot must refuse it
 //   and keep the App in reset.
+//   --fw runs the real Secure Boot firmware (fw/secure_boot, P-13) instead of the built-in scenario.
 // Exit code: 0 = behaved as expected, 1 = didn't.
 #include <systemc.h>
 #include <cstring>
@@ -19,13 +20,23 @@ static CPU_Dummy_Initiator* g_cpu = nullptr;
 extern "C" uint32_t hal_host_read32(uint32_t off)            { return g_cpu->rd(vp_map::SHA256 + off); }
 extern "C" void     hal_host_write32(uint32_t off, uint32_t v) { g_cpu->wr(vp_map::SHA256 + off, v); }
 extern "C" uint32_t hal_host_memread32(uintptr_t addr)       { return g_cpu->rd(addr); }
+// UART/GPIO drivers and the firmware's own register accesses (hal_io.h, HAL_HOST_MODEL build)
+extern "C" uint32_t hal_host_mmio_read32(uintptr_t addr)             { return g_cpu->rd(addr); }
+extern "C" void     hal_host_mmio_write32(uintptr_t addr, uint32_t v) { g_cpu->wr(addr, v); }
 
 int sc_main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::printf("usage: %s <app.hex> [--tamper]\n", argv[0]);
+        std::printf("usage: %s <app.hex> [--tamper] [--fw]\n", argv[0]);
         return 2;
     }
-    bool tamper = argc > 2 && std::strcmp(argv[2], "--tamper") == 0;
+    bool tamper = false;
+    bool fw = false;
+    for (int i = 2; i < argc; i++) {
+        if (std::strcmp(argv[i], "--tamper") == 0)
+            tamper = true;
+        else if (std::strcmp(argv[i], "--fw") == 0)
+            fw = true;
+    }
 
     CPU_Dummy_Initiator cpu("cpu");
     VP_Bus              bus("bus", {{"to_syscsr",  vp_map::SYSCSR,   0x1000},
@@ -65,6 +76,8 @@ int sc_main(int argc, char* argv[]) {
     uint8_t golden[32];
     sha256_ref(app_rom.mem.data(), cpu.app_len, golden);
     std::memcpy(&boot_rom.mem[vp_map::GOLDEN], golden, 32);
+    std::memcpy(&boot_rom.mem[SB_GOLDEN_ADDR], golden, 32);   // the slot the real firmware reads (P-13)
+    cpu.fw_mode = fw;
     if (tamper) {
         app_rom.mem[0] ^= 0x01;
         std::printf("[Tamper] Flipped one bit in the App ROM\n");
@@ -73,6 +86,14 @@ int sc_main(int argc, char* argv[]) {
     sc_start();
 
     bool expect_ok = !tamper;
+    if (fw) {
+        bool said = uart0.tx_log.find(tamper ? "App locked out" : "App released") != std::string::npos;
+        bool fw_pass = cpu.fw_result == (tamper ? SB_LOCKED : SB_RELEASED) && syscsr.app_running() == expect_ok
+                       && syscsr.lock == tamper && said;
+        std::printf("VP RESULT: %s (firmware result 0x%02x, app_running=%d, lock=%d, UART log %s)\n",
+                    fw_pass ? "PASS" : "FAIL", cpu.fw_result, syscsr.app_running(), syscsr.lock, said ? "ok" : "missing");
+        return fw_pass ? 0 : 1;
+    }
     bool said_so = uart0.tx_log.find(tamper ? "App locked out" : "App released") != std::string::npos;
     bool pass = (cpu.boot_ok == expect_ok) && (syscsr.app_running() == expect_ok) && cpu.bus_errors == 1
                 && said_so && wdt.kicks == 1 && syscsr.lock == tamper && cpu.dma_match == expect_ok && cpu.fw_ok;

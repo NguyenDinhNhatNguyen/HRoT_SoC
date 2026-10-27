@@ -56,8 +56,21 @@ python3 dv/sw/mkhex.py sim > /dev/null
 check "SoC: secure boot, good image" $LOG/soc.log      "RESULT: PASS"
 (cd sim && "$QUESTA" -c -do "set PLUSARGS +TAMPER; do run_soc.do" < /dev/null)      > $LOG/soc_tamper.log 2>&1
 check "SoC: tampered image locked"  $LOG/soc_tamper.log "RESULT: PASS"
+# Real Secure Boot firmware on the SoC (P-13): needs the RISC-V toolchain for make fw
+if command -v riscv64-unknown-elf-gcc > /dev/null && make -s fw            > $LOG/fw_build.log 2>&1; then
+    python3 fw/tools/golden.py sim/app.hex sim/fw_golden.hex > /dev/null
+    (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; do run_fw.do" < /dev/null)             > $LOG/fw.log 2>&1
+    check "SoC: firmware, good image"   $LOG/fw.log        "SoC_Fw_tb RESULT: PASS"
+    (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set PLUSARGS +TAMPER; do run_fw.do" < /dev/null) > $LOG/fw_tamper.log 2>&1
+    check "SoC: firmware, tampered"     $LOG/fw_tamper.log "SoC_Fw_tb RESULT: PASS"
+else
+    printf "  %-30s SKIP  (no RISC-V toolchain or make fw failed, see %s)\n" "SoC: firmware" $LOG/fw_build.log
+fi
+(cd sim && "$QUESTA" -c -do "set TB SoC_Irq_tb; do run_fw.do" < /dev/null)              > $LOG/irq.log 2>&1
+check "SoC: interrupts, both cores" $LOG/irq.log       "SoC_Irq_tb RESULT: PASS"
 (cd sim && bash run_vp.sh)                                              > $LOG/vp.log 2>&1
-[ "$(grep -c 'VP RESULT: PASS' $LOG/vp.log)" = 2 ] && printf "  %-30s PASS\n" "VP: good and tampered image" \
+# 4 cases: good and tampered image, each with the built-in scenario and with the real firmware (P-13)
+[ "$(grep -c 'VP RESULT: PASS' $LOG/vp.log)" = 4 ] && printf "  %-30s PASS\n" "VP: good and tampered image" \
     || { printf "  %-30s FAIL  (see %s)\n" "VP: good and tampered image" $LOG/vp.log; fail=1; }
 
 [ $fail = 0 ] && echo "== All checks passed ==" || echo "== Some checks failed =="

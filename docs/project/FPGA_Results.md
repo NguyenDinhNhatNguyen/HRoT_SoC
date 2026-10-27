@@ -1,6 +1,6 @@
 # Kết quả tổng hợp FPGA qua các phiên bản
 
-> Lập 26/10/2026 (Phát), đủ số đo tới commit `9f9e66a`. Thư mục `fpga/reports/` chỉ giữ báo cáo của lần đo cuối mà Nguyên commit, mỗi lần đo lại sẽ ghi đè. File này giữ lại số của mọi lần đo để so sánh. Các tài liệu khác (`Project_Plan.md`, `Project_Status.md`, sheet) chỉ ghi số mới nhất và trỏ về đây.
+> Lập 26/10/2026 (Phát), đủ số đo tới 27/10 (`9f9e66a` + P-13, P-14). Thư mục `fpga/reports/` chỉ giữ báo cáo của lần đo cuối mà Nguyên commit, mỗi lần đo lại sẽ ghi đè. File này giữ lại số của mọi lần đo để so sánh. Các tài liệu khác (`Project_Plan.md`, `Project_Status.md`, sheet) chỉ ghi số mới nhất và trỏ về đây.
 
 ## Thiết bị, công cụ, ràng buộc
 
@@ -21,6 +21,7 @@
 | 25/10 | `d2315b2` | Thêm `SYSCSR.BUS_ERR`, `BUS_ERR_ADDR` (N-36) | 8.011 | — | — | — | 54,69 MHz | +1,71 ns | Nguyên |
 | 26/10 | `d912cdc` + bản thử P-23 | Thêm PLIC-lite, Mailbox, Boot Guard, cổng dữ liệu Boot ROM, Secure DMA + tường lửa, bus APB thế giới App. Lõi đổi reset đồng bộ ở `IF_ID_Reg`, `ID_EX_Reg` (chưa commit lúc đo) | 9.358 (28%) | 4.390 | 135.168 (28%) | 52 | 53,02 MHz | +1,14 ns | Nguyên |
 | 26/10 | `9f9e66a` | Lõi thêm Zicsr và trap máy, cổng `irq_timer`/`irq_ext` (P-09, chưa nối trong `SoC_Top`), P-23 đã commit | 10.270 (31%) | 4.840 | 135.168 (28%) | 52 | 53,73 MHz | +1,389 ns (hold +0,391 ns) | Phát |
+| 27/10 | `9f9e66a` + P-13, P-14 (chưa commit) | Nối 4 dây ngắt vào hai lõi trong `SoC_Top` (P-14). Boot ROM vẫn là firmware thử của `mkhex.py` (target `make hex`) | 10.509 (32%) | 4.842 | 135.168 (28%) | 52 | 54,21 MHz | +1,554 ns (hold +0,391 ns) | Phát |
 
 Ô "—" là số chưa có trong báo cáo đã lưu. Setup slack của các dòng Nguyên đo tính từ Fmax (slack = 20 ns − 1000/Fmax), riêng dòng 25/10 lấy từ ghi chú review.
 
@@ -32,6 +33,7 @@ Thay đổi qua từng bước:
 | 25/10 → 25/10 (N-36) | +126 | — | −0,48 MHz |
 | 25/10 → 26/10 (khối Tuần 8–10 của Nguyên) | +1.347 | — | −1,67 MHz |
 | 26/10 → `9f9e66a` (P-09 trên cả hai lõi) | +912 | +450 | +0,71 MHz |
+| `9f9e66a` → 27/10 (nối dây ngắt) | +239 | +2 | +0,48 MHz |
 
 ## Artix-7 (xc7a35t)
 
@@ -53,13 +55,14 @@ Bản `9f9e66a` chưa đo trên Artix-7 vì máy Phát chưa cài Vivado (`D:\AM
 | 25/10 (`0be826d`) | Trong lõi App: `ID_EX.Rs1_EX` → forwarding → so sánh nhánh → PC | +1,875 ns |
 | 26/10 (`d912cdc` + P-23) | Trong lõi: `Rd_WB` → forwarding ở ID → `RD2_EX`. Không có đường nào của uncore trong top | +1,14 ns |
 | 26/10 (`9f9e66a`) | Trong lõi Master: `MEM_WB_Reg.Rd_WB` → forwarding ở ID → `ID_EX_Reg.RD1_EX` (cùng loại đường với lần trước). P-09 không làm đường găng dài thêm | +1,389 ns |
+| 27/10 (`9f9e66a` + P-13, P-14) | Trong lõi Master: `EX_MEM_Reg.Rd_MEM` → forwarding ở ID → `ID_EX_Reg.RD1_EX` (cùng loại đường). Nối dây ngắt không tạo đường găng mới | +1,554 ns |
 
 Ngưỡng theo dõi (R2 trong `Project_Plan.md`): DE2 còn dư khoảng 7% so với 50 MHz. Nếu Fmax xuống dưới 52 MHz thì tách đường forwarding / quyết định nhánh trong lõi. Mỗi khối uncore mới nên giữ slack từ 2 ns trở lên.
 
 ## Ghi chú về các lần đo
 
 - Bộ nhớ DE2 (135.168 bit M4K) không đổi qua các lần đo từ 24/10.
-- Ở lần `9f9e66a`, Quartus báo `irq_timer`/`irq_ext` của hai lõi chưa nối nên tự nối GND. Khi Nguyên nối dây ngắt (comment `TODO(P-09)` trong `SoC_Top.v`), logic ngắt trong `CSR_Unit` sẽ không còn bị rút gọn, LE có thể tăng thêm một ít.
+- Ở lần `9f9e66a`, Quartus báo `irq_timer`/`irq_ext` của hai lõi chưa nối nên tự nối GND. Từ lần 27/10 dây ngắt đã nối (P-14), logic ngắt trong `CSR_Unit` không còn bị rút gọn nên LE tăng 239, Quartus không còn cảnh báo cổng hở.
 - Báo cáo gốc của lần `9f9e66a` nằm ở `fpga/intel_de2/build/output_files/` trên máy Phát (thư mục build, không commit). Báo cáo trong `fpga/reports/` vẫn là của lần đo 26/10 của Nguyên.
 
 ## Cách thêm một lần đo

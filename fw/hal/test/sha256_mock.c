@@ -72,6 +72,8 @@ uint32_t hal_host_read32(uint32_t off)
     return 0u;
 }
 
+#ifndef SHA256_MOCK_NO_MEMREAD
+/* ROM reads go straight to host memory (sb_host_test brings its own App ROM model instead) */
 uint32_t hal_host_memread32(uintptr_t addr)
 {
     if (addr & 3u)
@@ -83,3 +85,4 @@ uint32_t hal_host_memread32(uintptr_t addr)
     g_mock.rom_rd_n++;
     return *(volatile const uint32_t *)addr;
 }
+#endif

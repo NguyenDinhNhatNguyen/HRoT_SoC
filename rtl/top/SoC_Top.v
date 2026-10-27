@@ -52,9 +52,7 @@ module SoC_Top #(
     wire [3:0]  master_data_wstrb;
     wire        master_resp_valid;
 
-    // Interrupts for the Master Core.
-    // TODO(P-09, I-01): RISCV_Core has no irq_timer/irq_ext ports yet (Phat is adding Zicsr and traps).
-    // When it does, connect .irq_timer(timer0_irq) and .irq_ext(plic_irq) on master_core below.
+    // Interrupts for the Master Core (I-01, core ports since P-09): TIMER0 -> irq_timer, PLIC-lite -> irq_ext
     wire timer0_irq;
     wire plic_irq;
 
@@ -65,6 +63,8 @@ module SoC_Top #(
         .clk(clk),
         .rst(sys_rst),
         .bus_stall(master_bus_stall),
+        .irq_timer(timer0_irq),
+        .irq_ext(plic_irq),
         .instr_addr(boot_addr),
         .instr_rdata(boot_data),
         .data_addr(master_data_addr),
@@ -350,8 +350,7 @@ module SoC_Top #(
     wire        app_data_we, app_data_re;
     wire [3:0]  app_data_wstrb;
 
-    // Interrupts for the App Core.
-    // TODO(P-09, I-01): connect .irq_timer(app_irq_timer) and .irq_ext(app_irq_ext) on app_core when RISCV_Core has the ports
+    // Interrupts for the App Core (I-01, core ports since P-09): TIMER1 -> irq_timer, UART1 | GPIO1 | Mailbox -> irq_ext
     wire timer1_irq, uart1_irq, gpio1_irq, mbox_irq_a;
     wire app_irq_timer = timer1_irq;
     wire app_irq_ext   = uart1_irq | gpio1_irq | mbox_irq_a;
@@ -360,6 +359,8 @@ module SoC_Top #(
         .clk(clk),
         .rst(~app_core_reset_n),
         .bus_stall(1'b0),
+        .irq_timer(app_irq_timer),
+        .irq_ext(app_irq_ext),
         .instr_addr(app_instr_addr),
         .instr_rdata(app_instr),
         .data_addr(app_data_addr),

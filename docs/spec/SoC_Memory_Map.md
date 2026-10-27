@@ -9,7 +9,7 @@ Một master AXI duy nhất, dùng chung cho CPU và Secure DMA (xoay vòng, DMA
 
 | Địa chỉ | Khối | Ghi chú |
 | --- | --- | --- |
-| `0x0000_0000` 4 KB | Boot ROM | cổng A: fetch lệnh. Cổng B: lệnh `lw` đọc được ROM, chỉ đọc, ghi → `SLVERR` (để đặt `.rodata` và golden hash trong ROM, I-03). Nạp từ `firmware_imem.hex` |
+| `0x0000_0000` 4 KB | Boot ROM | cổng A: fetch lệnh. Cổng B: lệnh `lw` đọc được ROM, chỉ đọc, ghi → `SLVERR` (để đặt `.rodata` và golden hash trong ROM, I-03). Nạp từ `firmware_imem.hex`. Firmware thật đặt golden ở `0xFE0`–`0xFFF` (P-13) |
 | `0x1000_0000` 4 KB | RAM Master | `.rodata/.data/.bss`, stack (`firmware_dmem.hex`) |
 | `0x4000_0000` 64 KB | Cầu AXI→APB | bus ngoại vi, mỗi slave 4 KB (bảng dưới) |
 | `0x5000_0000` 64 KB | SHA-256 | thanh ghi ở `0x00`–`0x6C`, xem `SHA256_Register_Map.md`. Offset `0x100`–`0xFFFF`: đọc 0, ghi bỏ qua (không alias) |
@@ -96,7 +96,7 @@ COUNT về 0 khi đang bật → reset toàn thế giới Secure qua SYSCSR, `RS
 | `0x04` | ENABLE | RW | [7:0] bật từng nguồn |
 | `0x08` | CLAIM | RO | 1 + chỉ số nguồn nhỏ nhất đang pending và được bật, 0 nếu không có |
 
-Không có ưu tiên riêng, ngưỡng hay chốt claim: nguồn còn pending tới khi thiết bị của nó tự xóa. `irq_ext` = OR của (PENDING & ENABLE), nối vào `irq_ext` của lõi Master (lõi có cổng từ P-09 ngày 26/10, còn chờ nối trong `SoC_Top`, I-01).
+Không có ưu tiên riêng, ngưỡng hay chốt claim: nguồn còn pending tới khi thiết bị của nó tự xóa. `irq_ext` = OR của (PENDING & ENABLE), nối vào `irq_ext` của lõi Master (nối từ 27/10, P-14, I-01).
 
 ## Mailbox (Secure `0x4000_6000`, App `0x4000_3000` trên bus App)
 
@@ -144,7 +144,7 @@ Lõi App không có đường nào sang bus Secure. Bus APB của App truy cập
 | GPIO0 | `gpio0_irq` | PLIC-lite nguồn 1 |
 | Secure DMA | `dma_irq` | PLIC-lite nguồn 2 |
 | Mailbox (từ App đang chờ) | `mbox_irq_s` | PLIC-lite nguồn 3 |
-| TIMER0 | `timer0_irq` | thẳng vào `irq_timer` của lõi Master (lõi có cổng từ P-09, chờ nối trong `SoC_Top`, I-01), không qua PLIC |
-| PLIC-lite | `plic_irq` | `irq_ext` của lõi Master (lõi có cổng từ P-09, chờ nối trong `SoC_Top`, I-01) |
-| TIMER1 | `timer1_irq` | `irq_timer` của lõi App (lõi có cổng từ P-09, chờ nối trong `SoC_Top`) |
-| UART1, GPIO1, Mailbox (từ Secure đang chờ) | OR của `uart1_irq`, `gpio1_irq`, `mbox_irq_a` | `irq_ext` của lõi App (lõi có cổng từ P-09, chờ nối trong `SoC_Top`) |
+| TIMER0 | `timer0_irq` | thẳng vào `irq_timer` của lõi Master (nối từ 27/10, I-01), không qua PLIC |
+| PLIC-lite | `plic_irq` | `irq_ext` của lõi Master (nối từ 27/10, I-01) |
+| TIMER1 | `timer1_irq` | `irq_timer` của lõi App (nối từ 27/10) |
+| UART1, GPIO1, Mailbox (từ Secure đang chờ) | OR của `uart1_irq`, `gpio1_irq`, `mbox_irq_a` | `irq_ext` của lõi App (nối từ 27/10) |

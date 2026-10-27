@@ -11,6 +11,6 @@ Virtual Platform SystemC 2.3.3 hoặc 2.3.4 / TLM-2.0 (loosely-timed) của th�
 | `src/CPU_Dummy_Initiator.h` | Kịch bản secure boot: đọc CHIP_ID và golden từ Boot ROM, bật WDT, băm ROM App, so golden, kiểm Secure DMA và tường lửa, nhả App hoặc khóa bằng Boot Guard, log qua UART0 |
 | `src/DMA_VP.h` | Mô hình chức năng của Secure DMA: cùng thanh ghi và luật tường lửa với RTL, chạy hết lượt băm trong lệnh START |
 
-Chạy: `make vp` (gọi `sim/run_vp.sh`), gồm 2 kịch bản: image đúng và image bị sửa 1 bit (`--tamper`). Cả hai phải in `VP RESULT: PASS`.
+Chạy: `make vp` (gọi `sim/run_vp.sh`), gồm 4 kịch bản: image đúng và image bị sửa 1 bit (`--tamper`), mỗi loại chạy với kịch bản C++ của `CPU_Dummy_Initiator` và với firmware Secure Boot thật (`--fw`, `fw/secure_boot/secure_boot.c`, P-13). Cả bốn phải in `VP RESULT: PASS`. Ở chế độ `--fw`, firmware ghi LED GPIO0 nên VP in một dòng lỗi bus ở `0x4000_2000` (VP chưa có mô hình GPIO), không ảnh hưởng kết quả.
 
 Chưa mô hình hóa: GPIO, PLIC-lite, Mailbox, bus và ngoại vi của thế giới App, ngắt, reset do WDT.

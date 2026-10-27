@@ -9,6 +9,7 @@ sim/labels.vh
 sim/modelsim.ini
 fw/hal/test/hal_host_test
 fw/hal/test/drv_host_test
+fw/hal/test/sb_host_test
 *.jou
 *.log
 .Xil/

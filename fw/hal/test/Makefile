@@ -1,4 +1,4 @@
-# HAL unit tests on the host (WSL2/Linux): SHA-256 HAL and the UART/GPIO drivers (P-11).
+# Firmware unit tests on the host (WSL2/Linux): SHA-256 HAL, UART/GPIO drivers (P-11), Secure Boot (P-13).
 # No RISC-V toolchain needed except for the rv32 target.
 HAL   := ..
 CFLAGS := -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined \
@@ -13,10 +13,18 @@ DRV_SRC := drv_host_test.c drv_mock.c $(HAL)/uart.c $(HAL)/gpio.c
 drv_host_test: $(DRV_SRC) drv_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/hal_io.h $(HAL)/soc_map.h
 	$(CC) $(CFLAGS) $(DRV_SRC) -o $@
 
-# The driver test runs first: if it fails, make stops before hal_host_test prints the
-# "==== PASSED" line that sim/regress.sh looks for
-test: drv_host_test hal_host_test
+SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c \
+          ../../secure_boot/secure_boot.c
+
+sb_host_test: $(SB_SRC) sb_mock.h sha256_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/hal_io.h $(HAL)/soc_map.h \
+              ../../secure_boot/secure_boot.h
+	$(CC) $(CFLAGS) -I../../secure_boot -DSHA256_MOCK_NO_MEMREAD $(SB_SRC) -o $@
+
+# The driver and Secure Boot tests run first: if one fails, make stops before hal_host_test prints
+# the "==== PASSED" line that sim/regress.sh looks for
+test: drv_host_test sb_host_test hal_host_test
 	./drv_host_test
+	./sb_host_test
 	./hal_host_test
 
 # Independent cross-check against sha256sum on the edge lengths
@@ -38,5 +46,5 @@ rv32:
 	@riscv64-unknown-elf-size $(RV32_OBJ)
 
 clean:
-	rm -f hal_host_test drv_host_test $(RV32_OBJ)
+	rm -f hal_host_test drv_host_test sb_host_test $(RV32_OBJ)
 .PHONY: test crosscheck rv32 clean

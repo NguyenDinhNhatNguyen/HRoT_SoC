@@ -5,6 +5,8 @@
 // Every HAL register access becomes one TLM transaction on VP_Bus (hal_host_* hooks in main.cpp).
 // Secure boot flow: read CHIP_ID, read the golden hash from the Boot ROM, run the WDT, hash the App ROM
 // (0x6000_0000), compare, then release the App or lock it out with Boot Guard. Progress goes out on UART0.
+// fw_mode (vp_sim --fw): run the real Secure Boot firmware (fw/secure_boot/secure_boot.c, P-13) instead,
+// with its UART and GPIO driver accesses going over the bus through the hal_host_mmio_* hooks.
 #include <systemc.h>
 #include <tlm.h>
 #include <tlm_utils/simple_initiator_socket.h>
@@ -15,6 +17,7 @@
 extern "C" {
 #include "sha256_hal.h"
 }
+#include "secure_boot.h"
 
 namespace vp_map {
     const uint64_t BOOT_ROM = 0x00000000;
@@ -37,6 +40,8 @@ SC_MODULE(CPU_Dummy_Initiator) {
     bool     dma_match = false;    // the Secure DMA's digest equals the golden hash
     bool     fw_ok = false;        // the DMA firewall refused a source outside the App ROM
     int      bus_errors = 0;
+    bool     fw_mode = false;      // run fw/secure_boot/secure_boot.c instead of the scenario below
+    int      fw_result = -1;       // secure_boot_run() result (sb_result_t)
 
     SC_CTOR(CPU_Dummy_Initiator) : initiator_socket("initiator_socket") {
         SC_THREAD(run_secure_boot_sequence);
@@ -77,6 +82,11 @@ SC_MODULE(CPU_Dummy_Initiator) {
     }
 
     void run_secure_boot_sequence() {
+        if (fw_mode) {
+            fw_result = secure_boot_run();
+            sc_stop();
+            return;
+        }
         uart_puts("HRoT secure boot\n");
         std::printf("[%s] Secure CPU: starting secure boot\n", sc_time_stamp().to_string().c_str());
         uint32_t id = rd(vp_map::SYSCSR + 0x04);
