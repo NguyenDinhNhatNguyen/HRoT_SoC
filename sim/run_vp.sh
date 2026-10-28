@@ -17,9 +17,10 @@ gcc -std=c11 -O1 -Wall -DHAL_HOST_MODEL -I../fw/hal -I../fw/hal/test -c ../fw/ha
 gcc -std=c11 -O1 -Wall                  -I../fw/hal/test             -c ../fw/hal/test/sha256_ref.c -o "$B/sha256_ref.o"
 gcc -std=c11 -O1 -Wall -DHAL_HOST_MODEL -I../fw/hal                  -c ../fw/hal/uart.c            -o "$B/uart.o"
 gcc -std=c11 -O1 -Wall -DHAL_HOST_MODEL -I../fw/hal                  -c ../fw/hal/gpio.c            -o "$B/gpio.o"
+gcc -std=c11 -O1 -Wall -DHAL_HOST_MODEL -I../fw/hal                  -c ../fw/hal/dma.c             -o "$B/dma.o"
 gcc -std=c11 -O1 -Wall -DHAL_HOST_MODEL -I../fw/hal -I../fw/secure_boot -c ../fw/secure_boot/secure_boot.c -o "$B/secure_boot.o"
 g++ -std=c++17 -O1 -Wall -Wno-overloaded-virtual -DHAL_HOST_MODEL -I"$SYSTEMC_HOME/include" -I../fw/hal -I../fw/hal/test -I../fw/secure_boot \
-    ../vp/src/*.cpp "$B/sha256_hal.o" "$B/sha256_ref.o" "$B/uart.o" "$B/gpio.o" "$B/secure_boot.o" \
+    ../vp/src/*.cpp "$B/sha256_hal.o" "$B/sha256_ref.o" "$B/uart.o" "$B/gpio.o" "$B/dma.o" "$B/secure_boot.o" \
     -L"$SC_LIB" -lsystemc -lm -o "$B/vp_sim"
 
 APP_HEX="${1:-$B/app.hex}"

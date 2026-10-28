@@ -1,6 +1,6 @@
 /*
  * crt0.S -- Master Core start-up: set the stack, clear .bss, call main().
- * .rodata/.data are preloaded into RAM (see linker.ld), no copy needed.
+ * .rodata sits in the Boot ROM and .data is preloaded into RAM (see linker.ld), no copy needed.
  * If main() returns, stop in an endless loop.
  */
     .section .text.start, "ax"

@@ -1,4 +1,4 @@
-# Firmware unit tests on the host (WSL2/Linux): SHA-256 HAL, UART/GPIO drivers (P-11), Secure Boot (P-13).
+# Firmware unit tests on the host (WSL2/Linux): SHA-256 HAL, UART/GPIO drivers (P-11), Secure Boot (P-13, P-15).
 # No RISC-V toolchain needed except for the rv32 target.
 HAL   := ..
 CFLAGS := -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined \
@@ -13,10 +13,10 @@ DRV_SRC := drv_host_test.c drv_mock.c $(HAL)/uart.c $(HAL)/gpio.c
 drv_host_test: $(DRV_SRC) drv_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/hal_io.h $(HAL)/soc_map.h
 	$(CC) $(CFLAGS) $(DRV_SRC) -o $@
 
-SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c \
+SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/dma.c \
           ../../secure_boot/secure_boot.c
 
-sb_host_test: $(SB_SRC) sb_mock.h sha256_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/hal_io.h $(HAL)/soc_map.h \
+sb_host_test: $(SB_SRC) sb_mock.h sha256_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/dma.h $(HAL)/hal_io.h $(HAL)/soc_map.h \
               ../../secure_boot/secure_boot.h
 	$(CC) $(CFLAGS) -I../../secure_boot -DSHA256_MOCK_NO_MEMREAD $(SB_SRC) -o $@
 
@@ -36,9 +36,9 @@ crosscheck: hal_host_test
 	  rm -f /tmp/hal_xc.bin; exit $$fail
 
 # Check the HAL and the drivers build for RV32I and pull in no libc/libgcc
-RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o
+RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o /tmp/dma_rv32.o
 rv32:
-	@for m in sha256_hal uart gpio; do \
+	@for m in sha256_hal uart gpio dma; do \
 	  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib \
 	    -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -c $(HAL)/$$m.c -o /tmp/$${m}_rv32.o || exit 1; \
 	done

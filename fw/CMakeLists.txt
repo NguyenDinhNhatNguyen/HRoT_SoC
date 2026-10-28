@@ -28,8 +28,9 @@ add_link_options(-march=rv32i -mabi=ilp32 -nostdlib -nostartfiles
 add_library(hal_sha256 STATIC hal/sha256_hal.c)
 target_include_directories(hal_sha256 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hal)
 
-# UART and GPIO drivers (P-11): static library, works for the Secure and the App world blocks
-add_library(hal_drivers STATIC hal/uart.c hal/gpio.c)
+# UART and GPIO drivers (P-11): static library, works for the Secure and the App world blocks.
+# Secure DMA driver (P-15): Secure world only
+add_library(hal_drivers STATIC hal/uart.c hal/gpio.c hal/dma.c)
 target_include_directories(hal_drivers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hal)
 
 # Firmware Secure Boot (Master Core)

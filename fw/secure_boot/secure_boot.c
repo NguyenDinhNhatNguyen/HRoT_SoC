@@ -1,9 +1,11 @@
 /*
  * secure_boot.c -- Secure Boot of the Master Core (see secure_boot.h)
  *
- * 1. UART0 log on, SHA-256 self-test (NIST vectors)
- * 2. Clear SYSCSR.BUS_ERR, hash the whole 4 KB App ROM through port B with the CPU (HAL)
- * 3. SYSCSR.BUS_ERR VALID: log it, keep the App in reset, clear it (N-36)
+ * 1. UART0 log on, SHA-256 self-test (NIST vectors, CPU through the HAL)
+ * 2. Clear SYSCSR.BUS_ERR, hash the whole 4 KB App ROM through port B with the Secure DMA
+ *    (SWAP and PAD, so the digest is sha256sum of the .bin, P-15). The DMA owns SHA-256 until DONE (R17)
+ * 3. SYSCSR.BUS_ERR VALID: log it, keep the App in reset, clear it (N-36).
+ *    DMA firewall error or timeout: log it, keep the App in reset
  * 4. Compare with the golden hash in the Boot ROM (constant time)
  *      match    -> APP_CTRL.APP_RUN = 1
  *      mismatch -> Boot Guard LOCK (App held until POR, App RAM cleared), wait for ZERO_DONE
@@ -12,6 +14,7 @@
  */
 #include "secure_boot.h"
 #include "sha256_hal.h"
+#include "dma.h"
 #include "uart.h"
 #include "gpio.h"
 #include "hal_io.h"
@@ -74,7 +77,7 @@ sb_result_t secure_boot_run(void)
 {
     uint8_t digest[SHA256_DIGEST_SIZE];
     uint8_t golden[SHA256_DIGEST_SIZE];
-    sha256_status_t st;
+    dma_status_t st;
     uint32_t bus_err;
     uint32_t i;
     sb_result_t r;
@@ -88,7 +91,7 @@ sb_result_t secure_boot_run(void)
     }
 
     HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR, BUS_ERR_VALID);       /* start from a clean BUS_ERR */
-    st = sha256_digest_mem(SOC_APP_ROM_BASE, SB_APP_ROM_SIZE, digest);
+    st = dma_sha256(SOC_APP_ROM_BASE, SB_APP_ROM_SIZE / 64u, 1, digest);
 
     bus_err = HAL_RD32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR);
     if (bus_err & BUS_ERR_VALID) {
@@ -98,8 +101,20 @@ sb_result_t secure_boot_run(void)
         HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR, BUS_ERR_VALID);
         return finish(SB_BUS_ERROR);
     }
-    if (st != SHA256_OK) {
-        log_str("SHA-256 error, App kept in reset\n");
+    if (st == DMA_ERR_BUS) {
+        log_str("DMA bus error, App kept in reset\n");
+        return finish(SB_BUS_ERROR);
+    }
+    if (st == DMA_ERR_FW) {
+        log_str("DMA blocked by the firewall, App kept in reset\n");
+        return finish(SB_HW_ERROR);
+    }
+    if (st == DMA_ERR_TIMEOUT) {
+        log_str("DMA timeout, App kept in reset\n");
+        return finish(SB_HW_ERROR);
+    }
+    if (st != DMA_OK) {
+        log_str("DMA error, App kept in reset\n");
         return finish(SB_HW_ERROR);
     }
 

@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 // SoC_Fw_tb: the real Secure Boot firmware (fw/secure_boot, P-13) on the whole SoC.
+//  - Since P-15 the firmware hashes the App ROM with the Secure DMA: it must run once, with no
+//    firewall or bus error, and the CPU must not read the App ROM itself
 //  - Boot ROM = fw/build/firmware_imem.hex (make fw), RAM = firmware_dmem.hex, App ROM = sim/app.hex
 //    (dv/sw/mkhex.py), golden hash = sim/fw_golden.hex (fw/tools/golden.py app.hex) written into the
 //    Boot ROM slot at SB_GOLDEN_ADDR (0xFE0) right after the ROM loads its image
@@ -75,6 +77,24 @@ module SoC_Fw_tb;
         end
     end
 
+    // Secure DMA runs, and App ROM reads that the Master Core makes itself (responses routed to the CPU)
+    integer dma_runs = 0;
+    integer dma_cycles = 0;
+    integer dma_errs = 0;
+    integer cpu_rom_reads = 0;
+    reg     dma_was_busy = 0;
+    always @(posedge clk) begin
+        if (dut.dma.busy && !dma_was_busy)
+            dma_runs = dma_runs + 1;
+        if (dut.dma.busy)
+            dma_cycles = dma_cycles + 1;
+        if (dut.dma.err_fw || dut.dma.err_bus)
+            dma_errs = dma_errs + 1;
+        if (dut.master_resp_valid && dut.master_data_re && dut.master_data_addr[31:16] == 16'h6000)
+            cpu_rom_reads = cpu_rom_reads + 1;
+        dma_was_busy = dut.dma.busy;
+    end
+
     // Error responses on the Master AXI bus
     integer bus_errs = 0;
     always @(posedge clk) begin
@@ -127,8 +147,11 @@ module SoC_Fw_tb;
         $display("app_core_reset_n=%b lock=%b zero_done=%b app_ram[0]=%0d zeroed words=%0d mcause=%h bus errors=%0d",
                  dut.app_core_reset_n, dut.syscsr.lock_q, dut.syscsr.zero_done, dut.app_ram.ram[0], zeros,
                  dut.master_core.u_CSR_Unit.mcause, bus_errs);
+        $display("Secure DMA runs=%0d busy=%0d cycles errors=%0d, App ROM reads by the CPU=%0d",
+                 dma_runs, dma_cycles, dma_errs, cpu_rom_reads);
         ok = (cyc < MAXC) && seen_start && seen_hash && bus_errs == 0
-             && dut.master_core.u_CSR_Unit.mcause === 32'b0;
+             && dut.master_core.u_CSR_Unit.mcause === 32'b0
+             && dma_runs == 1 && dma_errs == 0 && cpu_rom_reads == 0;
         if (tamper)
             ok = ok && led == 8'hEE && seen_locked && !seen_released && dut.app_core_reset_n === 1'b0
                     && dut.syscsr.lock_q === 1'b1 && dut.syscsr.zero_done === 1'b1 && zeros == 1024
