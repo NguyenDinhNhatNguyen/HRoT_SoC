@@ -52,14 +52,14 @@ uart_status_t uart_puts(uintptr_t base, const char *s)
 
 uart_status_t uart_put_hex32(uintptr_t base, uint32_t v)
 {
-    static const char digits[16] = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
-    };
     uart_status_t st;
+    uint32_t d;
     int shift;
 
+    /* Digits computed, not looked up: no table in .rodata, so this also runs on the App Core */
     for (shift = 28; shift >= 0; shift -= 4) {
-        st = uart_putc(base, (uint8_t)digits[(v >> shift) & 0xFu]);
+        d = (v >> shift) & 0xFu;
+        st = uart_putc(base, (uint8_t)(d < 10u ? '0' + d : 'a' + d - 10u));
         if (st != UART_OK)
             return st;
     }

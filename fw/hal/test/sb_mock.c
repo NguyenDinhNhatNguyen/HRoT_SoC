@@ -107,6 +107,12 @@ uint32_t hal_host_mmio_read32(uintptr_t addr)
     switch (addr) {
     case SOC_SHA256_BASE + SHA256_REG_STATUS:
         return g_sb.sha_busy ? SHA256_STATUS_BUSY : SHA256_STATUS_DONE;
+    case SOC_MAILBOX_BASE + MBOX_STATUS:
+        return g_sb.mbox_in_full ? MBOX_ST_IN_FULL : 0u;
+    case SOC_MAILBOX_BASE + MBOX_IN:
+        g_sb.mbox_in_reads++;
+        g_sb.mbox_in_full = 0;
+        return g_sb.mbox_in;
     case SOC_DMA_BASE + DMA_SRC:
         return g_sb.dma_src;
     case SOC_DMA_BASE + DMA_NBLK:

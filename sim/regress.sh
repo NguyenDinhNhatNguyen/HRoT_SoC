@@ -63,6 +63,11 @@ if command -v riscv64-unknown-elf-gcc > /dev/null && make -s fw            > $LO
     check "SoC: firmware, good image"   $LOG/fw.log        "SoC_Fw_tb RESULT: PASS"
     (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set PLUSARGS +TAMPER; do run_fw.do" < /dev/null) > $LOG/fw_tamper.log 2>&1
     check "SoC: firmware, tampered"     $LOG/fw_tamper.log "SoC_Fw_tb RESULT: PASS"
+    # Both cores' real firmware with the golden hash from the build (P-16)
+    (cd sim && "$QUESTA" -c -do "set TB SoC_App_tb; do run_fw.do" < /dev/null)             > $LOG/app.log 2>&1
+    check "SoC: App firmware, good"     $LOG/app.log       "SoC_App_tb RESULT: PASS"
+    (cd sim && "$QUESTA" -c -do "set TB SoC_App_tb; set PLUSARGS +TAMPER; do run_fw.do" < /dev/null) > $LOG/app_tamper.log 2>&1
+    check "SoC: App firmware, tampered" $LOG/app_tamper.log "SoC_App_tb RESULT: PASS"
 else
     printf "  %-30s SKIP  (no RISC-V toolchain or make fw failed, see %s)\n" "SoC: firmware" $LOG/fw_build.log
 fi

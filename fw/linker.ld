@@ -7,7 +7,8 @@
  *
  *   ROM  0x0000_0000  4 KB   .text .rodata   -> firmware_imem.hex
  *        0x0000_0FE0  32 B   golden hash of the App ROM (secure_boot.h SB_GOLDEN_ADDR), filled
- *                            in after the build (testbench, VP, later the I-04 build step)
+ *                            in after the build: the golden step of fw/CMakeLists.txt writes it
+ *                            into firmware_imem.hex (I-04, P-16), SoC_Fw_tb and the VP write their own
  *   RAM  0x1000_0000  4 KB   .data           -> firmware_dmem.hex
  *                            .bss (cleared by crt0), then the 1 KB stack right after it
  *                            (__stack_top = end of .stack, not the end of RAM)

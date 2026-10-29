@@ -4,12 +4,14 @@
 
 uart_mock_t g_uart[2];
 gpio_mock_t g_gpio[2];
+mbox_mock_t g_mbox;
 uint32_t    g_bad_access;
 
 void drv_mock_reset(void)
 {
     memset(g_uart, 0, sizeof g_uart);
     memset(g_gpio, 0, sizeof g_gpio);
+    memset(&g_mbox, 0, sizeof g_mbox);
     g_bad_access = 0;
     g_uart[0].baud_div = 26;
     g_uart[1].baud_div = 26;
@@ -142,6 +144,41 @@ static void gpio_write_reg(gpio_mock_t *g, uint32_t off, uint32_t v)
     }
 }
 
+/* side 0 = A (Secure), side 1 = B (App). OUT of a side fills its slot, IN reads the other side's slot */
+static uint32_t mbox_read(int side, uint32_t off)
+{
+    int other = 1 - side;
+    uint32_t w;
+
+    switch (off) {
+    case MBOX_IN:
+        w = g_mbox.word[other];
+        g_mbox.full[other] = 0;
+        return w;
+    case MBOX_STATUS:
+        return (g_mbox.full[other] ? MBOX_ST_IN_FULL : 0u) | (g_mbox.full[side] ? MBOX_ST_OUT_FULL : 0u);
+    case MBOX_IRQ_EN:
+        return g_mbox.irq_en[side];
+    default:
+        return 0;
+    }
+}
+
+static void mbox_write(int side, uint32_t off, uint32_t val)
+{
+    if (off == MBOX_OUT) {
+        if (g_mbox.full[side]) {
+            g_mbox.write_when_full++;                       /* the hardware ignores it */
+            return;
+        }
+        g_mbox.word[side] = val;
+        g_mbox.full[side] = 1;
+        g_mbox.sent[side]++;
+    } else if (off == MBOX_IRQ_EN) {
+        g_mbox.irq_en[side] = val & 1u;
+    }
+}
+
 uint32_t hal_host_mmio_read32(uintptr_t addr)
 {
     uint32_t off;
@@ -151,6 +188,9 @@ uint32_t hal_host_mmio_read32(uintptr_t addr)
     i = find(addr, MOCK_GPIO_A, MOCK_GPIO_B, &off);
     if (i >= 0)
         return gpio_read(&g_gpio[i], off);
+    i = find(addr, MOCK_MBOX_A, MOCK_MBOX_B, &off);
+    if (i >= 0)
+        return mbox_read(i, off);
     g_bad_access++;
     return 0;
 }
@@ -166,6 +206,11 @@ void hal_host_mmio_write32(uintptr_t addr, uint32_t val)
     i = find(addr, MOCK_GPIO_A, MOCK_GPIO_B, &off);
     if (i >= 0) {
         gpio_write_reg(&g_gpio[i], off, val);
+        return;
+    }
+    i = find(addr, MOCK_MBOX_A, MOCK_MBOX_B, &off);
+    if (i >= 0) {
+        mbox_write(i, off, val);
         return;
     }
     g_bad_access++;

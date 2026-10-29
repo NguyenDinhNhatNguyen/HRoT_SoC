@@ -11,10 +11,12 @@
  *      mismatch -> Boot Guard LOCK (App held until POR, App RAM cleared), wait for ZERO_DONE
  * 5. Result on the GPIO0 LEDs, UART drained
  * Every failure path leaves the App Core in reset (fail-safe).
+ * After a release, secure_boot_relay_app() logs the App's Mailbox words on UART0 (P-16).
  */
 #include "secure_boot.h"
 #include "sha256_hal.h"
 #include "dma.h"
+#include "mailbox.h"
 #include "uart.h"
 #include "gpio.h"
 #include "hal_io.h"
@@ -136,4 +138,15 @@ sb_result_t secure_boot_run(void)
     else
         log_str("Hash mismatch, LOCK did not finish, App kept in reset\n");
     return finish(r);
+}
+
+void secure_boot_relay_app(void)
+{
+    uint32_t w;
+
+    if (mbox_recv(SOC_MAILBOX_BASE, &w) != MBOX_OK)
+        return;
+    log_str("App says ");
+    log_hex(w);
+    log_str("\n");
 }

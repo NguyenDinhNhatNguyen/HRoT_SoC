@@ -1,7 +1,8 @@
 /* Secure Boot (P-13, P-15) unit test on the host: secure_boot_run() against models of the App ROM,
  * the Boot ROM golden slot, SYSCSR, UART0, GPIO0, the Secure DMA (sb_mock.c) and SHA-256 (sha256_mock.c).
  * Covers the paths that are hard to reach on the RTL: bus error while hashing, broken SHA core,
- * Boot Guard that never finishes, DMA firewall error, DMA that never finishes or is already busy.
+ * Boot Guard that never finishes, DMA firewall error, DMA that never finishes or is already busy,
+ * and the relay of the App's Mailbox words to UART0 after a release (P-16).
  * Prints "SB RESULT: PASS|FAIL". */
 #include "secure_boot.h"
 #include "sb_mock.h"
@@ -230,6 +231,28 @@ static void t_dma_fast(void)
     CHECK(g_sb.dma_polls == 1u, "%u polls", g_sb.dma_polls);
 }
 
+/* S13: after a release the Master logs each Mailbox word of the App, and does nothing while IN is empty */
+static void t_relay(void)
+{
+    uint32_t n;
+    printf("[S13] App Mailbox words relayed to UART0\n");
+    reset_all();
+    CHECK(secure_boot_run() == SB_RELEASED, "result");
+    n = g_sb.log_n;
+    secure_boot_relay_app();
+    CHECK(g_sb.log_n == n && g_sb.mbox_in_reads == 0u, "empty Mailbox must not log or read IN");
+    g_sb.mbox_in = 0x41505031u;
+    g_sb.mbox_in_full = 1;
+    secure_boot_relay_app();
+    CHECK(strstr(g_sb.log, "App says 41505031\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.mbox_in_full == 0 && g_sb.mbox_in_reads == 1u, "IN read %u times", g_sb.mbox_in_reads);
+    g_sb.mbox_in = 0x53540002u;
+    g_sb.mbox_in_full = 1;
+    secure_boot_relay_app();
+    CHECK(strstr(g_sb.log, "App says 53540002\r\n") != NULL, "second word, log: %s", g_sb.log);
+    CHECK(g_sb.bad_access == 0u, "%u accesses outside the models", g_sb.bad_access);
+}
+
 int main(void)
 {
     t_good();
@@ -244,6 +267,7 @@ int main(void)
     t_dma_timeout();
     t_dma_busy();
     t_dma_fast();
+    t_relay();
     printf("\nSUMMARY SB: PASS = %d | FAIL = %d\n", g_pass, g_fail);
     printf("SB RESULT: %s\n", g_fail ? "FAIL" : "PASS");
     return g_fail != 0;

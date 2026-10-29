@@ -1,7 +1,8 @@
-/* UART and GPIO driver unit test on the host (P-11). make -C fw/hal/test test runs it before the SHA-256 HAL test.
+/* UART, GPIO (P-11) and Mailbox (P-16) driver unit test on the host. make -C fw/hal/test test runs it before the SHA-256 HAL test.
  * Prints "DRV RESULT: PASS|FAIL" (not "==== PASSED", which sim/regress.sh reserves for hal_host_test). */
 #include "uart.h"
 #include "gpio.h"
+#include "mailbox.h"
 #include "drv_mock.h"
 #include <stdio.h>
 #include <string.h>
@@ -143,6 +144,25 @@ static void t_second_instance(void)
     CHECK(g_bad_access == 0, "%u accesses outside the blocks", g_bad_access);
 }
 
+/* D9: Mailbox both ways, a full slot is waited for, an empty IN reads as MBOX_EMPTY */
+static void t_mailbox(void)
+{
+    uint32_t w = 0;
+    printf("[D9] mailbox\n");
+    drv_mock_reset();
+    CHECK(mbox_recv(MOCK_MBOX_A, &w) == MBOX_EMPTY, "empty IN");
+    CHECK(mbox_send(MOCK_MBOX_B, 0x41505031u) == MBOX_OK, "App sends");
+    CHECK(mbox_recv(MOCK_MBOX_A, &w) == MBOX_OK && w == 0x41505031u, "Secure gets %08x", w);
+    CHECK(mbox_recv(MOCK_MBOX_A, &w) == MBOX_EMPTY, "IN cleared after the read");
+    CHECK(mbox_send(MOCK_MBOX_A, 7u) == MBOX_OK && mbox_recv(MOCK_MBOX_B, &w) == MBOX_OK && w == 7u, "other way");
+    /* second word while the first is unread: waits, then times out without overwriting */
+    CHECK(mbox_send(MOCK_MBOX_B, 1u) == MBOX_OK, "first");
+    CHECK(mbox_send(MOCK_MBOX_B, 2u) == MBOX_ERR_TIMEOUT, "second must time out");
+    CHECK(g_mbox.write_when_full == 0u, "driver wrote OUT while it was full");
+    CHECK(mbox_recv(MOCK_MBOX_A, &w) == MBOX_OK && w == 1u, "first word kept: %08x", w);
+    CHECK(g_bad_access == 0, "%u accesses outside the blocks", g_bad_access);
+}
+
 int main(void)
 {
     t_uart_init();
@@ -153,6 +173,7 @@ int main(void)
     t_uart_misc();
     t_gpio();
     t_second_instance();
+    t_mailbox();
     printf("\nSUMMARY DRV: PASS = %d | FAIL = %d\n", g_pass, g_fail);
     printf("DRV RESULT: %s\n", g_fail ? "FAIL" : "PASS");
     return g_fail != 0;

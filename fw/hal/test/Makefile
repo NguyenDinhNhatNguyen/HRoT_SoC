@@ -1,4 +1,5 @@
-# Firmware unit tests on the host (WSL2/Linux): SHA-256 HAL, UART/GPIO drivers (P-11), Secure Boot (P-13, P-15).
+# Firmware unit tests on the host (WSL2/Linux): SHA-256 HAL, UART/GPIO/Mailbox drivers (P-11, P-16),
+# Secure Boot (P-13, P-15, P-16), ROM image and golden step (rom_image_test.py, P-16).
 # No RISC-V toolchain needed except for the rv32 target.
 HAL   := ..
 CFLAGS := -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined \
@@ -8,23 +9,24 @@ SRC   := hal_host_test.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c
 hal_host_test: $(SRC) $(wildcard *.h) $(HAL)/sha256_hal.h $(HAL)/sha256_regs.h
 	$(CC) $(CFLAGS) $(SRC) -o $@
 
-DRV_SRC := drv_host_test.c drv_mock.c $(HAL)/uart.c $(HAL)/gpio.c
+DRV_SRC := drv_host_test.c drv_mock.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/mailbox.c
 
-drv_host_test: $(DRV_SRC) drv_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/hal_io.h $(HAL)/soc_map.h
+drv_host_test: $(DRV_SRC) drv_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/mailbox.h $(HAL)/hal_io.h $(HAL)/soc_map.h
 	$(CC) $(CFLAGS) $(DRV_SRC) -o $@
 
-SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/dma.c \
+SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/dma.c $(HAL)/mailbox.c \
           ../../secure_boot/secure_boot.c
 
 sb_host_test: $(SB_SRC) sb_mock.h sha256_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/dma.h $(HAL)/hal_io.h $(HAL)/soc_map.h \
               ../../secure_boot/secure_boot.h
 	$(CC) $(CFLAGS) -I../../secure_boot -DSHA256_MOCK_NO_MEMREAD $(SB_SRC) -o $@
 
-# The driver and Secure Boot tests run first: if one fails, make stops before hal_host_test prints
+# The driver, Secure Boot and ROM image tests run first: if one fails, make stops before hal_host_test prints
 # the "==== PASSED" line that sim/regress.sh looks for
 test: drv_host_test sb_host_test hal_host_test
 	./drv_host_test
 	./sb_host_test
+	python3 rom_image_test.py
 	./hal_host_test
 
 # Independent cross-check against sha256sum on the edge lengths
@@ -36,9 +38,9 @@ crosscheck: hal_host_test
 	  rm -f /tmp/hal_xc.bin; exit $$fail
 
 # Check the HAL and the drivers build for RV32I and pull in no libc/libgcc
-RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o /tmp/dma_rv32.o
+RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o /tmp/dma_rv32.o /tmp/mailbox_rv32.o
 rv32:
-	@for m in sha256_hal uart gpio dma; do \
+	@for m in sha256_hal uart gpio dma mailbox; do \
 	  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib \
 	    -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -c $(HAL)/$$m.c -o /tmp/$${m}_rv32.o || exit 1; \
 	done

@@ -11,7 +11,7 @@
 | `dv/tb/` · `dv/tb/soc/` | TB đơn vị, TB lõi (`RISCV_Core_tb`, `RISCV_Core_prog_tb`, `RISCV_Core_hazard_tb`), chỉ TB trực tiếp · `APB_Periph_tb`, `SoC_Top_tb` | Phát (lõi) · Nguyên (IP, SoC) |
 | `dv/agents`, `dv/env`, `dv/tests`, `dv/hrot_dv_pkg.sv` | Môi trường UVM AXI4-Lite và SHA-256. Từ 26/10 (P-10) slave mô hình nằm ở `dv/agents`, hai top UVM (`tb_top.sv`, `tb_sha256_top.sv`) nằm ở `dv/env` | Phát |
 | `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình tự kiểm tra cho lõi (`core_isa_test`, `core_trap_test`) · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
-| `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), driver Secure DMA (`dma.h`, P-15), crt0, linker script, Secure Boot (`fw/secure_boot`, P-13), `fw/tools/golden.py` | Phát |
+| `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), driver Secure DMA (`dma.h`, P-15), driver Mailbox (`mailbox.h`, P-16), crt0, linker script, Secure Boot (`fw/secure_boot`, P-13), firmware App demo (`fw/app`, P-16), `fw/tools/golden.py`, `fw/tools/rom_image.py` | Phát |
 | `vp/` | Virtual Platform SystemC/TLM-2.0 (chạy HAL thật) | Nguyên |
 | `fpga/` (`intel_de2`, `xilinx`, `reports`) · `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC | Nguyên · Phát |
 
@@ -39,7 +39,7 @@ Nguồn chính thức: `docs/spec/SoC_Memory_Map.md`. Tóm tắt:
 | `0x6000_0000` 4 KB | ROM App, cổng B | chỉ đọc (để băm), ghi → `SLVERR` |
 | còn lại | default slave | `DECERR`, không treo bus |
 
-Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x0000_xxxx` đọc được ROM nên `.rodata` và golden hash đặt được trong ROM (N-21). Từ 27/10 `linker.ld` đặt `.text` và `.rodata` trong ROM, 32 byte cuối (`0xFE0`) là golden hash (P-13, I-03). Thế giới App có bản đồ riêng (UART1, GPIO1, TIMER1, Mailbox ở `0x4000_xxxx`, địa chỉ khác là RAM App), xem `docs/spec/SoC_Memory_Map.md`.
+Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x0000_xxxx` đọc được ROM nên `.rodata` và golden hash đặt được trong ROM (N-21). Từ 27/10 `linker.ld` đặt `.text` và `.rodata` trong ROM, 32 byte cuối (`0xFE0`) là golden hash (P-13, I-03). Thế giới App có bản đồ riêng (UART1, GPIO1, TIMER1, Mailbox ở `0x4000_xxxx`, địa chỉ khác là RAM App), xem `docs/spec/SoC_Memory_Map.md`. Lõi App không đọc được ROM của nó như dữ liệu và RAM App không nạp sẵn, nên firmware App không được có `.rodata` hay `.data` (`fw/app/app.ld` báo lỗi khi build), chữ in ra phải gửi từng ký tự (P-16).
 
 ## 4. Chạy kiểm tra
 
@@ -52,9 +52,9 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 | `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định, chạy `core_isa_test` và `core_trap_test`) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
 | `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do` |
 | `make sim-ip` / `make sim-soc` / `make vp` | APB (SYSCSR, GPIO, UART, TIMER, WDT, PLIC-lite, Mailbox) / toàn SoC (thêm tham số `set PLUSARGS +TAMPER` trong `sim/run_soc.do` để chạy ảnh bị sửa) / Virtual Platform |
-| `make fw` | `fw/build/firmware_imem.hex`, `firmware_dmem.hex`, `.dis`, `.map` |
-| `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO, Secure Boot (`sb_host_test`) rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và các driver |
-| `vsim -c -do "set TB SoC_Fw_tb; do run_fw.do"` (trong `sim/`) | Firmware Secure Boot thật trên toàn SoC (cần `make fw` trước), thêm `set PLUSARGS +TAMPER` để chạy ảnh bị sửa. `set TB SoC_Irq_tb` chạy test ngắt hai lõi (P-14) |
+| `make fw` | `fw/build/firmware_imem.hex` (Boot ROM, đã có golden ở `0xFE0`), `firmware_dmem.hex`, `app_firmware.hex` và `app_firmware.bin` (ROM App đủ 4 KB, `sha256sum` của `.bin` = golden, I-04), `.dis`, `.map` |
+| `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO/Mailbox, Secure Boot (`sb_host_test`), bước ghép golden (`rom_image_test.py`) rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và các driver |
+| `vsim -c -do "set TB SoC_Fw_tb; do run_fw.do"` (trong `sim/`) | Firmware Secure Boot thật trên toàn SoC (cần `make fw` trước), thêm `set PLUSARGS +TAMPER` để chạy ảnh bị sửa. `set TB SoC_Irq_tb` chạy test ngắt hai lõi (P-14). `set TB SoC_App_tb` chạy firmware thật của cả hai lõi với golden lấy từ build (P-16), có `+TAMPER` |
 | Tạo lại hex test lõi | lệnh ở đầu `dv/tests/asm/core_isa_test.S` và `core_trap_test.S` (test trap cần `-march=rv32i_zicsr`) |
 | `make de2` / `make xilinx PART=<part>` | Quartus / Vivado, kết quả ở `fpga/*/build/`, báo cáo đã lưu ở `fpga/reports/` |
 

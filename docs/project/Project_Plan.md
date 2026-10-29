@@ -51,7 +51,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 | I-01 | 01/11 | Cổng ngắt của lõi (đã chốt 25/10): `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | Phát |
 | I-02 | 01/11 | Header địa chỉ firmware `fw/hal/soc_map.h` theo `docs/spec/SoC_Memory_Map.md` (việc N-34), đổi map phải báo trước | Nguyên |
 | I-03 | 08/11 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó. Xong 27/10: golden ở `0xFE0` | Cả hai |
-| I-04 | 15/11 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm cả 4 KB ROM App) | Phát |
+| I-04 | 15/11 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm cả 4 KB ROM App). Xong 29/10 (P-16) | Phát |
 | I-05 | — | SHA-256: 66 chu kỳ START→DONE, offset trống OKAY/0, ngoài slave DECERR (đã chốt, RTL khớp từ 25/10) | Nguyên |
 | I-06 | — | UART `BAUD_DIV` mặc định 26 = 115200 baud @ 50 MHz (đã chốt) | Nguyên |
 | I-07 | — | Chỉ commit trên `main`, chạy trong WSL, mô phỏng Questa, `make test` PASS trước khi push (đã chốt). P-22 xong 26/10, `regress.sh` tự cho mọi `vsim` đọc stdin từ `/dev/null` | Cả hai |
@@ -83,7 +83,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 **Còn thiếu hoặc trễ**
 - Ngắt trong lõi (Zicsr, irq): PLIC/TIMER cần để dùng ngắt (vẫn chạy được bằng polling). Lõi đã có cổng `irq_timer`/`irq_ext` (P-09, 26/10), còn nối `timer0_irq`, `plic_irq` trong `SoC_Top`.
 - Phần RTL Nguyên giao đã có đủ. Còn thiếu việc đóng băng RTL (N-26) và nối dây ngắt vào lõi (P-09 đã xong 26/10).
-- Firmware secure boot thật: đã hoàn thành 27/10 (P-13), chạy trên VP và RTL. Còn bước tự sinh golden lúc build (I-04, P-16).
+- Firmware secure boot thật: đã hoàn thành 27/10 (P-13), chạy trên VP và RTL. Băm bằng Secure DMA từ 29/10 (P-15). Firmware App demo và bước tự sinh golden lúc build xong 29/10 (I-04, P-16).
 - Đổ board (chân DE2 đã đối chiếu xong 25/10, N-18: 52/52 chân khớp DE2 User Manual v1.3).
 
 ## 7. Lịch Tuần 8 → 16

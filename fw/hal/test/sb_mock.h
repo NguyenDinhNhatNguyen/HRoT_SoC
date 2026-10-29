@@ -1,5 +1,5 @@
 /* Models for the Secure Boot host test: App ROM, Boot ROM golden slot, SYSCSR, UART0, GPIO0,
- * Secure DMA and the SHA-256 STATUS/HASH registers the DMA path reads (P-15) */
+ * Secure DMA and the SHA-256 STATUS/HASH registers the DMA path reads (P-15), Secure side of the Mailbox (P-16) */
 #ifndef SB_MOCK_H
 #define SB_MOCK_H
 #include <stdint.h>
@@ -29,6 +29,10 @@ typedef struct {
     uint32_t dma_pending;
     uint32_t sha_hash[8];               /* HASH[0..7] after the DMA run */
     int      dma_ok;                    /* the last DMA run finished without an error */
+    /* Mailbox, Secure side: a word from the App waiting in IN */
+    uint32_t mbox_in;
+    int      mbox_in_full;
+    uint32_t mbox_in_reads;
     /* UART0 and GPIO0 */
     char     log[1024];
     uint32_t log_n;

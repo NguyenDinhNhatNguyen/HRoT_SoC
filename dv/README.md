@@ -2,7 +2,7 @@
 
 | Thư mục | Nội dung | Script chạy |
 | --- | --- | --- |
-| `tb/` | TB đơn vị của lõi, `RISCV_Core_tb`, `RISCV_Core_prog_tb` (chạy `core_isa_test` và `core_trap_test`), `RISCV_Core_hazard_tb`, `SoC_Fw_tb` (firmware Secure Boot thật trên SoC, P-13, băm bằng Secure DMA từ P-15), `SoC_Irq_tb` (ngắt hai lõi, P-14). Chỉ còn TB trực tiếp, không có file UVM | `sim/run_unit.do`, `sim/run_rtl.do`, `sim/run_fw.do` |
+| `tb/` | TB đơn vị của lõi, `RISCV_Core_tb`, `RISCV_Core_prog_tb` (chạy `core_isa_test` và `core_trap_test`), `RISCV_Core_hazard_tb`, `SoC_Fw_tb` (firmware Secure Boot thật trên SoC, P-13, băm bằng Secure DMA từ P-15), `SoC_App_tb` (firmware thật của cả hai lõi, golden lấy từ build, P-16), `SoC_Irq_tb` (ngắt hai lõi, P-14). Chỉ còn TB trực tiếp, không có file UVM | `sim/run_unit.do`, `sim/run_rtl.do`, `sim/run_fw.do` |
 | `tb/soc/` | `APB_Periph_tb.sv` (SYSCSR gồm BUS_ERR và Boot Guard, UART, GPIO, TIMER, WDT, PLIC-lite, Mailbox), `SoC_Top_tb.sv` (toàn SoC, chạy ảnh đúng và `+TAMPER`) | `sim/run_ip.do`, `sim/run_soc.do` |
 | `agents/` | Agent AXI4-Lite (interface + SVA, driver, monitor, sequencer) và `axi4_lite_slave_model.sv` (slave AXI4-Lite mô hình hành vi) | `sim/run_uvm.do` |
 | `env/` | Env, scoreboard, mô hình SHA-256 và hai top UVM: `tb_top.sv` (slave mô hình), `tb_sha256_top.sv` (SHA-256 thật) | `sim/run_uvm.do` |

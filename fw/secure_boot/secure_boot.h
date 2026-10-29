@@ -33,6 +33,10 @@ typedef enum {
 
 sb_result_t secure_boot_run(void);
 
+/* After SB_RELEASED: if the App Core has sent a Mailbox word, log it on UART0 as
+ * "App says <8 hex digits>" (P-16). Does not wait, call it in the idle loop */
+void secure_boot_relay_app(void);
+
 #ifdef __cplusplus
 }
 #endif
