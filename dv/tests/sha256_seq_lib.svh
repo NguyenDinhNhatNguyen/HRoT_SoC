@@ -1,6 +1,7 @@
 // AXI4-Lite sequences for SHA256_Wrapper (P-08): hash messages with the same flow as the HAL, add random
 // AXI delays and the corner cases of docs/verification/SHA256_UVM_TestPlan.md. Every sequence checks its
-// results against sha256_ref (SV). The DPI SHA scoreboard is task P-17.
+// results against sha256_ref (SV). The SHA tests also run the passive DPI scoreboard (P-17,
+// dv/env/sha256_scoreboard.svh), which predicts every read on its own.
 // Register map: docs/spec/SHA256_Register_Map.md, I-05 (empty offsets in 0x00-0xFF: OKAY, read 0).
 
 class sha256_base_seq extends axi4_lite_base_seq;

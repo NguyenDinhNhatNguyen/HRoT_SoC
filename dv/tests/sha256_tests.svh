@@ -12,8 +12,10 @@ class sha256_base_test extends base_test;
     endfunction
 
     function void build_phase(uvm_phase phase);
-        // SHA registers are not a memory: disable the memory scoreboard, the sequences self-check
+        // SHA registers are not a memory: no memory scoreboard. The sequences self-check, and the
+        // passive DPI scoreboard (P-17) predicts every read on its own
         uvm_config_db#(bit)::set(this, "m_env", "has_mem_scoreboard", 1'b0);
+        uvm_config_db#(bit)::set(this, "m_env", "has_sha_scoreboard", 1'b1);
         super.build_phase(phase);
     endfunction
 

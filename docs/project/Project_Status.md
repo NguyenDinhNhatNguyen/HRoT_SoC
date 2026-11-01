@@ -1,6 +1,6 @@
 # Trạng thái dự án — HRoT SoC
 
-> Cập nhật: 26/10/2026 (Nguyên làm xong phần RTL của mình tới RTL freeze). Tiến độ chi tiết theo từng việc nằm ở [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) (tab Tổng hợp, Tiến độ, Mốc & Giao diện). Sheet là nguồn chính thức, khi lệch thì theo sheet. File này tóm tắt trạng thái kỹ thuật, sửa mỗi khi xong một mốc hoặc chốt một quyết định.
+> Cập nhật: 30/10/2026 (Phát xong P-13 tới P-16, firmware thật của hai lõi chạy trên RTL). Ngày 26/10 Nguyên làm xong phần RTL của mình tới RTL freeze. Tiến độ chi tiết theo từng việc nằm ở [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) (tab Tổng hợp, Tiến độ, Mốc & Giao diện). Sheet là nguồn chính thức, khi lệch thì theo sheet. File này tóm tắt trạng thái kỹ thuật, sửa mỗi khi xong một mốc hoặc chốt một quyết định.
 
 ## 1. Tổng quan
 
@@ -24,7 +24,7 @@ Kết quả kiểm tra gần nhất trên Questa (`make test`, 26/10, toàn bộ
 
 Trên Verilator (Phát chạy, 23–25/10): UVM AXI4-Lite 15/15 PASS. UVM SHA-256 trên DUT thật: KAT, CTL (khoảng 960 check), RAND 40 message × 3 seed (khoảng 4.300–4.900 check), FULL, reset giữa message × 3, tất cả PASS, 0 lỗi.
 
-Ngày 26/10 (Phát chạy bằng iverilog và Verilator, **chưa chạy trên Questa**): sau P-09, P-10, P-11, P-23 thì 11 TB đơn vị, `RISCV_Core_tb`, hazard, chương trình `core_isa_test` và `core_trap_test` (có và không `bus_stall`), `SoC_Top_tb` (ảnh đúng và `+TAMPER`), UVM 9 test, `drv_host_test` 49/0, HAL 9.692/0, `make fw`, `make vp` đều PASS.
+Tới 29/10 (Phát chạy bằng iverilog, Verilator và trên host, **chưa chạy trên Questa**): 11 TB đơn vị, `RISCV_Core_tb`, hazard, chương trình `core_isa_test` và `core_trap_test` (có và không `bus_stall`), `SoC_Top_tb`, `SoC_Fw_tb` và `SoC_App_tb` (ảnh đúng và `+TAMPER`), `SoC_Irq_tb`, UVM 9 test (26/10), host `drv_host_test` 59/0, `sb_host_test` 69/0, `rom_image_test.py` 26/0, HAL 9.692/0, `make fw`, VP 4/4 đều PASS. `APB_Periph_tb` đạt 78/79 trên iverilog do race của PLIC ở thời điểm 0 (phần của Nguyên), trên Questa 26/10 thì 79/79.
 
 ## 2. Phần của Phát
 
@@ -43,7 +43,7 @@ Ngày 26/10 (Phát chạy bằng iverilog và Verilator, **chưa chạy trên Qu
 | P-14 | Test assembly ngắt timer/external | 08/11 | ✅ Xong 27/10 (`c739654`): nối 4 dây ngắt trong `SoC_Top.v` (Phát làm, đã báo Nguyên). `SoC_Irq_tb` + `soc_irq_master.S`, `soc_irq_app.S`: TIMER0, GPIO0 qua PLIC, MEI trước MTI, Mailbox hai chiều, TIMER1. Master 5 ngắt, App 2 ngắt, PASS. Tháo từng dây hoặc đảo ưu tiên đều làm test FAIL |
 | P-15 | FW dùng Secure DMA | 15/11 | ✅ Xong 29/10: driver `fw/hal/dma.c` (`dma_sha256`: kiểm DMA và SHA rảnh, chạy với `PAD`, polling có giới hạn và nghỉ giữa các lần đọc, xóa `DONE`, báo lỗi tường lửa, lỗi bus, timeout). Secure Boot băm ROM App bằng DMA `SWAP = 1`, khớp golden ở `0xFE0`. CPU không còn đọc ROM App, firmware còn 3.320/4.064 byte. Test: `sb_host_test` 63/0 (thêm tường lửa, DMA không xong, DMA hoặc SHA đang bận, bắt 10/10 lỗi cài thử), VP `--fw` PASS, `SoC_Fw_tb` ảnh đúng và `+TAMPER` PASS (DMA chạy 1 lần, 17.026 chu kỳ, CPU tự băm mất 34.143) |
 | P-16 | FW App + `app_firmware.hex` + sinh golden hash | 15/11 | ✅ Xong 29/10: `fw/app` (UART1 "App running", LED GPIO1 chạy theo TIMER1, gửi `APP1` rồi số bước qua Mailbox), Master in tin Mailbox ra UART0 sau khi nhả App. `app.ld` chặn `.rodata`/`.data` vì lõi App không đọc được ROM của nó. `make fw` tạo `app_firmware.hex`/`.bin` đủ 4 KB và ghi golden vào `firmware_imem.hex` (`fw/tools/rom_image.py`, I-04). Driver Mailbox mới, `uart_put_hex32` bỏ bảng hằng. Test: `drv_host_test` 59/0, `sb_host_test` 69/0, `rom_image_test.py` 26/0, `SoC_App_tb` ảnh đúng và `+TAMPER` PASS, bắt 4/4 lỗi cài thử |
-| P-17 | UVM agent APB + scoreboard SHA (DPI) | 15/11 | Chưa làm |
+| P-17 | UVM agent APB + scoreboard SHA (DPI) | 15/11 | ✅ Xong 30/10, chưa commit: agent APB (`dv/agents/apb_*`, SVA giao thức) và top `tb_apb_top.sv` lái `APB_Decoder`, GPIO, TIMER, Mailbox hai phía thật cùng một slave RAM có wait state. `apb_scoreboard` dự đoán mọi lần đọc và `PSLVERR` của cả hai bus. Scoreboard SHA thụ động với golden `sha256_ref.c` qua DPI và reg model khớp chu kỳ, bật trong mọi test `sha256_*`. Verilator: `apb_full_test` 5 seed và `apb_reg_test` 2.000 transfer có reset PASS, 0 lỗi. `sha256_full_test` 1.701 lần đọc, 0 lỗi. Lỗi cài vào RTL mà sequence không thấy: scoreboard bắt 3/3 (DONE trễ 1 chu kỳ, HASH đọc 0 khi BUSY, TIMER ghi lệch). Lỗi cài vào Mailbox chưa build được trên Verilator. Chưa chạy Questa |
 | P-18…P-21 | Test toàn SoC + regression UVM · coverage · Genus · Innovus + so sánh PPA | 22/11 → 13/12 | Chưa làm |
 
 ## 3. Giao diện Nguyên ↔ Phát

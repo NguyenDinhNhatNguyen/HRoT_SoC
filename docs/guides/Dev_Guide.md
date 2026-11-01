@@ -9,7 +9,7 @@
 | `rtl/core/`, `rtl/top/RISCV_Core.v` | Lõi RV32I 5 tầng (forwarding, load-use stall, flush ở EX, load/store byte/half) | Phát |
 | `rtl/bus/`, `rtl/periph/`, `rtl/mem/`, `rtl/crypto/`, `rtl/top/SoC_Top.v` | AXI4-Lite master dùng chung (CPU và Secure DMA) + interconnect, cầu AXI→APB, SYSCSR (BUS_ERR, Boot Guard), UART, GPIO, TIMER, WDT, PLIC-lite, Mailbox, Secure DMA + tường lửa, SHA-256, bộ nhớ, bus APB thế giới App | Nguyên |
 | `dv/tb/` · `dv/tb/soc/` | TB đơn vị, TB lõi (`RISCV_Core_tb`, `RISCV_Core_prog_tb`, `RISCV_Core_hazard_tb`), chỉ TB trực tiếp · `APB_Periph_tb`, `SoC_Top_tb` | Phát (lõi) · Nguyên (IP, SoC) |
-| `dv/agents`, `dv/env`, `dv/tests`, `dv/hrot_dv_pkg.sv` | Môi trường UVM AXI4-Lite và SHA-256. Từ 26/10 (P-10) slave mô hình nằm ở `dv/agents`, hai top UVM (`tb_top.sv`, `tb_sha256_top.sv`) nằm ở `dv/env` | Phát |
+| `dv/agents`, `dv/env`, `dv/tests`, `dv/hrot_dv_pkg.sv` | Môi trường UVM AXI4-Lite, SHA-256 và APB. Từ 26/10 (P-10) slave mô hình nằm ở `dv/agents`, các top UVM (`tb_top.sv`, `tb_sha256_top.sv`, `tb_apb_top.sv`) nằm ở `dv/env`. Từ 30/10 (P-17) có agent APB, scoreboard APB và scoreboard SHA-256 dùng golden C qua DPI | Phát |
 | `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình tự kiểm tra cho lõi (`core_isa_test`, `core_trap_test`) · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
 | `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), driver Secure DMA (`dma.h`, P-15), driver Mailbox (`mailbox.h`, P-16), crt0, linker script, Secure Boot (`fw/secure_boot`, P-13), firmware App demo (`fw/app`, P-16), `fw/tools/golden.py`, `fw/tools/rom_image.py` | Phát |
 | `vp/` | Virtual Platform SystemC/TLM-2.0 (chạy HAL thật) | Nguyên |
@@ -47,10 +47,10 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 
 | Lệnh (thư mục gốc repo) | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256), HAL host, APB, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`), VP. Log ở `build/logs/` |
+| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256, APB), HAL host, APB, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`), VP. Log ở `build/logs/` |
 | `make sim-unit` | 11 TB đơn vị (`sim/run_unit.do`), mỗi TB in `SUMMARY <TÊN>: PASS = x \| FAIL = y` |
 | `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định, chạy `core_isa_test` và `core_trap_test`) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
-| `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do` |
+| `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do`. SHA-256 thật: `set DUT sha256` (test `sha256_*`). Ngoại vi APB thật: `set DUT apb` (test `apb_reg_test`, `apb_periph_test`, `apb_full_test`) |
 | `make sim-ip` / `make sim-soc` / `make vp` | APB (SYSCSR, GPIO, UART, TIMER, WDT, PLIC-lite, Mailbox) / toàn SoC (thêm tham số `set PLUSARGS +TAMPER` trong `sim/run_soc.do` để chạy ảnh bị sửa) / Virtual Platform |
 | `make fw` | `fw/build/firmware_imem.hex` (Boot ROM, đã có golden ở `0xFE0`), `firmware_dmem.hex`, `app_firmware.hex` và `app_firmware.bin` (ROM App đủ 4 KB, `sha256sum` của `.bin` = golden, I-04), `.dis`, `.map` |
 | `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO/Mailbox, Secure Boot (`sb_host_test`), bước ghép golden (`rom_image_test.py`) rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và các driver |
@@ -60,14 +60,14 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 
 Từ P-22 (26/10), `regress.sh` chạy mỗi TB đơn vị bằng một `vsim` riêng và cho mọi `vsim` đọc stdin từ `/dev/null`, nên `make test` không còn đứng chờ ở dấu nhắc `VSIM(paused)>`. `sim/run_vp.sh` nhận cả SystemC 2.3.3 (`lib-linux64/`) lẫn 2.3.4 (`lib/`) qua biến `SYSTEMC_HOME`.
 
-**Ngoài Questa (công cụ mã nguồn mở, image docker `hpretl/iic-osic-tools`):** công cụ ở `/foss/tools/<tool>/bin`, iverilog cần `LD_LIBRARY_PATH=/foss/tools/iverilog/lib`. UVM trên Verilator cần thư viện `chipsalliance/uvm-verilator` và **z3 trong PATH** (thiếu z3 thì mọi `randomize()` thất bại), build mất khoảng 8 phút. **Máy WSL dễ lag: chạy job nặng với `docker run --cpus=2 --memory=4g` và `nice -n 19`.**
+**Ngoài Questa (công cụ mã nguồn mở, image docker `hpretl/iic-osic-tools`):** công cụ ở `/foss/tools/<tool>/bin`, iverilog cần `LD_LIBRARY_PATH=/foss/tools/iverilog/lib`. UVM trên Verilator cần thư viện `chipsalliance/uvm-verilator` và **z3 trong PATH** (thiếu z3 thì mọi `randomize()` thất bại), build mất khoảng 8 phút. Từ P-17 mọi build UVM phải có thêm `dv/agents/apb_if.sv` và `dv/env/sha256_ref_dpi.c` trên dòng lệnh (Questa: `run_uvm.do` đã có). **Máy WSL dễ lag: chạy job nặng với `docker run --cpus=2 --memory=4g` và `nice -n 19`.**
 
 ## 5. Quy ước code
 
 - RTL/TB Verilog: comment và chuỗi in ra bằng tiếng Anh (từ 25/10/2026, toàn bộ file RTL core, DV và firmware của Phát đã chuyển sang ngày 25/10). Mỗi file có `` `timescale 1ns / 1ps ``, kết thúc bằng newline, xuống dòng LF.
 - TB tự kiểm tra, in một dòng `SUMMARY <TÊN>: PASS = x | FAIL = y` (hoặc `<tb> RESULT: PASS|FAIL`) và gọi `$finish`. `regress.sh` dựa vào dòng này.
 - `*.svh` chỉ được `` `include `` vào `hrot_dv_pkg.sv`, không biên dịch riêng.
-- RTL reset active-high, còn interface UVM `axi4_lite_if` reset active-low (`rst_n`).
+- RTL reset active-high, còn interface UVM `axi4_lite_if` và `apb_if` reset active-low (`rst_n`).
 - Firmware: C11 freestanding, rv32i (không M), không libc, nhân/chia lấy từ libgcc, build `-Os` từ 27/10 để vừa Boot ROM 4 KB. Địa chỉ ngoại vi lấy theo `docs/spec/SoC_Memory_Map.md` (I-02).
 - Đổi bản đồ địa chỉ hay giao diện giữa hai người: cập nhật mục "Mốc & Giao diện" trong sheet và báo trước.
 - Viết comment, tài liệu: không dùng dấu `;` trong câu, bảng Markdown dùng dòng phân cách `| --- | --- |`.

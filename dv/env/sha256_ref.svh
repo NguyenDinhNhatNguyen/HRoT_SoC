@@ -1,5 +1,6 @@
 // SHA-256 reference model in SystemVerilog (same algorithm as fw/hal/test/sha256_ref.c).
-// Used by the self-checking sequences of P-08. The DPI scoreboard on sha256_ref.c is task P-17.
+// Used by the self-checking sequences of P-08. The passive DPI scoreboard on sha256_ref.c (P-17) is
+// dv/env/sha256_scoreboard.svh, so the two models check each other.
 // Same convention as the RTL: H0 in the top bits of the 256-bit hash, W0 in the top bits of the 512-bit block.
 
 localparam bit [255:0] SHA256_IV = {32'h6a09e667, 32'hbb67ae85, 32'h3c6ef372, 32'ha54ff53a,

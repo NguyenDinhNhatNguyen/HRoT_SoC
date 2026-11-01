@@ -16,6 +16,9 @@ class axi4_lite_item extends uvm_sequence_item;
     bit [1:0]         bresp;
     bit [1:0]         rresp;
     bit               aborted;      // 1: aborted by a reset mid-transaction (rdata/resp invalid)
+    // Monitor only: time of the clock edge where the slave took the request (AW and W both done for a
+    // write, AR for a read). Register slaves act on that edge, so scoreboards order events by it (P-17)
+    time              accept_time;
 
     `uvm_object_utils(axi4_lite_item)
 
@@ -43,6 +46,7 @@ class axi4_lite_item extends uvm_sequence_item;
         bresp      = r.bresp;
         rresp      = r.rresp;
         aborted    = r.aborted;
+        accept_time = r.accept_time;
     endfunction
 
     virtual function string convert2string();

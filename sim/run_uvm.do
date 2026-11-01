@@ -4,6 +4,8 @@
 # Tests: base_test | axi4_lite_wstrb_test | axi4_lite_rand_test | axi4_lite_full_test
 # Real SHA-256 DUT (P-08): set DUT sha256; TEST = sha256_kat_test | sha256_ctl_test | sha256_rand_test
 #   | sha256_full_test | sha256_alias_test   (e.g. vsim -c -do "set DUT sha256; set TEST sha256_full_test; do run_uvm.do")
+#   The SHA tests also run the passive DPI scoreboard (P-17, dv/env/sha256_scoreboard.svh + sha256_ref_dpi.c)
+# Real APB peripherals (P-17): set DUT apb; TEST = apb_reg_test | apb_periph_test | apb_full_test
 # Options: TEST, SEED, VERB (UVM_LOW/MEDIUM/HIGH), PLUSARGS (e.g. "+NUM_TRANS=500 +SLAVE_MAX_DELAY=6")
 # UVM: uses the UVM library that ships with Questa by default.
 #      If vlog can't find uvm_pkg: set UVM_LIB <Questa's UVM library name> (check `vmap -l` or
@@ -33,11 +35,17 @@ if {[info exists env(UVM_HOME)]} {
   if {[info exists env(UVM_DPI)]} {lappend DPI_FLAGS -sv_lib $env(UVM_DPI)}
 }
 
-# 1) interface, 2) UVM package, 3) DUT or slave model + top
-vlog -sv -work work {*}$UVM_FLAGS $DV/agents/axi4_lite_if.sv
+# 1) interfaces, 2) UVM package and the DPI golden of the SHA scoreboard (C, compiled by vlog),
+# 3) DUT or slave model + top
+vlog -sv -work work {*}$UVM_FLAGS $DV/agents/axi4_lite_if.sv $DV/agents/apb_if.sv
 vlog -sv -work work {*}$UVM_FLAGS +incdir+$DV/agents +incdir+$DV/env +incdir+$DV/tests \
      $DV/hrot_dv_pkg.sv
-if {$DUT eq "sha256"} {
+vlog -work work $DV/env/sha256_ref_dpi.c
+if {$DUT eq "apb"} {
+  vlog -sv -work work ../rtl/bus/APB_Decoder.v ../rtl/periph/GPIO.v ../rtl/periph/TIMER.v ../rtl/periph/Mailbox.v
+  vlog -sv -work work {*}$UVM_FLAGS $DV/agents/apb_slave_model.sv $DV/env/tb_apb_top.sv
+  set TOP tb_apb_top
+} elseif {$DUT eq "sha256"} {
   vlog -sv -work work ../rtl/bus/AXI4_Lite_Slave_Template.v ../rtl/crypto/SHA256_Core.v \
        ../rtl/crypto/SHA256_Wrapper.v
   vlog -sv -work work {*}$UVM_FLAGS $DV/env/tb_sha256_top.sv

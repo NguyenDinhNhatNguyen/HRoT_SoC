@@ -1,6 +1,6 @@
 # Test Plan UVM — SHA-256 AXI4-Lite Slave
 
-> Viết Tuần 6, cập nhật 25/10/2026 theo P-08 và I-05 · Người viết: Phát (DV) · Phục vụ: P-08 (sequence ngẫu nhiên, xong), P-17 (scoreboard DPI), P-19 (coverage)
+> Viết Tuần 6, cập nhật 25/10/2026 theo P-08 và I-05, 30/10/2026 theo P-17 · Người viết: Phát (DV) · Phục vụ: P-08 (sequence ngẫu nhiên, xong), P-17 (scoreboard DPI), P-19 (coverage)
 > Register map và hợp đồng: `docs/spec/SHA256_Register_Map.md`
 
 ## 1. Phạm vi và mục tiêu
@@ -30,8 +30,8 @@ Tái sử dụng agent AXI4-Lite đã có (driver, monitor, sequencer, SVA trong
 | `dv/env/sha256_ref.svh` | Mô hình tham chiếu SHA-256 bằng SV (cùng thuật toán với `fw/hal/test/sha256_ref.c`) | Có (P-08) |
 | `dv/tests/sha256_seq_lib.svh` | Sequence tự kiểm tra: băm message theo luồng HAL, so với `sha256_ref`, gom lỗi và bỏ qua kết quả bị reset cắt ngang | Có (P-08) |
 | `dv/tests/sha256_tests.svh` | `sha256_base_test` + test con, mỗi test ghi đè `run_stimulus()` | Có (P-08) |
-| `sha256_ref_dpi.c` + `sha256_scoreboard` | Golden bọc `fw/hal/test/sha256_ref.c` bằng DPI-C, scoreboard thụ động dựng lại khối từ các ghi BLOCK | P-17 |
-| `sha256_reg_model` | Mô hình thanh ghi: BLOCK (W), CTRL, STATUS, HASH (RO), quy tắc bỏ qua ghi khi BUSY | P-17 |
+| `dv/env/sha256_ref_dpi.c` + `sha256_scoreboard` | Golden bọc `fw/hal/test/sha256_ref.c` bằng DPI-C, scoreboard thụ động dựng lại khối từ các ghi BLOCK, dự đoán mọi lần đọc (STATUS, HASH, thanh ghi đọc 0) | Có (P-17), bật trong mọi test `sha256_*` |
+| `sha256_reg_model` | Mô hình thanh ghi khớp chu kỳ: BLOCK (W), CTRL, STATUS, HASH (RO), BUSY từ cạnh START + 1 tới + 65, DONE và digest mới từ + 66, bỏ qua ghi khi BUSY, khối không rõ sau reset | Có (P-17), trong `sha256_scoreboard.svh` |
 | `sha256_cov` | Covergroup (mục 6) | P-19 |
 
 `axi4_lite_scoreboard` (mô hình bộ nhớ chung) **không dùng** cho DUT này vì thanh ghi RO/W1-clear/side-effect không khớp mô hình bộ nhớ.
@@ -78,7 +78,7 @@ Chạy bằng `vsim -c -do "set DUT sha256; set TEST <tên>; do run_uvm.do"`.
 | `sha256_full_test` | KAT → ctl → rand | các mục trên | Nằm trong `make test` |
 | `sha256_alias_test` | `sha256_alias_seq`: offset từ `0x100` trở lên | F-REG-04 | Tìm ra lỗi alias, RTL sửa ở `a968cce`. Không nằm trong `make test` |
 
-Chưa có (làm cùng P-17 hoặc khi cần):
+Chưa có (P-17 chỉ làm scoreboard và reg model, các test này để P-18/P-19 hoặc khi cần):
 
 | Test | Feature | Ghi chú |
 | --- | --- | --- |
@@ -108,7 +108,7 @@ Chưa có (làm cùng P-17 hoặc khi cần):
 
 ## 7. Tiêu chí PASS/FAIL tổng thể
 
-- Test PASS khi: không có `UVM_ERROR/UVM_FATAL`, `assert_fail_count == 0`, sequence không còn lỗi gom lại, và không chạm timeout toàn cục (`+TEST_TIMEOUT_US`). Scoreboard bộ nhớ tắt cho DUT này (`has_mem_scoreboard = 0`).
+- Test PASS khi: không có `UVM_ERROR/UVM_FATAL`, `assert_fail_count == 0`, sequence không còn lỗi gom lại, và không chạm timeout toàn cục (`+TEST_TIMEOUT_US`). Scoreboard bộ nhớ tắt cho DUT này (`has_mem_scoreboard = 0`), scoreboard SHA bật (`has_sha_scoreboard = 1`, P-17).
 - Mọi test lỗi phải tái lập được bằng `TEST`+`SEED` (ghi vào log).
 - Mỗi lỗi RTL tìm ra được ghi vào bảng bug với ID, test phát hiện, seed.
 
@@ -118,7 +118,7 @@ Chưa có (làm cùng P-17 hoặc khi cần):
 | --- | --- |
 | 6 (xong) | Test plan này + HAL (`fw/hal`) + golden C có sẵn |
 | 7 (xong, P-08) | Mô hình SV, sequence tự kiểm tra và 5 test đã có ở mục 5, chạy trên DUT thật |
-| 10 (P-17, hạn 15/11) | DPI golden, `sha256_scoreboard`, `sha256_reg_model`, các test còn thiếu ở mục 5 |
+| 10 (P-17, hạn 15/11) | DPI golden, `sha256_scoreboard`, `sha256_reg_model`: xong 30/10. Các test còn thiếu ở mục 5 chưa làm |
 | 11 (P-18, hạn 22/11) | Regression UVM toàn SoC |
 | 12–13 (P-19, P-20) | Covergroup mục 6, báo cáo coverage |
 

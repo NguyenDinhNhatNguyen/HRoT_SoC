@@ -21,7 +21,7 @@
 | 25/10 | `d2315b2` | Thêm `SYSCSR.BUS_ERR`, `BUS_ERR_ADDR` (N-36) | 8.011 | — | — | — | 54,69 MHz | +1,71 ns | Nguyên |
 | 26/10 | `d912cdc` + bản thử P-23 | Thêm PLIC-lite, Mailbox, Boot Guard, cổng dữ liệu Boot ROM, Secure DMA + tường lửa, bus APB thế giới App. Lõi đổi reset đồng bộ ở `IF_ID_Reg`, `ID_EX_Reg` (chưa commit lúc đo) | 9.358 (28%) | 4.390 | 135.168 (28%) | 52 | 53,02 MHz | +1,14 ns | Nguyên |
 | 26/10 | `9f9e66a` | Lõi thêm Zicsr và trap máy, cổng `irq_timer`/`irq_ext` (P-09, chưa nối trong `SoC_Top`), P-23 đã commit | 10.270 (31%) | 4.840 | 135.168 (28%) | 52 | 53,73 MHz | +1,389 ns (hold +0,391 ns) | Phát |
-| 27/10 | `9f9e66a` + P-13, P-14 (chưa commit) | Nối 4 dây ngắt vào hai lõi trong `SoC_Top` (P-14). Boot ROM vẫn là firmware thử của `mkhex.py` (target `make hex`) | 10.509 (32%) | 4.842 | 135.168 (28%) | 52 | 54,21 MHz | +1,554 ns (hold +0,391 ns) | Phát |
+| 27/10 | `9f9e66a` + P-13, P-14 (commit `c739654`) | Nối 4 dây ngắt vào hai lõi trong `SoC_Top` (P-14). Boot ROM vẫn là firmware thử của `mkhex.py` (target `make hex`) | 10.509 (32%) | 4.842 | 135.168 (28%) | 52 | 54,21 MHz | +1,554 ns (hold +0,391 ns) | Phát |
 
 Ô "—" là số chưa có trong báo cáo đã lưu. Setup slack của các dòng Nguyên đo tính từ Fmax (slack = 20 ns − 1000/Fmax), riêng dòng 25/10 lấy từ ghi chú review.
 

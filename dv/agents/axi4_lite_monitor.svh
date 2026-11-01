@@ -1,5 +1,6 @@
 // Passive monitor: AW + W + B make one write, AR + R make one read.
 // Each channel is captured when VALID && READY on a clock edge (sampled through mon_cb).
+// accept_time = edge of the later of AW and W (write) or of AR (read), see axi4_lite_item.
 class axi4_lite_monitor extends uvm_monitor;
     `uvm_component_utils(axi4_lite_monitor)
 
@@ -7,14 +8,20 @@ class axi4_lite_monitor extends uvm_monitor;
     virtual axi4_lite_if                vif;
     uvm_analysis_port #(axi4_lite_item) ap;
 
-    typedef struct packed {
+    typedef struct {
         bit [31:0] data;
         bit [3:0]  strb;
+        time       t;
     } w_beat_t;
 
-    bit [31:0] aw_q[$];
+    typedef struct {
+        bit [31:0] addr;
+        time       t;
+    } a_beat_t;
+
+    a_beat_t   aw_q[$];
     w_beat_t   w_q [$];
-    bit [31:0] ar_q[$];
+    a_beat_t   ar_q[$];
 
     function new(string name, uvm_component parent);
         super.new(name, parent);
@@ -30,6 +37,7 @@ class axi4_lite_monitor extends uvm_monitor;
     task run_phase(uvm_phase phase);
         axi4_lite_item t;
         w_beat_t       beat;
+        a_beat_t       a;
         vif = cfg.vif;
         forever begin
             @(vif.mon_cb);
@@ -40,15 +48,22 @@ class axi4_lite_monitor extends uvm_monitor;
                 continue;
             end
 
-            if (vif.mon_cb.awvalid && vif.mon_cb.awready)
-                aw_q.push_back(vif.mon_cb.awaddr);
+            if (vif.mon_cb.awvalid && vif.mon_cb.awready) begin
+                a.addr = vif.mon_cb.awaddr;
+                a.t    = $time;
+                aw_q.push_back(a);
+            end
             if (vif.mon_cb.wvalid && vif.mon_cb.wready) begin
                 beat.data = vif.mon_cb.wdata;
                 beat.strb = vif.mon_cb.wstrb;
+                beat.t    = $time;
                 w_q.push_back(beat);
             end
-            if (vif.mon_cb.arvalid && vif.mon_cb.arready)
-                ar_q.push_back(vif.mon_cb.araddr);
+            if (vif.mon_cb.arvalid && vif.mon_cb.arready) begin
+                a.addr = vif.mon_cb.araddr;
+                a.t    = $time;
+                ar_q.push_back(a);
+            end
 
             // Write response
             if (vif.mon_cb.bvalid && vif.mon_cb.bready) begin
@@ -57,10 +72,12 @@ class axi4_lite_monitor extends uvm_monitor;
                 end else begin
                     t          = axi4_lite_item::type_id::create("mon_wr");
                     t.is_write = 1'b1;
-                    t.addr     = aw_q.pop_front();
+                    a          = aw_q.pop_front();
                     beat       = w_q.pop_front();
+                    t.addr     = a.addr;
                     t.data     = beat.data;
                     t.wstrb    = beat.strb;
+                    t.accept_time = (a.t > beat.t) ? a.t : beat.t;
                     t.bresp    = vif.mon_cb.bresp;
                     `uvm_info("MON", t.convert2string(), UVM_MEDIUM)
                     ap.write(t);
@@ -74,7 +91,9 @@ class axi4_lite_monitor extends uvm_monitor;
                 end else begin
                     t          = axi4_lite_item::type_id::create("mon_rd");
                     t.is_write = 1'b0;
-                    t.addr     = ar_q.pop_front();
+                    a          = ar_q.pop_front();
+                    t.addr     = a.addr;
+                    t.accept_time = a.t;
                     t.rdata    = vif.mon_cb.rdata;
                     t.rresp    = vif.mon_cb.rresp;
                     `uvm_info("MON", t.convert2string(), UVM_MEDIUM)

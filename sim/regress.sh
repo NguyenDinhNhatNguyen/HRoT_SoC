@@ -43,6 +43,8 @@ check "UVM: reset mid-transaction"  $LOG/uvm_reset.log "TEST PASSED"
 check "UVM: SHA-256"                $LOG/uvm_sha.log   "TEST PASSED"
 (cd sim && "$QUESTA" -c -do "set DUT sha256; set TEST sha256_rand_test; set SEED 3; set PLUSARGS {+NUM_MSGS=20 +RESET_AT_NS=30000}; do run_uvm.do" < /dev/null) > $LOG/uvm_sha_reset.log 2>&1
 check "UVM: SHA-256 with reset"     $LOG/uvm_sha_reset.log "TEST PASSED"
+(cd sim && "$QUESTA" -c -do "set DUT apb; set TEST apb_full_test; set SEED 1; do run_uvm.do" < /dev/null) > $LOG/uvm_apb.log 2>&1
+check "UVM: APB peripherals"        $LOG/uvm_apb.log   "TEST PASSED"
 if command -v gcc > /dev/null; then
     make -s -C fw/hal/test clean test                                   > $LOG/hal.log 2>&1
     check "HAL: SHA-256 on host"    $LOG/hal.log       "==== PASSED"
