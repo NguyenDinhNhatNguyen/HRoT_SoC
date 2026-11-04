@@ -9,11 +9,11 @@ Một master AXI duy nhất, dùng chung cho CPU và Secure DMA (xoay vòng, DMA
 
 | Địa chỉ | Khối | Ghi chú |
 | --- | --- | --- |
-| `0x0000_0000` 4 KB | Boot ROM | cổng A: fetch lệnh. Cổng B: lệnh `lw` đọc được ROM, chỉ đọc, ghi → `SLVERR` (để đặt `.rodata` và golden hash trong ROM, I-03). Nạp từ `firmware_imem.hex`. Firmware thật đặt golden ở `0xFE0`–`0xFFF` (P-13) |
-| `0x1000_0000` 4 KB | RAM Master | `.rodata/.data/.bss`, stack (`firmware_dmem.hex`) |
+| `0x0000_0000` 4 KB | Boot ROM | cổng A: fetch lệnh. Cổng B: lệnh `lw` đọc được ROM, chỉ đọc, ghi → `SLVERR` (để đặt `.rodata` và golden hash trong ROM, I-03). Khi Boot_Verifier chạy `CHECK` (STATUS.BUSY, khoảng 9 chu kỳ), cổng B được mượn cho nó đọc golden hash, nên firmware không được `lw` từ Boot ROM trong lúc đó. Địa chỉ từ `0x0000_1000` trở lên → `DECERR`, không alias. Nạp từ `firmware_imem.hex`. Firmware thật đặt golden ở `0xFE0`–`0xFFF` (P-13) |
+| `0x1000_0000` 4 KB | RAM Master | `.rodata/.data/.bss`, stack (`firmware_dmem.hex`). Địa chỉ từ `0x1000_1000` trở lên → `DECERR` |
 | `0x4000_0000` 64 KB | Cầu AXI→APB | bus ngoại vi, mỗi slave 4 KB (bảng dưới) |
 | `0x5000_0000` 64 KB | SHA-256 | thanh ghi ở `0x00`–`0x6C`, xem `SHA256_Register_Map.md`. Offset `0x100`–`0xFFFF`: đọc 0, ghi bỏ qua (không alias) |
-| `0x6000_0000` 4 KB | ROM App, cổng B | chỉ đọc, ghi → `SLVERR` |
+| `0x6000_0000` 4 KB | ROM App, cổng B | chỉ đọc, ghi → `SLVERR`. Từ `0x6000_1000` trở lên → `DECERR` |
 | còn lại | default slave | `DECERR`, không treo bus |
 
 ## Bus ngoại vi APB (`0x4000_0000`)
@@ -28,7 +28,8 @@ Một master AXI duy nhất, dùng chung cho CPU và Secure DMA (xoay vòng, DMA
 | `0x4000_5000` | PLIC-lite | Có (Tuần 8) |
 | `0x4000_6000` | MAILBOX (phía Secure) | Có (Tuần 8) |
 | `0x4000_7000` | Secure DMA | Có (Tuần 8) |
-| `0x4000_8000` trở đi | (ngoài slave cuối) | `SLVERR` |
+| `0x4000_8000` | Boot_Verifier | Có (N-37) |
+| `0x4000_9000` trở đi | (ngoài slave cuối) | `SLVERR` |
 
 Cửa sổ chưa có slave trả `SLVERR`. Offset chưa dùng trong một cửa sổ có slave: đọc ra 0, ghi bị bỏ qua (OKAY).
 
@@ -123,6 +124,20 @@ Cầu dữ liệu duy nhất giữa hai thế giới ngoài cổng B của ROM A
 SRC, NBLK và các tùy chọn CTRL bị khóa khi `BUSY`. Kết quả đọc ở thanh ghi `HASH` của SHA-256 (`0x5000_0050`).
 
 **Tường lửa của DMA:** dù thanh ghi đặt gì, DMA chỉ được đọc cửa sổ ROM App (`0x6000_0000`, 4 KB) và thanh ghi STATUS của SHA-256, chỉ được ghi thanh ghi khối và CTRL của SHA-256 (`0x5000_0000` tới `0x5000_0043`). Mọi yêu cầu khác (RAM, ngoại vi APB, Boot ROM, địa chỉ lạ, lệch word) bị chặn ngay, không tới bus, và `ERR_FW` được bật.
+
+## Boot_Verifier (`0x4000_8000`)
+
+Cổng phần cứng giữa "đã băm ảnh App" và "lõi App được chạy". Khối tự đọc digest mong đợi từ Boot ROM (mượn cổng B của ROM) và so 8 từ với kết quả SHA-256, nên firmware không giả được kết quả. Khi `SoC_Top` đặt `VERIFY_GATE = 1`, `SYSCSR.APP_RUN` bị bỏ qua cho tới khi `VERIFIED` lên 1. Định nghĩa thanh ghi cho firmware nằm ở `fw/hal/soc_map.h`.
+
+| Offset | Tên | Truy cập | Mô tả |
+| --- | --- | --- | --- |
+| `0x00` | CTRL | WO | bit0 `CHECK` (nhận một lần mỗi lần reset hệ thống), bit1 `KEY_LOCK` (dính tới POR), bit2 `MODE` (lấy cùng `CHECK`): 0 so với golden hash, 1 so với HMAC tag |
+| `0x04` | STATUS | RO | bit0 `VERIFIED`, bit1 `FAIL`, bit2 `KEY_LOCKED`, bit3 `CHECKED`, bit4 `BUSY` |
+| `0x08` | MIN_VER | RW | ngưỡng chống rollback, ghi chỉ làm tăng, xóa bởi POR (mô hình OTP) |
+| `0x0C` | APP_VER | RW | phiên bản trong header ảnh App, ghi trước `CHECK`, khóa sau `CHECK` |
+| `0x40`–`0x5C` | KEY0..KEY7 | RO | khóa HMAC 256 bit, đọc ra 0 sau `KEY_LOCK` |
+
+`CHECK` thất bại (`FAIL`) khi SHA-256 chưa xong hoặc đang bận, khi `APP_VER < MIN_VER`, hoặc khi bất kỳ từ nào lệch với ô trong Boot ROM. `CHECK` thành công nâng `MIN_VER` lên `APP_VER`. Ô hash ở `0xFE0` (`BV_GOLDEN_ADDR`) và ô HMAC tag ở `0xFC0` (`BV_TAG_ADDR`) lưu digest dạng 8 từ big-endian H0..H7, đúng định dạng `fw/tools/golden.py` (I-03). Khóa mặc định chỉ là giá trị demo trong RTL (tham số `KEY`), cần thay khi dùng thật.
 
 ## Thế giới App (chỉ lõi App thấy)
 
