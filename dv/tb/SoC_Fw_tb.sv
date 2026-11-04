@@ -12,7 +12,7 @@
 //  - Since 04/11 the firmware runs the WDT (1 s): it must be on, kicked, and never have fired
 //  - VERIFY_GATE = 1: good image -> Boot_Verifier VERIFIED and KEY_LOCK, tampered -> never VERIFIED (I-08)
 //  - +FAULT      : good image, but the CPU's load of APP_VER (0x6000_0FFC) gets an access fault: data_err is
-//    forced for that response (SoC_Top still ties it to 0, P-24), the trap handler must lock the App out
+//    forced for that response (the real bus answers OKAY there), the trap handler must lock the App out
 // Run from sim/ (sim/run_fw.do). Ends with "SoC_Fw_tb RESULT: PASS|FAIL".
 module SoC_Fw_tb;
 

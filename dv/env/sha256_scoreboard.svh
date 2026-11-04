@@ -72,7 +72,7 @@ class sha256_reg_model extends uvm_object;
         if (off[7:0] == 8'h44)
             return {30'b0, busy_at(t), done_at(t)};
         if (off[7:0] >= 8'h50 && off[7:0] <= 8'h6C)
-            return hash_at(t, off[4:2] + 3'd4, known);
+            return hash_at(t, (off[7:0] - 8'h50) >> 2, known);   // H0 at 0x50 ... H7 at 0x6C
         return 32'h0;
     endfunction
 
