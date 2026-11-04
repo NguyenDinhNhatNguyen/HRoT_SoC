@@ -273,17 +273,17 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e56" edge="1" parent="1" source="c20" style="endArrow=classic;rounded=0;strokeColor=#6c8ebf;fontSize=11;dashed=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;shadow=0;labelBackgroundColor=#FFFFFF;fontColor=#1F2937;html=1;textShadow=0;fontStyle=1;" value="IRQ External">
+        <mxCell id="e56" edge="1" parent="1" source="c20" style="endArrow=classic;rounded=0;strokeColor=#6c8ebf;fontSize=11;dashed=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;shadow=0;labelBackgroundColor=#FFFFFF;fontColor=#1F2937;html=1;textShadow=0;fontStyle=1;entryX=0;entryY=0.63;entryDx=0;entryDy=0;" value="IRQ External" target="c4">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="513" y="576"/>
               <mxPoint x="513" y="629"/>
               <mxPoint x="-45" y="629"/>
               <mxPoint x="-45" y="106"/>
-              <mxPoint x="1" y="106"/>
+              
             </Array>
-            <mxPoint x="513" y="589" as="sourcePoint"/>
-            <mxPoint x="1" y="106" as="targetPoint"/>
+            
+            
           </mxGeometry>
         </mxCell>
         <mxCell id="e57" edge="1" parent="1" source="c24" style="endArrow=classic;rounded=0;strokeColor=#d6b656;fontSize=11;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;shadow=0;labelBackgroundColor=#FFFFFF;fontColor=#1F2937;html=1;textShadow=0;fontStyle=1;" target="c26" value="App Reset (Hold)">
