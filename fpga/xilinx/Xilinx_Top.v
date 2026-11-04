@@ -20,7 +20,7 @@ module Xilinx_Top #(
     reg [1:0] rst_sync;
     always @(posedge clk) rst_sync <= {rst_sync[0], btn_rst};
 
-    SoC_Top #(.BOOT_HEX(BOOT_HEX), .RAM_HEX(RAM_HEX), .APP_HEX(APP_HEX)) soc (
+    SoC_Top #(.VERIFY_GATE(1), .BOOT_HEX(BOOT_HEX), .RAM_HEX(RAM_HEX), .APP_HEX(APP_HEX)) soc (
         .clk(clk),
         .reset_system(rst_sync[1]),
         .app_running(led_app),

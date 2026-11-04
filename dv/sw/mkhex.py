@@ -77,6 +77,12 @@ def check_hash(gold_off, fail_label):
         emit(LW(4, 1, 0x50 + 4 * i), LW(5, 0, gold_off + 4 * i))
         br('b', 1, 4, 5, fail_label)
 
+# Trap handler (P-24): SoC_Top routes a CPU bus error to data_err, and this program makes bus errors on purpose.
+# The handler resumes after the faulting instruction and counts the faults in x19 (x31 is its scratch)
+emit(JAL(0, 24))                                                 # over the handler, to word 6
+emit(I(0x73, 31, 2, 0, 0x341), ADDI(31, 31, 4), I(0x73, 0, 1, 31, 0x341), ADDI(19, 19, 1), 0x30200073)   # csrr mepc, +4, csrw mepc, count, mret
+emit(ADDI(31, 0, 4), I(0x73, 0, 1, 31, 0x305), ADDI(19, 0, 0))   # mtvec = 4, no fault yet
+
 # RAM 0x1000_0000
 emit(LUI(10, 0x10000), ADDI(11, 0, 0x55), SW(11, 10, 0), LW(12, 10, 0))
 br('b', 1, 12, 11, 'fail')
@@ -132,6 +138,9 @@ emit(LW(27, 23, 8), ANDI(27, 27, 4))
 br('b', 0, 27, 0, 'rxwait')
 emit(LW(28, 23, 4), ANDI(28, 28, 0xFF), SW(28, 25, 0))          # LED = the byte received
 emit(LUI(29, 0x40009), LW(30, 29, 0))                           # window past the last APB slave -> SLVERR, no hang
+# Seven bus errors so far: ROM write, 0x7000_0000 read and write, three reads past a 4 KB memory, this APB read
+emit(ADDI(22, 0, 7))
+br('b', 1, 19, 22, 'fail')
 
 # ---- Secure boot: hash the whole 4 KB App ROM and compare it with the golden hash in the Boot ROM ----
 # 1) The CPU copies 64 blocks of 16 words from the App ROM into the SHA-256 block registers

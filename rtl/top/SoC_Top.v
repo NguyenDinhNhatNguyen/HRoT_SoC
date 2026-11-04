@@ -54,6 +54,7 @@ module SoC_Top #(
     wire        master_data_we, master_data_re;
     wire [3:0]  master_data_wstrb;
     wire        master_resp_valid;
+    wire        master_data_err;      // CPU access got SLVERR or DECERR, assigned below
 
     // Interrupts for the Master Core (I-01, core ports since P-09): TIMER0 -> irq_timer, PLIC-lite -> irq_ext
     wire timer0_irq;
@@ -68,7 +69,7 @@ module SoC_Top #(
         .bus_stall(master_bus_stall),
         .irq_timer(timer0_irq),
         .irq_ext(plic_irq),
-        .data_err(1'b0),                // P-24: master_data_err once mkhex.py has a trap handler
+        .data_err(master_data_err),     // P-24: SLVERR or DECERR on a CPU access traps (mcause 5 load, 7 store)
         .instr_addr(boot_addr),
         .instr_rdata(boot_data),
         .data_addr(master_data_addr),
@@ -127,12 +128,9 @@ module SoC_Top #(
     assign master_data_rdata = axi_resp_rdata;
     wire dma_resp_valid = axi_resp_valid & own_dma_q;
 
-    // TODO(P-24, I-01): access fault. data_err is high in the same cycle as resp_valid when a CPU access
-    // got SLVERR or DECERR (DMA errors are reported to the DMA and SYSCSR.BUS_ERR, not trapped).
-    // The core has the port since P-24 (04/11) and master_core ties it to 0 for now: connect
-    // .data_err(master_data_err) together with a trap handler in dv/sw/mkhex.py, whose test firmware
-    // makes bus errors on purpose (ROM write, 0x7000_0000, empty APB window)
-    wire master_data_err = bus_err & master_resp_valid;
+    // Access fault (P-24, I-01): data_err is high in the same cycle as resp_valid when a CPU access got SLVERR or DECERR.
+    // DMA errors are reported to the DMA and SYSCSR.BUS_ERR, not trapped
+    assign master_data_err = bus_err & master_resp_valid;
 
     AXI4_Lite_Master axi_master (
         .clk(clk),

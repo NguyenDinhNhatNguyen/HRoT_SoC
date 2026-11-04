@@ -25,7 +25,7 @@ module DE2_Top #(
     wire [7:0] led;
     wire [7:0] gpio1_o;               // App-world GPIO1, shown on the green LEDs
 
-    SoC_Top #(.BOOT_HEX(BOOT_HEX), .RAM_HEX(RAM_HEX), .APP_HEX(APP_HEX)) soc (
+    SoC_Top #(.VERIFY_GATE(1), .BOOT_HEX(BOOT_HEX), .RAM_HEX(RAM_HEX), .APP_HEX(APP_HEX)) soc (
         .clk(CLOCK_50),
         .reset_system(rst_sync[1]),
         .app_running(app_running),
