@@ -4,10 +4,10 @@
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="c2" parent="1" style="rounded=1;fillColor=#F4F7FB;strokeColor=#5B6B7F;verticalAlign=top;fontStyle=1;fontSize=14;dashed=1;strokeWidth=2;shadow=0;labelBackgroundColor=none;fontColor=default;whiteSpace=wrap;html=1;textShadow=0;" value="Secure Zone (Vùng tin cậy)" vertex="1">
+        <mxCell id="secboot" value="Secure Boot (Hardware Root of Trust)" style="rounded=1;fillColor=#EAF1FA;strokeColor=#1E3A8A;strokeWidth=3;verticalAlign=top;fontStyle=1;fontSize=16;fontColor=#1E3A8A;whiteSpace=wrap;html=1;shadow=0;" vertex="1" parent="1"><mxGeometry x="-135" y="-35" width="1845" height="735" as="geometry"/></mxCell><mxCell id="c2" parent="1" style="rounded=1;fillColor=#F4F7FB;strokeColor=#5B6B7F;verticalAlign=top;fontStyle=1;fontSize=14;dashed=1;strokeWidth=2;shadow=0;labelBackgroundColor=none;fontColor=default;whiteSpace=wrap;html=1;textShadow=0;" value="Secure Zone (Vùng tin cậy)" vertex="1">
           <mxGeometry height="654" width="1231" x="-109" y="20" as="geometry"/>
         </mxCell>
-        <mxCell id="c3" parent="1" style="rounded=1;fillColor=#FFF4D6;strokeColor=#d6b656;verticalAlign=top;fontStyle=1;fontSize=14;dashed=1;strokeWidth=2;shadow=0;labelBackgroundColor=none;fontColor=default;whiteSpace=wrap;html=1;textShadow=0;" value="App Zone (Chỉ chạy sau khi được xác minh)" vertex="1">
+        <mxCell id="c3" parent="1" style="rounded=1;fillColor=#FFF4D6;strokeColor=#d6b656;verticalAlign=top;fontStyle=1;fontSize=14;dashed=1;strokeWidth=2;shadow=0;labelBackgroundColor=none;fontColor=default;whiteSpace=wrap;html=1;textShadow=0;" value="App Zone (Vùng chỉ chạy sau khi được xác minh)" vertex="1">
           <mxGeometry height="267" width="509" x="1180" y="20" as="geometry"/>
         </mxCell>
         <mxCell id="c4" parent="1" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;shadow=0;labelBackgroundColor=none;fontColor=default;whiteSpace=wrap;html=1;textShadow=0;" value="Master Core&lt;br&gt;RISCV_Core RV32I, Zicsr, Trap" vertex="1">
