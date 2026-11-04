@@ -4,7 +4,8 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 
 | Thư mục | File | Nội dung | Người giữ |
 | --- | --- | --- | --- |
-| `spec/` | [SoC_Memory_Map.md](spec/SoC_Memory_Map.md) | Bản đồ địa chỉ và thanh ghi của thế giới Secure (bus, SYSCSR, UART, GPIO, TIMER, WDT, ngắt) | Nguyên |
+| `spec/` | [SoC_Memory_Map.md](spec/SoC_Memory_Map.md) | Bản đồ địa chỉ và thanh ghi của hai thế giới (bus, SYSCSR, UART, GPIO, TIMER, WDT, PLIC, Mailbox, Secure DMA, Boot_Verifier, ngắt) | Nguyên |
+| `spec/` | [Security_Model.md](spec/Security_Model.md) | Tài sản, kẻ tấn công giả định, yêu cầu bảo mật SR-01..11 kèm truy vết tới RTL và test, giới hạn đã biết | Nguyên |
 | `spec/` | [SHA256_Register_Map.md](spec/SHA256_Register_Map.md) | Thanh ghi và hợp đồng phần cứng–HAL của khối SHA-256 | Phát |
 | `spec/` | [Core_Datapath.md](spec/Core_Datapath.md) | Sơ đồ khối datapath lõi RISC-V 5 tầng, đối chiếu module RTL và tín hiệu stall/flush/forward | Phát |
 | `verification/` | [SHA256_UVM_TestPlan.md](verification/SHA256_UVM_TestPlan.md) | Kế hoạch kiểm chứng UVM cho SHA-256 | Phát |

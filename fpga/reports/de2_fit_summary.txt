@@ -1,12 +1,12 @@
-Fitter Status : Successful - Wed Nov 04 21:21:16 2026
+Fitter Status : Successful - Wed Nov 04 23:34:17 2026
 Quartus II 64-Bit Version : 13.0.1 Build 232 06/12/2013 SP 1 SJ Web Edition
 Revision Name : hrot_de2
 Top-level Entity Name : DE2_Top
 Family : Cyclone II
 Device : EP2C35F672C6
 Timing Models : Final
-Total logic elements : 10,905 / 33,216 ( 33 % )
-    Total combinational functions : 10,428 / 33,216 ( 31 % )
+Total logic elements : 10,982 / 33,216 ( 33 % )
+    Total combinational functions : 10,469 / 33,216 ( 32 % )
     Dedicated logic registers : 4,925 / 33,216 ( 15 % )
 Total registers : 4925
 Total pins : 52 / 475 ( 11 % )

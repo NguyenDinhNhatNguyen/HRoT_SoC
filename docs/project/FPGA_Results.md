@@ -22,7 +22,7 @@
 | 26/10 | `d912cdc` + bản thử P-23 | Thêm PLIC-lite, Mailbox, Boot Guard, cổng dữ liệu Boot ROM, Secure DMA + tường lửa, bus APB thế giới App. Lõi đổi reset đồng bộ ở `IF_ID_Reg`, `ID_EX_Reg` (chưa commit lúc đo) | 9.358 (28%) | 4.390 | 135.168 (28%) | 52 | 53,02 MHz | +1,14 ns | Nguyên |
 | 26/10 | `9f9e66a` | Lõi thêm Zicsr và trap máy, cổng `irq_timer`/`irq_ext` (P-09, chưa nối trong `SoC_Top`), P-23 đã commit | 10.270 (31%) | 4.840 | 135.168 (28%) | 52 | 53,73 MHz | +1,389 ns (hold +0,391 ns) | Phát |
 | 27/10 | `9f9e66a` + P-13, P-14 (commit `c739654`) | Nối 4 dây ngắt vào hai lõi trong `SoC_Top` (P-14). Boot ROM vẫn là firmware thử của `mkhex.py` (target `make hex`) | 10.509 (32%) | 4.842 | 135.168 (28%) | 52 | 54,21 MHz | +1,554 ns (hold +0,391 ns) | Phát |
-| 04/11 | `d73790e` + N-37 | Boot_Verifier (slot APB 8) và cổng ra digest của SHA-256, Boot_Verifier mượn cổng B của Boot ROM, ba bộ nhớ giải mã 4 KB. Gồm P-24 và firmware của Phát. Boot ROM vẫn là chương trình thử `mkhex.py` | 10.905 (33%) | 4.925 | 135.168 (28%) | 52 | 55,08 MHz | +1,845 ns (tính từ Fmax) | Nguyên |
+| 04/11 | `f9f82fb` + nối `data_err`, `VERIFY_GATE = 1` | Cổng nhả App bật ở `DE2_Top`, `master_data_err` nối vào lõi Master (P-24), trap handler trong chương trình thử. Boot ROM vẫn là chương trình thử `mkhex.py` | 10.982 (33%) | 4.925 | 135.168 (28%) | 52 | 54,07 MHz | +1,505 ns (tính từ Fmax) | Nguyên |
 
 Ô "—" là số chưa có trong báo cáo đã lưu. Setup slack của các dòng Nguyên đo tính từ Fmax (slack = 20 ns − 1000/Fmax), riêng dòng 25/10 lấy từ ghi chú review.
 
@@ -44,11 +44,11 @@ Thay đổi qua từng bước:
 | 25/10 | `0be826d` | Thêm TIMER0, WDT | 3.360 (16,15%) | 2.872 (6,90%) | 1 (2%) | 25 | +2,891 ns | +0,076 ns | 58,4 MHz | Nguyên |
 | 26/10 | `d912cdc` + bản thử P-23 | Khối Tuần 8–10 của Nguyên, lõi reset đồng bộ ở `IF_ID_Reg`, `ID_EX_Reg` | 5.530 (26,59%) | 4.092 (9,84%) | 2,5 (5%) | 25 | +3,519 ns | +0,034 ns | 60,7 MHz | Nguyên |
 | 26/10 | `9f9e66a` | P-09 | chưa đo | | | | | | | |
-| 04/11 | `d73790e` + N-37 | Cùng thay đổi như dòng DE2 cùng ngày, gồm P-09, P-13, P-14, P-24 của Phát. Boot ROM là chương trình thử `mkhex.py` | 6.146 (29,55%) | 4.403 (10,58%) | 2,5 (5%) | 25 | +3,178 ns | +0,036 ns | 63,2 MHz | Nguyên |
+| 04/11 | `f9f82fb` + nối `data_err`, `VERIFY_GATE = 1` | Cùng thay đổi như dòng DE2 cùng ngày. Gồm P-09, P-13, P-14, P-24 của Phát | 6.136 (29,50%) | 4.401 (10,58%) | 2,5 (5%) | 25 | +3,273 ns | +0,014 ns | 63,8 MHz | Nguyên |
 
 Fmax ước tính = 1000 / (20 − WNS) MHz. Vivado không in Fmax trực tiếp. DSP dùng 0 ở mọi lần đo.
 
-Bản `9f9e66a` chưa đo riêng trên Artix-7 vì máy Phát chưa cài Vivado, dòng 04/11 là lần đo đầu sau P-09, P-13, P-14 và P-24. Hold chỉ còn +0,036 ns, vẫn dương nhưng sát, theo dõi ở các lần đo sau.
+Bản `9f9e66a` chưa đo riêng trên Artix-7 vì máy Phát chưa cài Vivado, dòng 04/11 là lần đo đầu sau P-09, P-13, P-14 và P-24. Hold chỉ còn +0,014 ns, vẫn dương nhưng sát, theo dõi ở các lần đo sau.
 
 ## Đường găng (DE2)
 
