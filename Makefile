@@ -5,6 +5,7 @@
 #   make sim-uvm     UVM AXI4-Lite (sim/run_uvm.do), TEST=axi4_lite_full_test SEED=1
 #   make sim-soc     whole-SoC simulation (sim/run_soc.do)
 #   make sim-ip      APB peripheral testbench (sim/run_ip.do)
+#   make sim-bv      Boot_Verifier and the SYSCSR release gate (sim/run_bv.do)
 #   make vp          SystemC virtual platform (sim/run_vp.sh)
 #   make fw          build the Master firmware (CMake + riscv64-unknown-elf)
 #   make de2         synthesis + P&R for the DE2 (Quartus II 13.0sp1)
@@ -49,6 +50,9 @@ sim-soc:
 
 sim-ip:
 	cd sim && $(QUESTA) -c -do run_ip.do
+
+sim-bv:
+	cd sim && $(QUESTA) -c -do run_bv.do
 
 vp:
 	cd sim && bash run_vp.sh
