@@ -13,3 +13,7 @@ fw/hal/test/sb_host_test
 *.jou
 *.log
 .Xil/
+
+# draw.io autosave and backup files
+.$*.bkp
+.$*.dtmp
