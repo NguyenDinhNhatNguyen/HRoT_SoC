@@ -12,6 +12,7 @@
 #include "VP_Peripherals.h"
 #include "SHA256_VP_Wrapper.h"
 #include "DMA_VP.h"
+#include "BootVerifier_VP.h"
 #include "CPU_Dummy_Initiator.h"
 
 static CPU_Dummy_Initiator* g_cpu = nullptr;
@@ -46,7 +47,8 @@ int sc_main(int argc, char* argv[]) {
                                     {"to_uart0",   vp_map::UART0,    0x1000},
                                     {"to_timer0",  vp_map::TIMER0,   0x1000},
                                     {"to_wdt",     vp_map::WDT,      0x1000},
-                                    {"to_dma",     vp_map::DMA,      0x1000}});
+                                    {"to_dma",     vp_map::DMA,      0x1000},
+                                    {"to_bv",      0x40008000,       0x1000}});   // Boot_Verifier (N-37, I-08)
     SYSCSR_VP           syscsr("syscsr");
     SHA256_VP_Wrapper   sha("sha");
     Memory_VP           app_rom("app_rom", 4096, true);
@@ -55,6 +57,7 @@ int sc_main(int argc, char* argv[]) {
     TIMER0_VP           timer0("timer0");
     WDT_VP              wdt("wdt");
     DMA_VP              dma("dma");
+    BootVerifier_VP     bv("bv");
     g_cpu = &cpu;
 
     cpu.initiator_socket.bind(bus.target_socket);
@@ -66,8 +69,11 @@ int sc_main(int argc, char* argv[]) {
     bus.port(5).bind(timer0.target_socket);
     bus.port(6).bind(wdt.target_socket);
     bus.port(7).bind(dma.target_socket);
+    bus.port(8).bind(bv.target_socket);
     dma.rom = &app_rom;
     dma.sha = &sha;
+    bv.sha = &sha;
+    bv.boot_rom = &boot_rom;
 
     app_rom.load_hex(argv[1]);
     // "Sign" the whole 4 KB ROM as I-04 says (unused words stay zero), before any tampering.
@@ -76,7 +82,9 @@ int sc_main(int argc, char* argv[]) {
     uint8_t golden[32];
     sha256_ref(app_rom.mem.data(), cpu.app_len, golden);
     std::memcpy(&boot_rom.mem[vp_map::GOLDEN], golden, 32);
-    std::memcpy(&boot_rom.mem[SB_GOLDEN_ADDR], golden, 32);   // the slot the real firmware reads (P-13)
+    // The slot the real firmware reads (P-13): 8 big-endian words H0..H7 (I-03), so each word's bytes are reversed
+    for (int i = 0; i < 32; i++)
+        boot_rom.mem[SB_GOLDEN_ADDR + i] = golden[(i & ~3) + 3 - (i & 3)];
     cpu.fw_mode = fw;
     if (tamper) {
         app_rom.mem[0] ^= 0x01;
@@ -88,10 +96,13 @@ int sc_main(int argc, char* argv[]) {
     bool expect_ok = !tamper;
     if (fw) {
         bool said = uart0.tx_log.find(tamper ? "App locked out" : "App released") != std::string::npos;
+        // Good image: Boot_Verifier must have said VERIFIED and the key must be locked (I-08). Tampered: never VERIFIED
+        bool bv_ok = expect_ok ? (bv.ok && bv.key_lock) : !bv.ok;
         bool fw_pass = cpu.fw_result == (tamper ? SB_LOCKED : SB_RELEASED) && syscsr.app_running() == expect_ok
-                       && syscsr.lock == tamper && said;
-        std::printf("VP RESULT: %s (firmware result 0x%02x, app_running=%d, lock=%d, UART log %s)\n",
-                    fw_pass ? "PASS" : "FAIL", cpu.fw_result, syscsr.app_running(), syscsr.lock, said ? "ok" : "missing");
+                       && syscsr.lock == tamper && said && bv_ok;
+        std::printf("VP RESULT: %s (firmware result 0x%02x, app_running=%d, lock=%d, UART log %s, Boot_Verifier %s)\n",
+                    fw_pass ? "PASS" : "FAIL", cpu.fw_result, syscsr.app_running(), syscsr.lock, said ? "ok" : "missing",
+                    bv.ok ? "VERIFIED" : bv.checked ? "FAIL" : "not used");
         return fw_pass ? 0 : 1;
     }
     bool said_so = uart0.tx_log.find(tamper ? "App locked out" : "App released") != std::string::npos;

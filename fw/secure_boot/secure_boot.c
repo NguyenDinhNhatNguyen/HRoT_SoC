@@ -1,17 +1,21 @@
 /*
  * secure_boot.c -- Secure Boot of the Master Core (see secure_boot.h)
  *
- * 1. UART0 log on, SHA-256 self-test (NIST vectors, CPU through the HAL)
+ * 1. UART0 log on, WDT on (1 s), SHA-256 self-test (NIST vectors, CPU through the HAL)
  * 2. Clear SYSCSR.BUS_ERR, hash the whole 4 KB App ROM through port B with the Secure DMA
  *    (SWAP and PAD, so the digest is sha256sum of the .bin, P-15). The DMA owns SHA-256 until DONE (R17)
- * 3. SYSCSR.BUS_ERR VALID: log it, keep the App in reset, clear it (N-36).
- *    DMA firewall error or timeout: log it, keep the App in reset
- * 4. Compare with the golden hash in the Boot ROM (constant time)
- *      match    -> APP_CTRL.APP_RUN = 1
- *      mismatch -> Boot Guard LOCK (App held until POR, App RAM cleared), wait for ZERO_DONE
- * 5. Result on the GPIO0 LEDs, UART drained
- * Every failure path leaves the App Core in reset (fail-safe).
- * After a release, secure_boot_relay_app() logs the App's Mailbox words on UART0 (P-16).
+ * 3. Read the golden hash from the Boot ROM, then check SYSCSR.BUS_ERR once more (N-36)
+ * 4. Compare with the golden hash (constant time)
+ * 5. Hardware verdict (I-08): APP_VER from the last App ROM word, Boot_Verifier CHECK on the digest the
+ *    DMA left in SHA-256 (nothing touches SHA-256 in between). VERIFIED: KEY_LOCK, APP_CTRL.APP_RUN = 1,
+ *    and APP_RUN must read back 1 (with VERIFY_GATE the gate would hold it otherwise)
+ * 6. Result on the GPIO0 LEDs, UART drained
+ * Every failure (self-test, bus error, DMA error, hash mismatch, Boot_Verifier) ends in Boot Guard LOCK
+ * and KEY_LOCK: the App is
+ * held until POR and its RAM is cleared (fail-safe, Nguyen's note on P-13, 04/11). If LOCK does not
+ * finish the result is SB_HW_ERROR. A hang anywhere is caught by the WDT, and LOCK survives its reset.
+ * After the boot, main() kicks the WDT for ever and, after a release, secure_boot_relay_app() logs
+ * the App's Mailbox words on UART0 (P-16).
  */
 #include "secure_boot.h"
 #include "sha256_hal.h"
@@ -19,6 +23,8 @@
 #include "mailbox.h"
 #include "uart.h"
 #include "gpio.h"
+#include "wdt.h"
+#include "boot_verifier.h"
 #include "hal_io.h"
 #include "soc_map.h"
 
@@ -41,7 +47,8 @@ static uint32_t load_be32(const uint8_t *p)
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
 }
 
-/* Read the golden hash from the Boot ROM with word loads (works on the RTL, the VP and the host test) */
+/* Read the golden hash from the Boot ROM with word loads (works on the RTL, the VP and the host test).
+ * Word i is H_i, big-endian: its top byte is digest byte 4i (I-03, the form Boot_Verifier compares) */
 static void read_golden(uint8_t golden[SHA256_DIGEST_SIZE])
 {
     uint32_t i;
@@ -49,10 +56,10 @@ static void read_golden(uint8_t golden[SHA256_DIGEST_SIZE])
 
     for (i = 0u; i < SHA256_DIGEST_SIZE / 4u; i++) {
         w = HAL_RD32(SB_GOLDEN_ADDR, 4u * i);
-        golden[4u * i]      = (uint8_t)w;
-        golden[4u * i + 1u] = (uint8_t)(w >> 8);
-        golden[4u * i + 2u] = (uint8_t)(w >> 16);
-        golden[4u * i + 3u] = (uint8_t)(w >> 24);
+        golden[4u * i]      = (uint8_t)(w >> 24);
+        golden[4u * i + 1u] = (uint8_t)(w >> 16);
+        golden[4u * i + 2u] = (uint8_t)(w >> 8);
+        golden[4u * i + 3u] = (uint8_t)w;
     }
 }
 
@@ -60,6 +67,7 @@ static sb_result_t finish(sb_result_t r)
 {
     gpio_write(SOC_GPIO0_BASE, (uint8_t)r);
     (void)uart_flush(SOC_UART0_BASE);
+    wdt_kick();
     return r;
 }
 
@@ -75,50 +83,62 @@ static sb_result_t lock_app(void)
     return SB_HW_ERROR;
 }
 
+/* Every failure: lock the App out, log why, show r (or SB_HW_ERROR if LOCK did not finish) */
+static sb_result_t fail(sb_result_t r, const char *why)
+{
+    wdt_kick();
+    bv_key_lock();
+    log_str(why);
+    if (lock_app() != SB_LOCKED) {
+        log_str(", LOCK did not finish, App kept in reset\n");
+        return finish(SB_HW_ERROR);
+    }
+    log_str(", App locked out\n");
+    return finish(r);
+}
+
+/* SYSCSR.BUS_ERR VALID: log the address and clear it. Returns 1 when there was an error */
+static int bus_error_seen(void)
+{
+    if ((HAL_RD32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR) & BUS_ERR_VALID) == 0u)
+        return 0;
+    log_str("Bus error at ");
+    log_hex(HAL_RD32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR_ADDR));
+    log_str("\n");
+    HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR, BUS_ERR_VALID);
+    return 1;
+}
+
 sb_result_t secure_boot_run(void)
 {
     uint8_t digest[SHA256_DIGEST_SIZE];
     uint8_t golden[SHA256_DIGEST_SIZE];
     dma_status_t st;
-    uint32_t bus_err;
+    bv_status_t bv;
+    uint32_t app_ver;
     uint32_t i;
-    sb_result_t r;
 
     uart_init(SOC_UART0_BASE, UART_BAUD_DIV_DEFAULT);
     log_str("HRoT secure boot\n");
+    wdt_start(SB_WDT_LOAD);
 
-    if (sha256_selftest() != SHA256_OK) {
-        log_str("SHA-256 self-test failed, App kept in reset\n");
-        return finish(SB_SELFTEST_FAIL);
-    }
+    if (sha256_selftest() != SHA256_OK)
+        return fail(SB_SELFTEST_FAIL, "SHA-256 self-test failed");
 
     HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR, BUS_ERR_VALID);       /* start from a clean BUS_ERR */
     st = dma_sha256(SOC_APP_ROM_BASE, SB_APP_ROM_SIZE / 64u, 1, digest);
+    wdt_kick();
 
-    bus_err = HAL_RD32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR);
-    if (bus_err & BUS_ERR_VALID) {
-        log_str("Bus error at ");
-        log_hex(HAL_RD32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR_ADDR));
-        log_str(", App kept in reset\n");
-        HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_BUS_ERR, BUS_ERR_VALID);
-        return finish(SB_BUS_ERROR);
-    }
-    if (st == DMA_ERR_BUS) {
-        log_str("DMA bus error, App kept in reset\n");
-        return finish(SB_BUS_ERROR);
-    }
-    if (st == DMA_ERR_FW) {
-        log_str("DMA blocked by the firewall, App kept in reset\n");
-        return finish(SB_HW_ERROR);
-    }
-    if (st == DMA_ERR_TIMEOUT) {
-        log_str("DMA timeout, App kept in reset\n");
-        return finish(SB_HW_ERROR);
-    }
-    if (st != DMA_OK) {
-        log_str("DMA error, App kept in reset\n");
-        return finish(SB_HW_ERROR);
-    }
+    if (bus_error_seen())
+        return fail(SB_BUS_ERROR, "Bus error while hashing");
+    if (st == DMA_ERR_BUS)
+        return fail(SB_BUS_ERROR, "DMA bus error");
+    if (st == DMA_ERR_FW)
+        return fail(SB_HW_ERROR, "DMA blocked by the firewall");
+    if (st == DMA_ERR_TIMEOUT)
+        return fail(SB_HW_ERROR, "DMA timeout");
+    if (st != DMA_OK)
+        return fail(SB_HW_ERROR, "DMA error");
 
     log_str("App ROM hash ");
     for (i = 0u; i < SHA256_DIGEST_SIZE; i += 4u)
@@ -126,18 +146,30 @@ sb_result_t secure_boot_run(void)
     log_str("\n");
 
     read_golden(golden);
-    if (sha256_compare(digest, golden, SHA256_DIGEST_SIZE) == 0) {
-        HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_APP_CTRL, 1u);
-        log_str("App released\n");
-        return finish(SB_RELEASED);
-    }
+    if (bus_error_seen())
+        return fail(SB_BUS_ERROR, "Bus error while reading the golden hash");
+    if (sha256_compare(digest, golden, SHA256_DIGEST_SIZE) != 0)
+        return fail(SB_LOCKED, "Hash mismatch");
 
-    r = lock_app();
-    if (r == SB_LOCKED)
-        log_str("Hash mismatch, App locked out\n");
-    else
-        log_str("Hash mismatch, LOCK did not finish, App kept in reset\n");
-    return finish(r);
+    /* Hardware verdict (I-08), on the digest the DMA left in SHA-256 */
+    app_ver = HAL_RD32(SOC_APP_ROM_BASE, SB_APP_VER_OFF);
+    if (bus_error_seen())
+        return fail(SB_BUS_ERROR, "Bus error while reading APP_VER");
+    log_str("App version ");
+    log_hex(app_ver);
+    log_str("\n");
+    bv = bv_check(app_ver);
+    if (bv == BV_ERR_TIMEOUT)
+        return fail(SB_VERIFY_FAIL, "Boot_Verifier timeout");
+    if (bv != BV_OK)
+        return fail(SB_VERIFY_FAIL, "Boot_Verifier refused the image");
+    bv_key_lock();
+
+    HAL_WR32(SOC_SYSCSR_BASE, SYSCSR_APP_CTRL, 1u);
+    if ((HAL_RD32(SOC_SYSCSR_BASE, SYSCSR_APP_CTRL) & 1u) == 0u)
+        return fail(SB_VERIFY_FAIL, "Release gate held the App");
+    log_str("App released\n");
+    return finish(SB_RELEASED);
 }
 
 void secure_boot_relay_app(void)

@@ -35,12 +35,13 @@ if {[info exists env(UVM_HOME)]} {
   if {[info exists env(UVM_DPI)]} {lappend DPI_FLAGS -sv_lib $env(UVM_DPI)}
 }
 
-# 1) interfaces, 2) UVM package and the DPI golden of the SHA scoreboard (C, compiled by vlog),
+# 1) interfaces, 2) UVM package and the DPI golden of the SHA scoreboard (C, compiled by vlog, gnu99:
+#    Questa's gcc defaults to C89),
 # 3) DUT or slave model + top
 vlog -sv -work work {*}$UVM_FLAGS $DV/agents/axi4_lite_if.sv $DV/agents/apb_if.sv
 vlog -sv -work work {*}$UVM_FLAGS +incdir+$DV/agents +incdir+$DV/env +incdir+$DV/tests \
      $DV/hrot_dv_pkg.sv
-vlog -work work $DV/env/sha256_ref_dpi.c
+vlog -work work -ccflags -std=gnu99 $DV/env/sha256_ref_dpi.c
 if {$DUT eq "apb"} {
   vlog -sv -work work ../rtl/bus/APB_Decoder.v ../rtl/periph/GPIO.v ../rtl/periph/TIMER.v ../rtl/periph/Mailbox.v
   vlog -sv -work work {*}$UVM_FLAGS $DV/agents/apb_slave_model.sv $DV/env/tb_apb_top.sv

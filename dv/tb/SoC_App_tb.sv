@@ -5,6 +5,7 @@
 //  - default run : Secure Boot releases the App, the App says "App running" on UART1, sends APP_MSG_HELLO
 //    and then one APP_MSG_STEP per LED step through the Mailbox, the Master logs them on UART0, GPIO1 runs
 //  - +TAMPER     : one App ROM bit flipped after the load, the Master locks the App out and the App never runs
+//  - VERIFY_GATE = 1 (I-08): the release needs Boot_Verifier's VERIFIED, and the key is locked after it
 //  - TIMER1 is moved forward by the testbench while the App runs, so a 0.25 s LED step takes about
 //    100,000 cycles instead of 12.5 million (the firmware only looks at the elapsed time)
 // Run from sim/ (sim/run_fw.do with TB = SoC_App_tb, after make fw). Ends with "SoC_App_tb RESULT: PASS|FAIL".
@@ -24,7 +25,8 @@ module SoC_App_tb;
     wire       uart0_tx;
     wire       uart1_tx;
 
-    SoC_Top #(.BOOT_HEX("../fw/build/firmware_imem.hex"), .RAM_HEX("../fw/build/firmware_dmem.hex"),
+    // VERIFY_GATE = 1 (I-08): the App Core only runs after Boot_Verifier says VERIFIED
+    SoC_Top #(.VERIFY_GATE(1), .BOOT_HEX("../fw/build/firmware_imem.hex"), .RAM_HEX("../fw/build/firmware_dmem.hex"),
               .APP_HEX("../fw/build/app_firmware.hex")) dut(
         .clk(clk), .reset_system(rst), .app_running(),
         .uart0_tx(uart0_tx), .uart0_rx(1'b1), .gpio0_o(led0), .gpio0_i(8'h00), .boot_strap(4'h0),
@@ -168,6 +170,7 @@ module SoC_App_tb;
         ok = (cyc < MAXC) && bus_errs == 0 && dut.master_core.u_CSR_Unit.mcause === 32'b0;
         if (tamper) begin
             ok = ok && led0 == 8'hEE && seen_locked && !seen_released && dut.app_core_reset_n === 1'b0
+                    && dut.boot_verifier.ok_q === 1'b0
                     && dut.syscsr.lock_q === 1'b1 && n_uart1 == 0 && n_says == 0 && led1 === 8'h00;
         end else begin
             // HELLO first, then the step words 1, 2, 3 ... in order
@@ -175,6 +178,7 @@ module SoC_App_tb;
             for (i = 1; i < n_says; i = i + 1)
                 says_ok = says_ok && says[i] === (MSG_STEP | i);
             ok = ok && led0 == 8'h01 && seen_released && !seen_locked && dut.app_core_reset_n === 1'b1
+                    && dut.boot_verifier.ok_q === 1'b1 && dut.boot_verifier.key_lock === 1'b1
                     && seen_running && says_ok && led1_steps >= STEPS && led1_bad == 0
                     && dut.app_core.u_CSR_Unit.mcause === 32'b0;
         end

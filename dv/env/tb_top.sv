@@ -12,6 +12,11 @@ module tb_top;
 
     axi4_lite_if axi_if (.clk(clk), .rst_n(rst_n));
 
+    // The package holds the APB classes too (virtual apb_if, apb_sb_if). Questa needs an instance of every
+    // virtual interface type in the design, so these stay unused. rst_n = 0 keeps their SVA disabled
+    apb_if    apb_unused    (.clk(clk), .rst_n(1'b0));
+    apb_sb_if apb_sb_unused (.clk(clk));
+
     axi4_lite_slave_model u_slave (
         .clk(clk), .rst_n(rst_n),
         .awaddr(axi_if.awaddr), .awvalid(axi_if.awvalid), .awready(axi_if.awready),

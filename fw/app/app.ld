@@ -7,6 +7,7 @@
  * initialised .data: the ASSERTs below stop the build if the compiler emits any.
  *
  *   ROM  0x0000_0000  4 KB   .text                 -> app_firmware.hex (padded to 4 KB, hashed whole, I-04)
+ *        0x0000_0FFC  4 B    APP_VER, written by fw/tools/rom_image.py (Boot_Verifier anti-rollback, I-04)
  *   RAM  0x1000_0000  4 KB   .bss (cleared by crt0), then the 1 KB stack
  */
 OUTPUT_ARCH(riscv)
@@ -14,7 +15,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K
+    ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K - 4      /* the last word holds APP_VER */
     RAM (rw)  : ORIGIN = 0x10000000, LENGTH = 4K
 }
 

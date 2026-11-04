@@ -18,10 +18,12 @@ set(OBJDUMP "${TOOLCHAIN_PREFIX}objdump")
 set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld)
 set(RAM_BASE 0x10000000)   # must match the RAM ORIGIN in linker.ld
 
-add_compile_options(-march=rv32i -mabi=ilp32 -Os -ffreestanding
+# -flto: link-time optimisation keeps the Secure Boot firmware well below the 0xFC0 limit of the Boot ROM
+# (4028 bytes without it once the Boot_Verifier step was added, 3384 with it, 04/11)
+add_compile_options(-march=rv32i -mabi=ilp32 -Os -flto -ffreestanding
                     -fno-tree-loop-distribute-patterns
                     -ffunction-sections -fdata-sections -Wall -Wextra)
-add_link_options(-march=rv32i -mabi=ilp32 -nostdlib -nostartfiles -Wl,--gc-sections)
+add_link_options(-march=rv32i -mabi=ilp32 -Os -flto -nostdlib -nostartfiles -Wl,--gc-sections)
 
 # rom_image.py pads the App image and writes the golden hash into the Boot ROM image (I-04)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -32,8 +34,8 @@ add_library(hal_sha256 STATIC hal/sha256_hal.c)
 target_include_directories(hal_sha256 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hal)
 
 # UART and GPIO drivers (P-11): static library, works for the Secure and the App world blocks.
-# Secure DMA driver (P-15): Secure world only. Mailbox driver (P-16): both worlds
-add_library(hal_drivers STATIC hal/uart.c hal/gpio.c hal/dma.c hal/mailbox.c)
+# Secure DMA (P-15), WDT and Boot_Verifier (I-08) drivers: Secure world only. Mailbox driver (P-16): both worlds
+add_library(hal_drivers STATIC hal/uart.c hal/gpio.c hal/dma.c hal/mailbox.c hal/wdt.c hal/boot_verifier.c)
 target_include_directories(hal_drivers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hal)
 
 # Firmware Secure Boot (Master Core)
@@ -69,9 +71,11 @@ add_custom_command(TARGET secure_boot.elf POST_BUILD
 
 # App Core demo firmware (P-16). Text only: the App Core cannot read its ROM as data and its RAM
 # is not preloaded, app/app.ld stops the build on any .rodata or .data.
-#   app_firmware.bin : the whole 4 KB App ROM, zero padded. sha256sum of it = golden hash (I-04)
+#   app_firmware.bin : the whole 4 KB App ROM, zero padded, APP_VER in the last word (0xFFC).
+#                      sha256sum of it = golden hash (I-04)
 #   app_firmware.hex : the same 1024 words for $readmemh (APP_HEX of SoC_Top)
 set(APP_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/app/app.ld)
+set(APP_VERSION 1 CACHE STRING "APP_VER written at 0xFFC of the App ROM (Boot_Verifier anti-rollback)")
 add_executable(app_firmware.elf
     startup/crt0.S
     app/main.c
@@ -83,12 +87,13 @@ set_target_properties(app_firmware.elf PROPERTIES LINK_DEPENDS ${APP_LINKER_SCRI
 add_custom_command(TARGET app_firmware.elf POST_BUILD
     COMMAND ${OBJCOPY} -O binary -j .text $<TARGET_FILE:app_firmware.elf> ${CMAKE_CURRENT_BINARY_DIR}/app_text.bin
     COMMAND ${Python3_EXECUTABLE} ${ROM_IMAGE} pad ${CMAKE_CURRENT_BINARY_DIR}/app_text.bin
-            ${CMAKE_CURRENT_BINARY_DIR}/app_firmware.hex ${CMAKE_CURRENT_BINARY_DIR}/app_firmware.bin
+            ${CMAKE_CURRENT_BINARY_DIR}/app_firmware.hex ${CMAKE_CURRENT_BINARY_DIR}/app_firmware.bin ${APP_VERSION}
     COMMAND ${OBJDUMP} -d $<TARGET_FILE:app_firmware.elf> > ${CMAKE_CURRENT_BINARY_DIR}/app_firmware.dis
     COMMENT "Writing app_firmware.bin, app_firmware.hex and app_firmware.dis..."
 )
 
-# Golden hash step (I-04): Boot ROM image = Master code + sha256 of the padded App ROM at 0xFE0.
+# Golden hash step (I-04): Boot ROM image = Master code + sha256 of the padded App ROM at 0xFE0,
+# as big-endian words H0..H7 (I-03).
 # Runs on every build, so the golden always matches the App image built with it.
 add_custom_target(golden ALL
     COMMAND ${Python3_EXECUTABLE} ${ROM_IMAGE} put-golden ${CMAKE_CURRENT_BINARY_DIR}/firmware_code.hex

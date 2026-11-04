@@ -7,8 +7,9 @@ app.hex    : $readmemh word file of the App ROM (one 32-bit word per line, '@' m
 golden.hex : 8 words for the Boot ROM slot at SB_GOLDEN_ADDR (0xFE0), word 0 first
 
 The digest is SHA-256 over the whole 4 KB ROM as the core sees it (little-endian words, unused
-words zero), i.e. sha256sum of the image as a .bin (I-04). Its bytes are stored in digest order,
-so each output word is the little-endian packing of 4 digest bytes.
+words zero), i.e. sha256sum of the image as a .bin (I-04). It is stored as 8 big-endian words
+H0..H7 (word i = digest bytes 4i..4i+3, first byte in bits [31:24]), the form Boot_Verifier
+compares with the SHA-256 result (I-03, settled 04/11).
 """
 import hashlib
 import struct
@@ -39,7 +40,7 @@ def main():
     image = b"".join(struct.pack("<I", w) for w in read_hex(sys.argv[1]))
     digest = hashlib.sha256(image).digest()
     with open(sys.argv[2], "w") as f:
-        for w in struct.unpack("<8I", digest):
+        for w in struct.unpack(">8I", digest):
             f.write("%08x\n" % w)
     print("golden %s" % digest.hex())
 

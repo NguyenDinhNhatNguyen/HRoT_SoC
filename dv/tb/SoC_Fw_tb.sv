@@ -9,6 +9,8 @@
 //  - +TAMPER     : one App ROM bit flipped, the firmware must lock the App out (Boot Guard) and clear its RAM
 //  - UART0 log is taken from the APB writes to TXDATA (the firmware waits for room, so nothing is dropped)
 //  - The Master must never trap (mcause stays 0) and the Master AXI bus must see no error response
+//  - Since 04/11 the firmware runs the WDT (1 s): it must be on, kicked, and never have fired
+//  - VERIFY_GATE = 1: good image -> Boot_Verifier VERIFIED and KEY_LOCK, tampered -> never VERIFIED (I-08)
 // Run from sim/ (sim/run_fw.do). Ends with "SoC_Fw_tb RESULT: PASS|FAIL".
 module SoC_Fw_tb;
 
@@ -24,7 +26,8 @@ module SoC_Fw_tb;
     wire       uart0_tx;
     wire       uart1_tx;
 
-    SoC_Top #(.BOOT_HEX("../fw/build/firmware_imem.hex"), .RAM_HEX("../fw/build/firmware_dmem.hex"),
+    // VERIFY_GATE = 1 (I-08): the App Core only runs after Boot_Verifier says VERIFIED
+    SoC_Top #(.VERIFY_GATE(1), .BOOT_HEX("../fw/build/firmware_imem.hex"), .RAM_HEX("../fw/build/firmware_dmem.hex"),
               .APP_HEX("app.hex")) dut(
         .clk(clk), .reset_system(rst), .app_running(),
         .uart0_tx(uart0_tx), .uart0_rx(1'b1), .gpio0_o(led), .gpio0_i(8'h00), .boot_strap(4'h0),
@@ -77,7 +80,8 @@ module SoC_Fw_tb;
         end
     end
 
-    // Secure DMA runs, and App ROM reads that the Master Core makes itself (responses routed to the CPU)
+    // Secure DMA runs, and App ROM reads that the Master Core makes itself (responses routed to the CPU).
+    // The only word the CPU may read is APP_VER at 0x6000_0FFC (I-08), the DMA hashes the rest
     integer dma_runs = 0;
     integer dma_cycles = 0;
     integer dma_errs = 0;
@@ -90,10 +94,17 @@ module SoC_Fw_tb;
             dma_cycles = dma_cycles + 1;
         if (dut.dma.err_fw || dut.dma.err_bus)
             dma_errs = dma_errs + 1;
-        if (dut.master_resp_valid && dut.master_data_re && dut.master_data_addr[31:16] == 16'h6000)
+        if (dut.master_resp_valid && dut.master_data_re && dut.master_data_addr[31:16] == 16'h6000
+            && dut.master_data_addr != 32'h6000_0FFC)
             cpu_rom_reads = cpu_rom_reads + 1;
         dma_was_busy = dut.dma.busy;
     end
+
+    // WDT reset requests (the firmware must keep it from firing)
+    integer wdt_fired = 0;
+    always @(posedge clk)
+        if (dut.wdt.rst_req === 1'b1)
+            wdt_fired = wdt_fired + 1;
 
     // Error responses on the Master AXI bus
     integer bus_errs = 0;
@@ -104,7 +115,7 @@ module SoC_Fw_tb;
             bus_errs = bus_errs + 1;
     end
 
-    // Golden words as the hex text the firmware prints (digest bytes in order)
+    // Golden words as the hex text the firmware prints: big-endian words H0..H7 (I-03), so word by word
     function [8*64-1:0] golden_text(input integer dummy);
         integer w;
         integer b;
@@ -114,7 +125,7 @@ module SoC_Fw_tb;
         begin
             golden_text = 0;
             for (w = 0; w < 8; w = w + 1) begin
-                for (b = 0; b < 4; b = b + 1) begin
+                for (b = 3; b >= 0; b = b - 1) begin
                     byte_v = golden[w] >> (8 * b);
                     for (n = 1; n >= 0; n = n - 1) begin
                         nib = byte_v >> (4 * n);
@@ -149,15 +160,22 @@ module SoC_Fw_tb;
                  dut.master_core.u_CSR_Unit.mcause, bus_errs);
         $display("Secure DMA runs=%0d busy=%0d cycles errors=%0d, App ROM reads by the CPU=%0d",
                  dma_runs, dma_cycles, dma_errs, cpu_rom_reads);
+        $display("WDT en=%b count=%0d (load %0d), WDT reset requests=%0d", dut.wdt.en, dut.wdt.count, dut.wdt.load,
+                 wdt_fired);
+        $display("Boot_Verifier checked=%b verified=%b fail=%b key_lock=%b", dut.boot_verifier.checked,
+                 dut.boot_verifier.ok_q, dut.boot_verifier.fail_q, dut.boot_verifier.key_lock);
         ok = (cyc < MAXC) && seen_start && seen_hash && bus_errs == 0
              && dut.master_core.u_CSR_Unit.mcause === 32'b0
-             && dma_runs == 1 && dma_errs == 0 && cpu_rom_reads == 0;
+             && dma_runs == 1 && dma_errs == 0 && cpu_rom_reads == 0
+             && dut.wdt.en === 1'b1 && dut.wdt.load == 32'd50_000_000 && wdt_fired == 0;
         if (tamper)
             ok = ok && led == 8'hEE && seen_locked && !seen_released && dut.app_core_reset_n === 1'b0
+                    && dut.boot_verifier.ok_q === 1'b0
                     && dut.syscsr.lock_q === 1'b1 && dut.syscsr.zero_done === 1'b1 && zeros == 1024
                     && hash_txt != golden_text(0);
         else
             ok = ok && led == 8'h01 && seen_released && !seen_locked && dut.app_core_reset_n === 1'b1
+                    && dut.boot_verifier.ok_q === 1'b1 && dut.boot_verifier.key_lock === 1'b1
                     && dut.syscsr.lock_q === 1'b0 && dut.app_ram.ram[0] === 42 && hash_txt == golden_text(0);
         $display("SoC_Fw_tb RESULT: %s", ok ? "PASS" : "FAIL");
         $finish;

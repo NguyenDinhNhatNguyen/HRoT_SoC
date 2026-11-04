@@ -19,6 +19,10 @@ module tb_apb_top;
     apb_if    a_if (.clk(clk), .rst_n(rst_n));
     apb_sb_if sb   (.clk(clk));
 
+    // The package holds the AXI4-Lite classes too (virtual axi4_lite_if). Questa needs an instance of every
+    // virtual interface type in the design, so this one stays unused. rst_n = 0 keeps its SVA disabled
+    axi4_lite_if axi_unused (.clk(clk), .rst_n(1'b0));
+
     localparam NUM_SLV = 4;
     wire [NUM_SLV-1:0]    psel_s;
     wire [32*NUM_SLV-1:0] prdata_s;

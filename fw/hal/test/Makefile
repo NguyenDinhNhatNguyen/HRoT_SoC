@@ -14,7 +14,7 @@ DRV_SRC := drv_host_test.c drv_mock.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/mailbox
 drv_host_test: $(DRV_SRC) drv_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/mailbox.h $(HAL)/hal_io.h $(HAL)/soc_map.h
 	$(CC) $(CFLAGS) $(DRV_SRC) -o $@
 
-SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/dma.c $(HAL)/mailbox.c \
+SB_SRC := sb_host_test.c sb_mock.c sha256_mock.c sha256_ref.c $(HAL)/sha256_hal.c $(HAL)/uart.c $(HAL)/gpio.c $(HAL)/dma.c $(HAL)/mailbox.c $(HAL)/wdt.c $(HAL)/boot_verifier.c \
           ../../secure_boot/secure_boot.c
 
 sb_host_test: $(SB_SRC) sb_mock.h sha256_mock.h $(HAL)/uart.h $(HAL)/gpio.h $(HAL)/dma.h $(HAL)/hal_io.h $(HAL)/soc_map.h \
@@ -38,9 +38,9 @@ crosscheck: hal_host_test
 	  rm -f /tmp/hal_xc.bin; exit $$fail
 
 # Check the HAL and the drivers build for RV32I and pull in no libc/libgcc
-RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o /tmp/dma_rv32.o /tmp/mailbox_rv32.o
+RV32_OBJ := /tmp/sha256_hal_rv32.o /tmp/uart_rv32.o /tmp/gpio_rv32.o /tmp/dma_rv32.o /tmp/mailbox_rv32.o /tmp/wdt_rv32.o /tmp/boot_verifier_rv32.o
 rv32:
-	@for m in sha256_hal uart gpio dma mailbox; do \
+	@for m in sha256_hal uart gpio dma mailbox wdt boot_verifier; do \
 	  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -O2 -ffreestanding -nostdlib \
 	    -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -c $(HAL)/$$m.c -o /tmp/$${m}_rv32.o || exit 1; \
 	done

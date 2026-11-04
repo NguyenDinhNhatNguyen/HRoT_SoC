@@ -16,6 +16,7 @@
 #define SOC_PLIC_BASE        (SOC_APB_BASE + 0x5000u)
 #define SOC_MAILBOX_BASE     (SOC_APB_BASE + 0x6000u)
 #define SOC_DMA_BASE         (SOC_APB_BASE + 0x7000u)
+#define SOC_BV_BASE          (SOC_APB_BASE + 0x8000u)  /* Boot_Verifier (N-37, I-08) */
 #define SOC_SHA256_BASE      0x50000000u
 #define SOC_APP_ROM_BASE     0x60000000u
 #define SOC_MEM_SIZE         0x1000u          /* boot ROM, RAM and App ROM are 4 KB each */
@@ -109,6 +110,22 @@
 #define DMA_ST_DONE          (1u << 1)
 #define DMA_ST_ERR_FW        (1u << 2)        /* the firewall blocked a request */
 #define DMA_ST_ERR_BUS       (1u << 3)
+
+/* Boot_Verifier (N-37, I-08): compares the SHA-256 result with the golden hash it fetches from the Boot ROM
+ * itself. With SoC_Top VERIFY_GATE = 1, SYSCSR ignores APP_RUN until VERIFIED. Full 32-bit writes only */
+#define BV_CTRL              0x00u            /* WO: CHECK (once per reset), KEY_LOCK (sticky until POR), MODE */
+#define BV_STATUS            0x04u
+#define BV_MIN_VER           0x08u            /* anti-rollback floor, a write only raises it, cleared by POR */
+#define BV_APP_VER           0x0Cu            /* version of the App image, written before CHECK */
+#define BV_KEY(i)            (0x40u + 4u * (uint32_t)(i))   /* HMAC key, i = 0..7, reads 0 after KEY_LOCK */
+#define BV_CTRL_CHECK        (1u << 0)
+#define BV_CTRL_KEY_LOCK     (1u << 1)
+#define BV_CTRL_MODE_TAG     (1u << 2)        /* with CHECK: compare with the HMAC tag instead of the golden hash */
+#define BV_ST_VERIFIED       (1u << 0)
+#define BV_ST_FAIL           (1u << 1)
+#define BV_ST_KEY_LOCKED     (1u << 2)
+#define BV_ST_CHECKED        (1u << 3)        /* set as soon as CHECK is taken, the verdict follows */
+#define BV_ST_BUSY           (1u << 4)        /* fetching the 8 golden words from the Boot ROM */
 
 /* App world: addresses seen by the App Core only. UART, GPIO and TIMER use the same register layouts as above */
 #define APP_APB_BASE         0x40000000u

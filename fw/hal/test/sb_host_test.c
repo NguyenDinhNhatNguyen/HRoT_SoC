@@ -2,7 +2,8 @@
  * the Boot ROM golden slot, SYSCSR, UART0, GPIO0, the Secure DMA (sb_mock.c) and SHA-256 (sha256_mock.c).
  * Covers the paths that are hard to reach on the RTL: bus error while hashing, broken SHA core,
  * Boot Guard that never finishes, DMA firewall error, DMA that never finishes or is already busy,
- * and the relay of the App's Mailbox words to UART0 after a release (P-16).
+ * the relay of the App's Mailbox words to UART0 after a release (P-16), since 04/11 the WDT and
+ * Boot Guard LOCK on every failure path, and the Boot_Verifier CHECK with the release gate (I-08).
  * Prints "SB RESULT: PASS|FAIL". */
 #include "secure_boot.h"
 #include "sb_mock.h"
@@ -37,6 +38,7 @@ static void make_image(void)
     memset(g_sb.app_rom, 0, sizeof g_sb.app_rom);
     for (i = 0; i < 4; i++)
         memcpy(&g_sb.app_rom[4 * i], &words[i], 4);
+    g_sb.app_rom[SB_APP_VER_OFF] = 1u;                              /* APP_VER = 1 in the last word (I-04) */
     sha256_ref(g_sb.app_rom, sizeof g_sb.app_rom, g_sb.golden);     /* golden = sha256sum of the .bin */
 }
 
@@ -78,6 +80,12 @@ static void t_good(void)
     CHECK(secure_boot_run() == SB_RELEASED, "result");
     CHECK(g_sb.app_ctrl == 1u && g_sb.lock == 0u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
     CHECK(g_sb.led == SB_RELEASED, "LED=%02x", g_sb.led);
+    CHECK(g_sb.wdt_en == 1u && g_sb.wdt_load == SB_WDT_LOAD, "WDT en=%u load=%u", g_sb.wdt_en, g_sb.wdt_load);
+    CHECK(g_sb.wdt_kicks >= 1u && g_sb.wdt_bad_key == 0u, "WDT kicks=%u bad keys=%u", g_sb.wdt_kicks, g_sb.wdt_bad_key);
+    CHECK(g_sb.bv_checks == 1u && g_sb.bv_ok && g_sb.bv_app_ver == 1u, "Boot_Verifier checks=%u ok=%d app_ver=%u",
+          g_sb.bv_checks, g_sb.bv_ok, g_sb.bv_app_ver);
+    CHECK(g_sb.bv_key_lock && g_sb.bv_min_ver == 1u, "KEY_LOCK=%d MIN_VER=%u", g_sb.bv_key_lock, g_sb.bv_min_ver);
+    CHECK(strstr(g_sb.log, "App version 00000001\r\nApp released\r\n") != NULL, "log: %s", g_sb.log);
     CHECK(strstr(g_sb.log, "App released\r\n") != NULL, "log: %s", g_sb.log);
     hex_of(g_sb.golden, hex);
     snprintf(line, sizeof line, "App ROM hash %s\r\n", hex);
@@ -103,16 +111,17 @@ static void t_tamper(void)
     check_dma_used();
 }
 
-/* S3: SLVERR while the DMA reads the App ROM -> logged, App kept in reset, BUS_ERR cleared (N-36) */
+/* S3: SLVERR while the DMA reads the App ROM -> logged, App locked out, BUS_ERR cleared (N-36) */
 static void t_bus_error(void)
 {
     printf("[S3] bus error while hashing\n");
     reset_all();
     g_sb.bus_err_word = 300;
     CHECK(secure_boot_run() == SB_BUS_ERROR, "result");
-    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 0u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
     CHECK(g_sb.bus_err == 0u, "BUS_ERR not cleared: %x", g_sb.bus_err);
-    CHECK(strstr(g_sb.log, "Bus error at 600004b0, App kept in reset\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(strstr(g_sb.log, "Bus error at 600004b0\r\nBus error while hashing, App locked out\r\n") != NULL,
+          "log: %s", g_sb.log);
     CHECK(g_sb.led == SB_BUS_ERROR, "LED=%02x", g_sb.led);
     CHECK(g_sb.hash_read_early == 0u, "HASH read after a failed DMA run");
 }
@@ -128,26 +137,29 @@ static void t_stale_bus_error(void)
     CHECK(g_sb.app_ctrl == 1u, "app_ctrl=%u", g_sb.app_ctrl);
 }
 
-/* S5: SHA-256 core gives wrong digests -> self-test catches it, App kept in reset */
+/* S5: SHA-256 core gives wrong digests -> self-test catches it, App locked out */
 static void t_selftest(void)
 {
     printf("[S5] broken SHA-256 core\n");
     reset_all();
     g_mock.corrupt_hash = 1;
     CHECK(secure_boot_run() == SB_SELFTEST_FAIL, "result");
-    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 0u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
     CHECK(g_sb.rom_reads == 0u && g_sb.dma_starts == 0u, "App ROM hashed after a failed self-test");
-    CHECK(strstr(g_sb.log, "self-test failed") != NULL, "log: %s", g_sb.log);
+    CHECK(strstr(g_sb.log, "SHA-256 self-test failed, App locked out\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.led == SB_SELFTEST_FAIL, "LED=%02x", g_sb.led);
+    CHECK(g_sb.bv_key_lock && g_sb.bv_checks == 0u, "KEY_LOCK=%d checks=%u (no CHECK on a failure)", g_sb.bv_key_lock,
+          g_sb.bv_checks);
 }
 
-/* S6: SHA-256 never finishes -> timeout in the self-test, App kept in reset */
+/* S6: SHA-256 never finishes -> timeout in the self-test, App locked out */
 static void t_sha_timeout(void)
 {
     printf("[S6] SHA-256 never DONE\n");
     reset_all();
     g_mock.never_done = 1;
     CHECK(secure_boot_run() == SB_SELFTEST_FAIL, "result");
-    CHECK(g_sb.app_ctrl == 0u, "app_ctrl=%u", g_sb.app_ctrl);
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
 }
 
 /* S7: Boot Guard zeroization never finishes -> reported, App still held (LOCK is set) */
@@ -162,7 +174,7 @@ static void t_guard_stuck(void)
     CHECK(strstr(g_sb.log, "LOCK did not finish") != NULL, "log: %s", g_sb.log);
 }
 
-/* S8: golden bytes in the wrong order (big-endian words) must not pass */
+/* S8: golden stored in the old order (little-endian words, before 04/11) must not pass */
 static void t_golden_order(void)
 {
     uint8_t t;
@@ -179,42 +191,43 @@ static void t_golden_order(void)
     CHECK(secure_boot_run() == SB_LOCKED, "result");
 }
 
-/* S9: the DMA firewall blocks the transfer -> App kept in reset, no LOCK, no digest read */
+/* S9: the DMA firewall blocks the transfer -> App locked out, no digest read */
 static void t_dma_firewall(void)
 {
     printf("[S9] DMA firewall error\n");
     reset_all();
     g_sb.dma_err_fw = 1;
     CHECK(secure_boot_run() == SB_HW_ERROR, "result");
-    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 0u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
-    CHECK(strstr(g_sb.log, "DMA blocked by the firewall, App kept in reset\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "DMA blocked by the firewall, App locked out\r\n") != NULL, "log: %s", g_sb.log);
     CHECK(g_sb.dma_status == 0u, "DMA STATUS not cleared: %x", g_sb.dma_status);
     CHECK(g_sb.hash_reads == 0u, "HASH read %u times", g_sb.hash_reads);
     CHECK(g_sb.led == SB_HW_ERROR, "LED=%02x", g_sb.led);
 }
 
-/* S10: the DMA never finishes -> bounded wait, App kept in reset, SHA-256 left alone (R17) */
+/* S10: the DMA never finishes -> bounded wait, App locked out, SHA-256 left alone (R17) */
 static void t_dma_timeout(void)
 {
     printf("[S10] DMA never DONE\n");
     reset_all();
     g_sb.dma_never_done = 1;
     CHECK(secure_boot_run() == SB_HW_ERROR, "result");
-    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 0u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
-    CHECK(strstr(g_sb.log, "DMA timeout, App kept in reset\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "DMA timeout, App locked out\r\n") != NULL, "log: %s", g_sb.log);
     CHECK(g_sb.dma_polls == DMA_POLL_LIMIT, "%u STATUS polls, limit %u", g_sb.dma_polls, DMA_POLL_LIMIT);
     CHECK(g_sb.hash_reads == 0u && g_mock.n_start == 4u, "SHA-256 touched while the DMA owns it");
 }
 
-/* S11: the DMA or SHA-256 is already busy -> nothing started, App kept in reset */
+/* S11: the DMA or SHA-256 is already busy -> nothing started, App locked out */
 static void t_dma_busy(void)
 {
     printf("[S11] DMA or SHA-256 already busy\n");
     reset_all();
     g_sb.dma_busy = 1;
     CHECK(secure_boot_run() == SB_HW_ERROR, "result (DMA busy)");
-    CHECK(g_sb.dma_starts == 0u && g_sb.app_ctrl == 0u, "starts=%u app_ctrl=%u", g_sb.dma_starts, g_sb.app_ctrl);
-    CHECK(strstr(g_sb.log, "DMA error, App kept in reset\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.dma_starts == 0u && g_sb.app_ctrl == 0u && g_sb.lock == 1u, "starts=%u app_ctrl=%u lock=%u",
+          g_sb.dma_starts, g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "DMA error, App locked out\r\n") != NULL, "log: %s", g_sb.log);
     reset_all();
     g_sb.sha_busy = 1;
     CHECK(secure_boot_run() == SB_HW_ERROR, "result (SHA-256 busy)");
@@ -253,6 +266,93 @@ static void t_relay(void)
     CHECK(g_sb.bad_access == 0u, "%u accesses outside the models", g_sb.bad_access);
 }
 
+/* S14: bus error while reading the golden hash -> not trusted, App locked out (Nguyen's note, 04/11) */
+static void t_golden_bus_error(void)
+{
+    printf("[S14] bus error while reading the golden hash\n");
+    reset_all();
+    g_sb.golden_bus_err = 1;
+    CHECK(secure_boot_run() == SB_BUS_ERROR, "result");
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "Bus error at 00000fe0\r\nBus error while reading the golden hash, App locked out\r\n")
+          != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.bus_err == 0u && g_sb.led == SB_BUS_ERROR, "BUS_ERR=%x LED=%02x", g_sb.bus_err, g_sb.led);
+}
+
+/* S15: a failure whose LOCK does not finish either -> SB_HW_ERROR, App still held, WDT kept alive */
+static void t_fail_lock_stuck(void)
+{
+    uint32_t kicks;
+    printf("[S15] self-test failure and zeroization never finishes\n");
+    reset_all();
+    g_mock.corrupt_hash = 1;
+    g_sb.zero_never_done = 1;
+    CHECK(secure_boot_run() == SB_HW_ERROR, "result");
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "SHA-256 self-test failed, LOCK did not finish, App kept in reset\r\n") != NULL,
+          "log: %s", g_sb.log);
+    kicks = g_sb.wdt_kicks;
+    CHECK(g_sb.wdt_en == 1u && kicks >= 2u, "WDT en=%u kicks=%u (fail and finish both kick)", g_sb.wdt_en, kicks);
+}
+
+/* S16: software compare matches but Boot_Verifier says FAIL -> hardware wins, App locked out (I-08) */
+static void t_bv_fail(void)
+{
+    printf("[S16] Boot_Verifier FAIL with a matching software compare\n");
+    reset_all();
+    g_sb.bv_force_fail = 1;
+    CHECK(secure_boot_run() == SB_VERIFY_FAIL, "result");
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u && g_sb.bv_key_lock, "app_ctrl=%u lock=%u key_lock=%d",
+          g_sb.app_ctrl, g_sb.lock, g_sb.bv_key_lock);
+    CHECK(strstr(g_sb.log, "Boot_Verifier refused the image, App locked out\r\n") != NULL, "log: %s", g_sb.log);
+    CHECK(g_sb.led == SB_VERIFY_FAIL, "LED=%02x", g_sb.led);
+}
+
+/* S17: Boot_Verifier never gives a verdict -> bounded wait, App locked out */
+static void t_bv_timeout(void)
+{
+    printf("[S17] Boot_Verifier never answers\n");
+    reset_all();
+    g_sb.bv_never_done = 1;
+    CHECK(secure_boot_run() == SB_VERIFY_FAIL, "result");
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "Boot_Verifier timeout, App locked out\r\n") != NULL, "log: %s", g_sb.log);
+}
+
+/* S18: CHECK already used since the reset -> no second CHECK, App locked out */
+static void t_bv_used(void)
+{
+    printf("[S18] Boot_Verifier CHECK already used\n");
+    reset_all();
+    g_sb.bv_checked = 1;
+    g_sb.bv_fail = 1;
+    CHECK(secure_boot_run() == SB_VERIFY_FAIL, "result");
+    CHECK(g_sb.bv_checks == 0u && g_sb.bad_access == 0u, "checks=%u bad accesses=%u", g_sb.bv_checks, g_sb.bad_access);
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+}
+
+/* S19: anti-rollback, APP_VER below MIN_VER -> FAIL even with the right hash */
+static void t_bv_rollback(void)
+{
+    printf("[S19] APP_VER below MIN_VER\n");
+    reset_all();
+    g_sb.bv_min_ver = 5u;
+    CHECK(secure_boot_run() == SB_VERIFY_FAIL, "result");
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u && g_sb.bv_min_ver == 5u, "app_ctrl=%u lock=%u MIN_VER=%u",
+          g_sb.app_ctrl, g_sb.lock, g_sb.bv_min_ver);
+}
+
+/* S20: VERIFIED but APP_RUN does not stick (the gate holds it) -> reported, App locked out */
+static void t_gate_held(void)
+{
+    printf("[S20] release gate holds APP_RUN\n");
+    reset_all();
+    g_sb.app_run_stuck = 1;
+    CHECK(secure_boot_run() == SB_VERIFY_FAIL, "result");
+    CHECK(g_sb.app_ctrl == 0u && g_sb.lock == 1u, "app_ctrl=%u lock=%u", g_sb.app_ctrl, g_sb.lock);
+    CHECK(strstr(g_sb.log, "Release gate held the App, App locked out\r\n") != NULL, "log: %s", g_sb.log);
+}
+
 int main(void)
 {
     t_good();
@@ -268,6 +368,13 @@ int main(void)
     t_dma_busy();
     t_dma_fast();
     t_relay();
+    t_golden_bus_error();
+    t_fail_lock_stuck();
+    t_bv_fail();
+    t_bv_timeout();
+    t_bv_used();
+    t_bv_rollback();
+    t_gate_held();
     printf("\nSUMMARY SB: PASS = %d | FAIL = %d\n", g_pass, g_fail);
     printf("SB RESULT: %s\n", g_fail ? "FAIL" : "PASS");
     return g_fail != 0;

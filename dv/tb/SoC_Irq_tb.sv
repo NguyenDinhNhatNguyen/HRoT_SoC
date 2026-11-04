@@ -5,6 +5,7 @@
 //  - App   : TIMER1 -> irq_timer, Mailbox from the Secure world -> irq_ext
 //  - The testbench pulses gpio0_i[0] when the Master shows 0xA1 and again on 0xA2
 //  - Each program shows its result on its LEDs: 0x01 = PASS, 0x80 | step = FAIL
+// VERIFY_GATE stays 0: the assembly programs release the App Core with APP_CTRL directly, without a CHECK.
 // Run from sim/ (sim/run_fw.do with TB = SoC_Irq_tb). Ends with "SoC_Irq_tb RESULT: PASS|FAIL".
 module SoC_Irq_tb;
 

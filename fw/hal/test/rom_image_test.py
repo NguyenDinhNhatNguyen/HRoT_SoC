@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Host test of fw/tools/rom_image.py (P-16, I-04): the padded App image and the golden hash
-written into the Boot ROM image must match sha256sum of the 4 KB .bin. Prints "ROM RESULT: PASS|FAIL"."""
+"""Host test of fw/tools/rom_image.py (P-16, I-04): the padded App image (APP_VER in the last word)
+and the golden hash written into the Boot ROM image (big-endian words H0..H7, I-03) must match
+sha256sum of the 4 KB .bin. Prints "ROM RESULT: PASS|FAIL"."""
 import hashlib
 import os
 import random
@@ -36,14 +37,16 @@ def words(path):
 with tempfile.TemporaryDirectory() as d:
     p = lambda name: os.path.join(d, name)
     rng = random.Random(16)
-    for n in (4, 510, 4092, 4096):
-        print("[R1] pad %d bytes" % n)
+    for n, ver in ((4, None), (510, 7), (4092, 0x10203)):
+        print("[R1] pad %d bytes, APP_VER %s" % (n, ver))
         app = bytes(rng.randrange(256) for _ in range(n))
         with open(p("app.bin"), "wb") as f:
             f.write(app)
-        check(run("pad", p("app.bin"), p("app.hex"), p("app_full.bin")).returncode == 0, "pad failed")
+        args = ["pad", p("app.bin"), p("app.hex"), p("app_full.bin")] + ([str(ver)] if ver is not None else [])
+        check(run(*args).returncode == 0, "pad failed")
         full = open(p("app_full.bin"), "rb").read()
-        check(full == app + b"\0" * (4096 - n), "padded .bin differs")
+        check(full == app + b"\0" * (4092 - n) + struct.pack("<I", 1 if ver is None else ver),
+              "padded .bin differs (APP_VER must be the last word)")
         check(words(p("app.hex")) == list(struct.unpack("<1024I", full)), "hex is not the .bin as LE words")
 
         print("[R2] golden into the Boot ROM image")
@@ -53,16 +56,16 @@ with tempfile.TemporaryDirectory() as d:
         check(run("put-golden", p("code.hex"), p("app.hex"), p("imem.hex")).returncode == 0, "put-golden failed")
         boot = words(p("imem.hex"))
         digest = hashlib.sha256(full).digest()
-        check(len(boot) == 1024 and boot[:300] == code and not any(boot[300:1016]), "code area changed")
-        check(struct.pack("<8I", *boot[1016:]) == digest, "golden at 0xFE0 is not sha256 of the .bin")
+        check(len(boot) == 1024 and boot[:300] == code and not any(boot[300:1016]), "code or tag area changed")
+        check(struct.pack(">8I", *boot[1016:]) == digest, "golden at 0xFE0 is not sha256 of the .bin as BE words")
 
     print("[R3] errors")
     with open(p("big.bin"), "wb") as f:
-        f.write(b"\1" * 4097)
-    check(run("pad", p("big.bin"), p("x.hex"), p("x.bin")).returncode != 0, "4097-byte App image accepted")
+        f.write(b"\1" * 4093)
+    check(run("pad", p("big.bin"), p("x.hex"), p("x.bin")).returncode != 0, "App image over the APP_VER word accepted")
     with open(p("long.hex"), "w") as f:
-        f.write("@000003f8\n00000001\n")
-    check(run("put-golden", p("long.hex"), p("app.hex"), p("y.hex")).returncode != 0, "code over the golden slot accepted")
+        f.write("@000003f0\n00000001\n")
+    check(run("put-golden", p("long.hex"), p("app.hex"), p("y.hex")).returncode != 0, "code over the HMAC tag slot accepted")
 
 print("\nSUMMARY ROM: PASS = %d | FAIL = %d" % (passes, fails))
 print("ROM RESULT: %s" % ("FAIL" if fails else "PASS"))

@@ -101,14 +101,15 @@ class apb_scoreboard extends uvm_component;
     endfunction
 
     function void write_secure(apb_item t);
-        check(t, 1'b0);
+        check_item(t, 1'b0);
     endfunction
 
     function void write_app(apb_item t);
-        check(t, 1'b1);
+        check_item(t, 1'b1);
     endfunction
 
-    function void check(apb_item t, bit app);
+    // Not named check(): uvm_component has a check() method of its own (Questa rejects the clash)
+    function void check_item(apb_item t, bit app);
         bit [31:0] exp;
         bit        exp_err = 1'b0;
         bit        known   = 1'b1;

@@ -5,7 +5,8 @@
  * loads/stores go over the data bus. Since N-21 a load can also read the boot ROM (read-only
  * data port at 0x0000_0000), so constants stay in ROM where nothing can overwrite them (I-03).
  *
- *   ROM  0x0000_0000  4 KB   .text .rodata   -> firmware_imem.hex
+ *   ROM  0x0000_0000  4 KB   .text .rodata   -> firmware_imem.hex, up to 0xFBF
+ *        0x0000_0FC0  32 B   HMAC tag slot (Boot_Verifier MODE 1, not used yet, I-03)
  *        0x0000_0FE0  32 B   golden hash of the App ROM (secure_boot.h SB_GOLDEN_ADDR), filled
  *                            in after the build: the golden step of fw/CMakeLists.txt writes it
  *                            into firmware_imem.hex (I-04, P-16), SoC_Fw_tb and the VP write their own
@@ -22,7 +23,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K - 32     /* the last 32 bytes hold the golden hash */
+    ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 4K - 64     /* the last 64 bytes hold the HMAC tag and the golden hash */
     RAM (rw)  : ORIGIN = 0x10000000, LENGTH = 4K
 }
 

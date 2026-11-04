@@ -13,6 +13,7 @@ void sb_mock_reset(void)
     g_sb.bus_err_word = -1;
     g_sb.baud_div = 26;
     g_sb.dma_src = SOC_APP_ROM_BASE;
+    g_sb.verify_gate = 1;
     g_sb.dma_nblk = 64u;
 }
 
@@ -70,6 +71,31 @@ static int dma_is_busy(void)
     return g_sb.dma_busy || (g_sb.dma_starts != 0u && (g_sb.dma_never_done || g_sb.dma_pending != 0u));
 }
 
+/* Boot_Verifier CHECK, like the RTL: needs a finished digest in SHA-256 (the DMA run) and APP_VER >= MIN_VER,
+ * then compares the 8 HASH words with the golden slot read as big-endian words */
+static void bv_run(void)
+{
+    uint32_t i;
+    uint32_t w;
+    int ok = g_sb.dma_ok && !g_sb.sha_busy && !dma_is_busy() && g_sb.bv_app_ver >= g_sb.bv_min_ver;
+
+    g_sb.bv_checked = 1;
+    g_sb.bv_checks++;
+    for (i = 0u; ok && i < 8u; i++) {
+        const uint8_t *gd = &g_sb.golden[4u * i];
+        w = ((uint32_t)gd[0] << 24) | ((uint32_t)gd[1] << 16) | ((uint32_t)gd[2] << 8) | (uint32_t)gd[3];
+        if (w != g_sb.sha_hash[i])
+            ok = 0;
+    }
+    if (g_sb.bv_force_fail)
+        ok = 0;
+    g_sb.bv_ok = ok;
+    g_sb.bv_fail = !ok;
+    if (ok && g_sb.bv_app_ver > g_sb.bv_min_ver)
+        g_sb.bv_min_ver = g_sb.bv_app_ver;
+    g_sb.bv_busy_polls = 2u;
+}
+
 /* App ROM port B read by the CPU: one aligned 32-bit word, little-endian like the RISC-V core sees it.
  * Since P-15 the DMA hashes the App ROM, so Secure Boot must not get here (rom_reads stays 0) */
 uint32_t hal_host_memread32(uintptr_t addr)
@@ -95,7 +121,15 @@ uint32_t hal_host_mmio_read32(uintptr_t addr)
     uint32_t w;
 
     if (addr >= SB_GOLDEN_ADDR && addr < SB_GOLDEN_ADDR + 32u) {
-        memcpy(&w, &g_sb.golden[addr - SB_GOLDEN_ADDR], 4);
+        if (g_sb.golden_bus_err && !(g_sb.bus_err & BUS_ERR_VALID)) {
+            g_sb.bus_err = BUS_ERR_VALID | (2u << 2);       /* SLVERR on a read */
+            g_sb.bus_err_addr = (uint32_t)addr;
+        }
+        /* big-endian words H0..H7 (I-03): the top byte of word i is digest byte 4i */
+        {
+            const uint8_t *g = &g_sb.golden[(addr - SB_GOLDEN_ADDR) & ~3u];
+            w = ((uint32_t)g[0] << 24) | ((uint32_t)g[1] << 16) | ((uint32_t)g[2] << 8) | (uint32_t)g[3];
+        }
         return w;
     }
     if (addr >= SOC_SHA256_BASE + SHA256_REG_HASH(0) && addr <= SOC_SHA256_BASE + SHA256_REG_HASH(7)) {
@@ -128,10 +162,29 @@ uint32_t hal_host_mmio_read32(uintptr_t addr)
         return g_sb.dma_status;
     case SOC_SYSCSR_BASE + SYSCSR_APP_CTRL:
         return g_sb.app_ctrl;
+    case SOC_APP_ROM_BASE + SB_APP_VER_OFF:
+        memcpy(&w, &g_sb.app_rom[SB_APP_VER_OFF], 4);
+        return w;
+    case SOC_BV_BASE + BV_STATUS:
+        if (g_sb.bv_checked && (g_sb.bv_never_done || g_sb.bv_busy_polls != 0u)) {
+            if (!g_sb.bv_never_done)
+                g_sb.bv_busy_polls--;
+            return BV_ST_CHECKED | BV_ST_BUSY | (g_sb.bv_key_lock ? BV_ST_KEY_LOCKED : 0u);
+        }
+        return (g_sb.bv_checked ? BV_ST_CHECKED : 0u) | (g_sb.bv_key_lock ? BV_ST_KEY_LOCKED : 0u)
+               | (g_sb.bv_ok ? BV_ST_VERIFIED : 0u) | (g_sb.bv_fail ? BV_ST_FAIL : 0u);
+    case SOC_BV_BASE + BV_APP_VER:
+        return g_sb.bv_app_ver;
+    case SOC_BV_BASE + BV_MIN_VER:
+        return g_sb.bv_min_ver;
     case SOC_SYSCSR_BASE + SYSCSR_BUS_ERR:
         return g_sb.bus_err;
     case SOC_SYSCSR_BASE + SYSCSR_BUS_ERR_ADDR:
         return g_sb.bus_err_addr;
+    case SOC_WDT_BASE + WDT_CTRL:
+        return g_sb.wdt_en;
+    case SOC_WDT_BASE + WDT_LOAD:
+        return g_sb.wdt_load;
     case SOC_SYSCSR_BASE + SYSCSR_GUARD:
         if (!g_sb.lock)
             return 0u;
@@ -170,13 +223,39 @@ void hal_host_mmio_write32(uintptr_t addr, uint32_t val)
         g_sb.dma_status &= ~(val & (DMA_ST_DONE | DMA_ST_ERR_FW | DMA_ST_ERR_BUS));
         return;
     case SOC_SYSCSR_BASE + SYSCSR_APP_CTRL:
-        g_sb.app_ctrl = val & 1u;
+        g_sb.app_ctrl = (val & 1u) && (g_sb.bv_ok || !g_sb.verify_gate) && !g_sb.app_run_stuck;
+        return;
+    case SOC_BV_BASE + BV_APP_VER:
+        if (!g_sb.bv_checked)
+            g_sb.bv_app_ver = val;
+        return;
+    case SOC_BV_BASE + BV_CTRL:
+        if (val & BV_CTRL_KEY_LOCK)
+            g_sb.bv_key_lock = 1;
+        if ((val & BV_CTRL_CHECK) && !g_sb.bv_checked)
+            bv_run();
+        else if (val & BV_CTRL_CHECK)
+            g_sb.bad_access++;                              /* a second CHECK: the driver must not try */
         return;
     case SOC_SYSCSR_BASE + SYSCSR_BUS_ERR:
         if (val & BUS_ERR_VALID) {
             g_sb.bus_err = 0u;
             g_sb.bus_err_addr = 0u;
         }
+        return;
+    case SOC_WDT_BASE + WDT_CTRL:
+        if (val & WDT_CTRL_EN)
+            g_sb.wdt_en = 1u;
+        return;
+    case SOC_WDT_BASE + WDT_LOAD:
+        if (!g_sb.wdt_en)
+            g_sb.wdt_load = val;                            /* locked while EN */
+        return;
+    case SOC_WDT_BASE + WDT_KICK:
+        if (val == WDT_KICK_KEY)
+            g_sb.wdt_kicks++;
+        else
+            g_sb.wdt_bad_key++;
         return;
     case SOC_SYSCSR_BASE + SYSCSR_GUARD:
         if (val & GUARD_LOCK)
