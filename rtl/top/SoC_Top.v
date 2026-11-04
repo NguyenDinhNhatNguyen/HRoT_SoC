@@ -23,7 +23,7 @@
 //    and Boot Guard in SYSCSR (Master locks the App out and clears its RAM)
 // ============================================================
 module SoC_Top #(
-    parameter VERIFY_GATE = 0,   // 1 = the App Core runs only after Boot_Verifier says VERIFIED (set to 1 once the firmware uses it, I-06)
+    parameter VERIFY_GATE = 0,   // 1 = the App Core runs only after Boot_Verifier says VERIFIED (I-08: the FPGA tops and the firmware testbenches set 1, SoC_Irq_tb keeps 0)
     parameter BOOT_HEX = "../fw/build/firmware_imem.hex",   // secure_boot .text (fw/CMakeLists.txt)
     parameter RAM_HEX  = "../fw/build/firmware_dmem.hex",   // .rodata/.data, word 0 = 0x1000_0000
     parameter APP_HEX  = "../fw/build/app_firmware.hex",

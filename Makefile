@@ -1,5 +1,6 @@
 # HRoT_SoC entry points. Run inside WSL (Ubuntu) from the repo root:
 #   make test        full regression (core, IP, SoC, VP) on QuestaSim, prints PASS/FAIL per check
+#   make cov         code and functional coverage of the core, SHA-256 and APB tests (sim/cov.sh, P-19)
 #   make sim-unit    the 11 core unit testbenches (sim/run_unit.do)
 #   make sim-core    core simulation (sim/run_rtl.do), TB=RISCV_Core_prog_tb | RISCV_Core_tb | RISCV_Core_hazard_tb
 #   make sim-uvm     UVM AXI4-Lite (sim/run_uvm.do), TEST=axi4_lite_full_test SEED=1
@@ -22,18 +23,21 @@ TB      ?= RISCV_Core_prog_tb
 TEST    ?= axi4_lite_full_test
 SEED    ?= 1
 
-# FPGA builds load the test firmware (dv/sw/mkhex.py, UART at 115200 baud / 50 MHz) until the real
-# firmware is ready. Override with: make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
+# FPGA builds load the test firmware (dv/sw/mkhex.py, UART at 115200 baud / 50 MHz) by default.
+# For the real firmware (make fw first): make de2 BOOT_HEX=fw/build/firmware_imem.hex ...
 HEX_DIR  := build/hex
 BOOT_HEX ?= $(HEX_DIR)/boot.hex
 RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx clean
+.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx clean
 
 test:
 	bash sim/regress.sh
+
+cov:
+	QUESTA=$(QUESTA) bash sim/cov.sh
 
 sim-unit:
 	cd sim && $(QUESTA) -c -do run_unit.do

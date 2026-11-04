@@ -7,6 +7,8 @@
 #   The SHA tests also run the passive DPI scoreboard (P-17, dv/env/sha256_scoreboard.svh + sha256_ref_dpi.c)
 # Real APB peripherals (P-17): set DUT apb; TEST = apb_reg_test | apb_periph_test | apb_full_test
 # Options: TEST, SEED, VERB (UVM_LOW/MEDIUM/HIGH), PLUSARGS (e.g. "+NUM_TRANS=500 +SLAVE_MAX_DELAY=6")
+#          COV <file.ucdb> (P-19, used by sim/cov.sh): code coverage on the RTL, the covergroups of
+#          hrot_dv_pkg (+define+HROT_COV), and the coverage database saved to that file at the end
 # UVM: uses the UVM library that ships with Questa by default.
 #      If vlog can't find uvm_pkg: set UVM_LIB <Questa's UVM library name> (check `vmap -l` or
 #      modelsim.ini; usually mtiUvm) and rerun. Don't guess the name without checking.
@@ -25,6 +27,14 @@ vmap work work
 set UVM_FLAGS {}
 set DPI_FLAGS {}
 set LIB_FLAGS {}
+set COV_RTL   {}
+set COV_DV    {}
+set COV_SIM   {}
+if {[info exists COV]} {
+  set COV_RTL {+cover=sbcef}
+  set COV_DV  {+define+HROT_COV}
+  set COV_SIM {-coverage}
+}
 if {[info exists UVM_LIB]} {
   lappend UVM_FLAGS -L $UVM_LIB
   lappend LIB_FLAGS -L $UVM_LIB
@@ -39,15 +49,15 @@ if {[info exists env(UVM_HOME)]} {
 #    Questa's gcc defaults to C89),
 # 3) DUT or slave model + top
 vlog -sv -work work {*}$UVM_FLAGS $DV/agents/axi4_lite_if.sv $DV/agents/apb_if.sv
-vlog -sv -work work {*}$UVM_FLAGS +incdir+$DV/agents +incdir+$DV/env +incdir+$DV/tests \
+vlog -sv -work work {*}$UVM_FLAGS {*}$COV_DV +incdir+$DV/agents +incdir+$DV/env +incdir+$DV/tests \
      $DV/hrot_dv_pkg.sv
 vlog -work work -ccflags -std=gnu99 $DV/env/sha256_ref_dpi.c
 if {$DUT eq "apb"} {
-  vlog -sv -work work ../rtl/bus/APB_Decoder.v ../rtl/periph/GPIO.v ../rtl/periph/TIMER.v ../rtl/periph/Mailbox.v
+  vlog -sv -work work {*}$COV_RTL ../rtl/bus/APB_Decoder.v ../rtl/periph/GPIO.v ../rtl/periph/TIMER.v ../rtl/periph/Mailbox.v
   vlog -sv -work work {*}$UVM_FLAGS $DV/agents/apb_slave_model.sv $DV/env/tb_apb_top.sv
   set TOP tb_apb_top
 } elseif {$DUT eq "sha256"} {
-  vlog -sv -work work ../rtl/bus/AXI4_Lite_Slave_Template.v ../rtl/crypto/SHA256_Core.v \
+  vlog -sv -work work {*}$COV_RTL ../rtl/bus/AXI4_Lite_Slave_Template.v ../rtl/crypto/SHA256_Core.v \
        ../rtl/crypto/SHA256_Wrapper.v
   vlog -sv -work work {*}$UVM_FLAGS $DV/env/tb_sha256_top.sv
   set TOP tb_sha256_top
@@ -57,8 +67,9 @@ if {$DUT eq "apb"} {
 }
 
 # 4) run
-vsim -voptargs=+acc -t 1ps -sv_seed $SEED {*}$LIB_FLAGS {*}$DPI_FLAGS work.$TOP \
+vsim -voptargs=+acc -t 1ps -sv_seed $SEED {*}$LIB_FLAGS {*}$DPI_FLAGS {*}$COV_SIM work.$TOP \
      +UVM_TESTNAME=$TEST +UVM_VERBOSITY=$VERB {*}$PLUSARGS
+if {[info exists COV]} {coverage save -onexit $COV}
 
 if {[batch_mode]} {log -r /*} else {add wave -r /*}
 run -all

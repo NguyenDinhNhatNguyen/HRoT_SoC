@@ -7,6 +7,8 @@
  * interrupts (mie, mstatus.MIE, mip, MEI before MTI) and an interrupt in the middle of a loop
  * full of loads and stores (no store may run twice), and access faults through data_err (P-24): load
  * (mcause 5) and store (mcause 7) to the testbench's fault window at 0xF000_0000, mtval = address.
+ * FENCE, FENCE.I and WFI run as NOPs, reserved encodings trap, ID CSRs, mcause/mtval writes, a pending
+ * but disabled external interrupt (P-19, gaps found by coverage).
  *
  * ACC (0x3F4): the testbench counts every finished access to this word and shows the count at
  * ACC_CNT (0x3F0), so a load or store that runs twice, or runs when it should be cancelled, is caught.
@@ -18,7 +20,7 @@
  * Registers: x29 counts traps, x26..x28 belong to the trap handler, x30/x31 to CHECK.
  *
  * Rebuild the .hex (needs riscv64-unknown-elf-gcc):
- *   riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 -nostdlib -Ttext=0 \
+ *   riscv64-unknown-elf-gcc -march=rv32i_zicsr_zifencei -mabi=ilp32 -nostdlib -Ttext=0 \
  *       -o core_trap_test.elf core_trap_test.S
  *   riscv64-unknown-elf-objcopy -O verilog --verilog-data-width=4 -j .text \
  *       core_trap_test.elf core_trap_test.hex
@@ -242,6 +244,84 @@ fault_st:
     CHECK x29, 17
     lw    x6, LAST+12(x0)
     CHECK x6, 0
+
+    /* ---- 8. FENCE, FENCE.I and WFI run as NOPs (P-19): no trap, no register change, a store before them
+       is seen by a load after them ---- */
+    li    x13, 0x77
+    sw    x13, 0x014(x0)
+    fence
+    fence.i
+    wfi
+    lw    x14, 0x014(x0)
+    CHECK x14, 0x77
+    CHECK x13, 0x77
+    CHECK x29, 17
+
+    /* ---- 9. Gaps found by the coverage of P-19 ---- */
+    /* 9a. Reserved encodings must trap as illegal (mcause 2) with no side effect: a branch must not
+       jump (it would skip the addi after it), JALR must not jump or write x16, the others must not
+       write x17 or memory */
+    li    x15, 0
+    li    x16, 0x16
+    li    x17, 0x17
+    .word 0x00002463              /* branch, funct3 010, offset +8 */
+    addi  x15, x15, 1
+    .word 0x00003463              /* branch, funct3 011, offset +8 */
+    addi  x15, x15, 1
+    .word 0x00001867              /* jalr x16, 0(x0) with funct3 001 */
+    .word 0x022088B3              /* mul x17, x1, x2 (funct7 0000001, no M extension) */
+    .word 0x402098B3              /* sll x17 with funct7 0100000 */
+    .word 0x40309893              /* slli x17 with funct7 0100000 */
+    .word 0x0230D893              /* srli x17 with funct7 0000001 */
+    .word 0x00003883              /* ld x17 (load funct3 011) */
+    .word 0x00103023              /* sd x1 (store funct3 011) */
+    .word 0x0000200F              /* fence with funct3 010 */
+    .word 0x300048F3              /* SYSTEM funct3 100 */
+    .word 0x00200073              /* uret: SYSTEM funct3 000 that is not ECALL/EBREAK/MRET/WFI */
+    .word 0x10200073              /* sret */
+    CHECK x15, 2
+    CHECK x16, 0x16
+    CHECK x17, 0x17
+    CHECK x29, 30
+    lw    x6, LAST(x0)
+    CHECK x6, 2
+    /* 9b. The other ID CSRs read 0, mcause and mtval are writable, misa and mip ignore writes */
+    csrr  x6, mvendorid
+    CHECK x6, 0
+    csrr  x6, marchid
+    CHECK x6, 0
+    csrr  x6, mimpid
+    CHECK x6, 0
+    li    x7, 0x1234
+    csrw  mcause, x7
+    csrr  x6, mcause
+    CHECK x6, 0x1234
+    li    x7, 0xABCD
+    csrw  mtval, x7
+    csrr  x6, mtval
+    CHECK x6, 0xABCD
+    csrr  x8, misa
+    csrw  misa, x0
+    csrr  x6, misa
+    sub   x6, x6, x8
+    CHECK x6, 0
+    csrw  mip, x7
+    csrr  x6, mip
+    CHECK x6, 0
+    CHECK x29, 30
+    /* 9c. irq_ext high while mie.MEIE = 0 and mstatus.MIE = 1: pending in mip, but no trap */
+    csrw  mie, x0
+    csrsi mstatus, 8
+    li    x6, 2
+    sw    x6, IRQ(x0)
+    nop
+    nop
+    nop
+    csrr  x7, mip
+    CHECK x7, 0x800
+    CHECK x29, 30
+    sw    x0, IRQ(x0)
+    csrci mstatus, 8
 
     /* ---- PASS ---- */
     li   x5, 1

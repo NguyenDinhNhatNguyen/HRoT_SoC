@@ -28,9 +28,11 @@ module tb_sha256_top;
     assign axi_if.bresp = 2'b00;
     assign axi_if.rresp = 2'b00;
 
-    // 5-cycle reset. +RESET_AT_NS=<t>: add a 5-cycle reset pulse after t ns (same as tb_top)
+    // 5-cycle reset. +RESET_AT_NS=<t>: add a 5-cycle reset pulse after t ns (same as tb_top).
+    // +RESET_EVERY_NS=<t> (P-19 coverage): then keep adding pulses every t to 2t ns, so resets land in
+    // every phase of a block. Use it with sha256_rand_test only, the other sequences do not retry
     initial begin
-        int unsigned reset_at_ns;
+        int unsigned reset_at_ns, reset_every_ns;
         repeat (5) @(negedge clk);
         rst_n = 1'b1;
         if ($value$plusargs("RESET_AT_NS=%d", reset_at_ns)) begin
@@ -39,6 +41,13 @@ module tb_sha256_top;
             repeat (5) @(negedge clk);
             rst_n = 1'b1;
         end
+        if ($value$plusargs("RESET_EVERY_NS=%d", reset_every_ns))
+            forever begin
+                #(real'(reset_every_ns + $urandom_range(reset_every_ns, 0)) * 1ns);
+                @(negedge clk) rst_n = 1'b0;
+                repeat (5) @(negedge clk);
+                rst_n = 1'b1;
+            end
     end
 
     initial begin

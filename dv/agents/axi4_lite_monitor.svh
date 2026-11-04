@@ -12,12 +12,17 @@ class axi4_lite_monitor extends uvm_monitor;
         bit [31:0] data;
         bit [3:0]  strb;
         time       t;
+        time       vt;       // edge where WVALID was first seen high (coverage, P-19)
     } w_beat_t;
 
     typedef struct {
         bit [31:0] addr;
         time       t;
+        time       vt;       // edge where AWVALID / ARVALID was first seen high
     } a_beat_t;
+
+    bit        aw_v, w_v, ar_v;          // VALID seen high and not handshaken yet
+    time       aw_vt, w_vt, ar_vt;
 
     a_beat_t   aw_q[$];
     w_beat_t   w_q [$];
@@ -45,23 +50,45 @@ class axi4_lite_monitor extends uvm_monitor;
                 aw_q.delete();
                 w_q.delete();
                 ar_q.delete();
+                aw_v = 0;
+                w_v  = 0;
+                ar_v = 0;
                 continue;
+            end
+
+            if (vif.mon_cb.awvalid && !aw_v) begin
+                aw_v  = 1;
+                aw_vt = $time;
+            end
+            if (vif.mon_cb.wvalid && !w_v) begin
+                w_v  = 1;
+                w_vt = $time;
+            end
+            if (vif.mon_cb.arvalid && !ar_v) begin
+                ar_v  = 1;
+                ar_vt = $time;
             end
 
             if (vif.mon_cb.awvalid && vif.mon_cb.awready) begin
                 a.addr = vif.mon_cb.awaddr;
                 a.t    = $time;
+                a.vt   = aw_vt;
+                aw_v   = 0;
                 aw_q.push_back(a);
             end
             if (vif.mon_cb.wvalid && vif.mon_cb.wready) begin
                 beat.data = vif.mon_cb.wdata;
                 beat.strb = vif.mon_cb.wstrb;
                 beat.t    = $time;
+                beat.vt   = w_vt;
+                w_v       = 0;
                 w_q.push_back(beat);
             end
             if (vif.mon_cb.arvalid && vif.mon_cb.arready) begin
                 a.addr = vif.mon_cb.araddr;
                 a.t    = $time;
+                a.vt   = ar_vt;
+                ar_v   = 0;
                 ar_q.push_back(a);
             end
 
@@ -78,6 +105,9 @@ class axi4_lite_monitor extends uvm_monitor;
                     t.data     = beat.data;
                     t.wstrb    = beat.strb;
                     t.accept_time = (a.t > beat.t) ? a.t : beat.t;
+                    t.a_time   = a.vt;
+                    t.w_time   = beat.vt;
+                    t.resp_time = $time;
                     t.bresp    = vif.mon_cb.bresp;
                     `uvm_info("MON", t.convert2string(), UVM_MEDIUM)
                     ap.write(t);
@@ -94,6 +124,8 @@ class axi4_lite_monitor extends uvm_monitor;
                     a          = ar_q.pop_front();
                     t.addr     = a.addr;
                     t.accept_time = a.t;
+                    t.a_time   = a.vt;
+                    t.resp_time = $time;
                     t.rdata    = vif.mon_cb.rdata;
                     t.rresp    = vif.mon_cb.rresp;
                     `uvm_info("MON", t.convert2string(), UVM_MEDIUM)

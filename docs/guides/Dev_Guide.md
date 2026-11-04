@@ -48,6 +48,7 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 | Lệnh (thư mục gốc repo) | Việc |
 | --- | --- |
 | `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256, APB), HAL host, APB, Boot_Verifier, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`, cổng nhả App bật), firmware thật của hai lõi, ngắt, access fault, VP. Log ở `build/logs/`. Bước bị SKIP (thiếu gcc hoặc toolchain) làm regression FAIL, `ALLOW_SKIP=1 make test` để chấp nhận. `SEED=<n> make test` đổi seed của các test UVM ngẫu nhiên |
+| `make cov` | Coverage (P-19, `sim/cov.sh`): test lõi, SHA-256 và APB trên Questa với code coverage (`+cover`) và covergroup (`+define+HROT_COV`), gộp UCDB, báo cáo ở `build/cov/` (`summary.txt`, `cvg.txt`, `code.txt`, `html/`). Mã 0 khi mọi lần chạy PASS và đạt mục tiêu của test plan SHA-256 mục 6. Không nằm trong `make test` |
 | `make sim-unit` | 11 TB đơn vị (`sim/run_unit.do`), mỗi TB in `SUMMARY <TÊN>: PASS = x \| FAIL = y` |
 | `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định, chạy `core_isa_test` và `core_trap_test`) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
 | `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do`. SHA-256 thật: `set DUT sha256` (test `sha256_*`). Ngoại vi APB thật: `set DUT apb` (test `apb_reg_test`, `apb_periph_test`, `apb_full_test`) |
@@ -55,7 +56,7 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 | `make fw` | `fw/build/firmware_imem.hex` (Boot ROM, đã có golden ở `0xFE0`), `firmware_dmem.hex`, `app_firmware.hex` và `app_firmware.bin` (ROM App đủ 4 KB, APP_VER ở word `0xFFC` lấy từ biến CMake `APP_VERSION`, `sha256sum` của `.bin` = golden, I-04), `.dis`, `.map` |
 | `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO/Mailbox, Secure Boot (`sb_host_test`), bước ghép golden (`rom_image_test.py`) rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và các driver |
 | `vsim -c -do "set TB SoC_Fw_tb; do run_fw.do"` (trong `sim/`) | Firmware Secure Boot thật trên toàn SoC (cần `make fw` trước), thêm `set PLUSARGS +TAMPER` để chạy ảnh bị sửa. `set TB SoC_Irq_tb` chạy test ngắt hai lõi (P-14). `set TB SoC_App_tb` chạy firmware thật của cả hai lõi với golden lấy từ build (P-16), có `+TAMPER` |
-| Tạo lại hex test lõi | lệnh ở đầu `dv/tests/asm/core_isa_test.S` và `core_trap_test.S` (test trap cần `-march=rv32i_zicsr`) |
+| Tạo lại hex test lõi | lệnh ở đầu `dv/tests/asm/core_isa_test.S` và `core_trap_test.S` (test trap cần `-march=rv32i_zicsr_zifencei` từ P-19 vì có FENCE.I) |
 | `make de2` / `make xilinx PART=<part>` | Quartus / Vivado, kết quả ở `fpga/*/build/`, báo cáo đã lưu ở `fpga/reports/` |
 
 Từ P-22 (26/10), `regress.sh` chạy mỗi TB đơn vị bằng một `vsim` riêng và cho mọi `vsim` đọc stdin từ `/dev/null`, nên `make test` không còn đứng chờ ở dấu nhắc `VSIM(paused)>`. `sim/run_vp.sh` nhận cả SystemC 2.3.3 (`lib-linux64/`) lẫn 2.3.4 (`lib/`) qua biến `SYSTEMC_HOME`.

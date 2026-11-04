@@ -238,14 +238,19 @@ class sha256_rand_seq extends sha256_base_seq;
         super.new(name);
     endfunction
 
+    // Every length stays <= max_len (+MAX_LEN), including the corners and the 1-300 range
     function int unsigned pick_len();
-        int unsigned corners[$] = '{0, 1, 55, 56, 57, 63, 64, 65, 119, 120, 127, 128, 183, 184, 191, 192};
+        int unsigned all_corners[$] = '{0, 1, 55, 56, 57, 63, 64, 65, 119, 120, 127, 128, 183, 184, 191, 192};
+        int unsigned corners[$];
+        foreach (all_corners[i])
+            if (all_corners[i] <= max_len)
+                corners.push_back(all_corners[i]);
         randcase
             6:
                 return corners[$urandom_range(corners.size() - 1, 0)];
             3:
-                return $urandom_range(300, 1);
-            1:
+                return $urandom_range((max_len < 300) ? max_len : 300, (max_len == 0) ? 0 : 1);
+            (max_len > 300):
                 return $urandom_range(max_len, 301);
         endcase
         return 0;
@@ -403,5 +408,95 @@ class sha256_alias_seq extends sha256_ctl_seq;
         expect_hash(h1, "Writes to offsets >= 0x100 must not change BLOCK/CTRL");
         flush_checks(0);
         report("ALIAS");
+    endtask
+endclass
+
+
+// Register corner cases that the other sequences never reach (P-19, F-REG-01, F-REG-02). Must run
+// first after a reset, while the DUT is still IDLE:
+//   - reads of the whole map after reset: STATUS 0, BLOCK and CTRL read 0, HASH reads the IV (F-REG-01)
+//   - CTRL writes without START while IDLE and while BUSY: no run
+//   - START without INIT while IDLE: chains from the IV that the reset loaded
+//   - BLOCK written with WSTRB other than F: the wrapper still takes the whole word (F-REG-02, A5)
+//   - STATUS polled only after the block is done: the first poll already sees DONE
+class sha256_reg_seq extends sha256_base_seq;
+    `uvm_object_utils(sha256_reg_seq)
+
+    function new(string name = "sha256_reg_seq");
+        super.new(name);
+    endfunction
+
+    // Write with a chosen WSTRB, no delays. Fields set directly (Verilator has no local:: in randomize with)
+    task wr_strb(bit [31:0] off, bit [31:0] wdata, bit [3:0] strb);
+        axi4_lite_item t = axi4_lite_item::type_id::create("sha_strb");
+        start_item(t);
+        t.is_write   = 1'b1;
+        t.addr       = BASE + off;
+        t.data       = wdata;
+        t.wstrb      = strb;
+        t.addr_delay = 0;
+        t.data_delay = 0;
+        t.resp_delay = 0;
+        finish_item(t);
+        if (t.aborted)
+            aborted = 1;
+    endtask
+
+    task body();
+        bit [511:0] blk;
+        bit [255:0] h1, got;
+        bit [31:0]  st, w;
+        bit [3:0]   strbs[$] = '{4'h0, 4'h1, 4'h2, 4'h4, 4'h8, 4'h3, 4'hC, 4'h5};
+
+        // 1. Reset values (F-REG-01), STATUS read twice while IDLE
+        rand_delay = 0;
+        for (int i = 0; i < 2; i++) begin
+            rd(STATUS, st);
+            check(st[1:0] == 2'b00, $sformatf("STATUS after reset = 0x%0h, expected 0", st));
+        end
+        for (int off = 0; off <= 'h6C; off += 4) begin
+            rd(off, w);
+            if (off >= 'h50)
+                check(w == SHA256_IV[255 - 32*((off - 'h50) / 4) -: 32],
+                      $sformatf("HASH at 0x%02h after reset = 0x%08h, expected the IV", off, w));
+            else if (off != 'h44)
+                check(w == 32'h0, $sformatf("Offset 0x%02h after reset read 0x%08h, expected 0", off, w));
+        end
+
+        // 2. CTRL without START while IDLE: nothing runs
+        wr(CTRL, 32'h0);
+        wr(CTRL, INIT);
+        rd(STATUS, st);
+        check(st[1:0] == 2'b00, $sformatf("CTRL without START while IDLE changed STATUS=0x%0h", st));
+
+        // 3. BLOCK with WSTRB other than F (whole word written anyway), then START without INIT while IDLE:
+        //    the reset loaded the IV, so the result is one block from the IV. CTRL without START while BUSY
+        for (int i = 0; i < 16; i++) begin
+            blk[511 - 32*i -: 32] = $urandom();
+            wr_strb(4 * i, blk[511 - 32*i -: 32], strbs[i % strbs.size()]);
+        end
+        h1 = sha256_ref::compress(SHA256_IV, blk);
+        wr(CTRL, START);
+        wr(CTRL, INIT);
+        wr(CTRL, 32'h0);
+        rd(STATUS, st);
+        check(st[1] == 1'b1, "DUT left BUSY before the CTRL writes without START finished");
+        begin
+            int unsigned p;
+            wait_done(p);
+        end
+        read_hash(got, 0);
+        check(got == h1, $sformatf("BLOCK written with WSTRB != F, START without INIT: got %h exp %h", got, h1));
+        flush_checks(0);
+
+        // 4. START|INIT, then poll only after the block is surely done: the first STATUS read sees DONE
+        wr(CTRL, START | INIT);
+        repeat (80)
+            @(posedge vif.clk);
+        rd(STATUS, st);
+        check(st[1:0] == 2'b01, $sformatf("STATUS 80 cycles after START = 0x%0h, expected DONE", st));
+        rand_delay = 1;
+        flush_checks(0);
+        report("REG");
     endtask
 endclass

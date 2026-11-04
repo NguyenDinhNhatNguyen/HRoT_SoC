@@ -19,6 +19,11 @@ class axi4_lite_item extends uvm_sequence_item;
     // Monitor only: time of the clock edge where the slave took the request (AW and W both done for a
     // write, AR for a read). Register slaves act on that edge, so scoreboards order events by it (P-17)
     time              accept_time;
+    // Monitor only, for coverage (P-19): edges where AWVALID (ARVALID for a read) and WVALID were first
+    // seen high, and edge of the B/R handshake
+    time              a_time;
+    time              w_time;
+    time              resp_time;
 
     `uvm_object_utils(axi4_lite_item)
 
@@ -47,6 +52,9 @@ class axi4_lite_item extends uvm_sequence_item;
         rresp      = r.rresp;
         aborted    = r.aborted;
         accept_time = r.accept_time;
+        a_time      = r.a_time;
+        w_time      = r.w_time;
+        resp_time   = r.resp_time;
     endfunction
 
     virtual function string convert2string();

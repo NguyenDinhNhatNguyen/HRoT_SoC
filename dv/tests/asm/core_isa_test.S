@@ -80,6 +80,10 @@ _start:
     CHECK x7, -4
     andi x7, x5, 0x0F
     CHECK x7, 9
+    ori  x7, x6, 0x50           /* ORI, found missing by the coverage of P-19 */
+    CHECK x7, 0x53
+    ori  x7, x6, -16            /* sign-extended immediate */
+    CHECK x7, -13
 
     /* ---- 3. Load/Store word, load-use, load -> store ---- */
     li   x8, 0x12345678
