@@ -74,6 +74,7 @@ int sc_main(int argc, char* argv[]) {
     dma.sha = &sha;
     bv.sha = &sha;
     bv.boot_rom = &boot_rom;
+    syscsr.verified = &bv.ok;                  // the release gate (SoC_Top VERIFY_GATE = 1)
 
     app_rom.load_hex(argv[1]);
     // "Sign" the whole 4 KB ROM as I-04 says (unused words stay zero), before any tampering.
@@ -107,7 +108,8 @@ int sc_main(int argc, char* argv[]) {
     }
     bool said_so = uart0.tx_log.find(tamper ? "App locked out" : "App released") != std::string::npos;
     bool pass = (cpu.boot_ok == expect_ok) && (syscsr.app_running() == expect_ok) && cpu.bus_errors == 1
-                && said_so && wdt.kicks == 1 && syscsr.lock == tamper && cpu.dma_match == expect_ok && cpu.fw_ok;
+                && said_so && wdt.kicks == 1 && syscsr.lock == tamper && cpu.dma_match == expect_ok && cpu.fw_ok
+                && cpu.gate_held && cpu.bv_status == (expect_ok ? 0x9u : 0xAu);
     std::printf("VP RESULT: %s (boot_ok=%d, app_running=%d, bus errors=%d, expected 1 from the ROM write, UART log %s, DMA %s)\n",
                 pass ? "PASS" : "FAIL", cpu.boot_ok, syscsr.app_running(), cpu.bus_errors, said_so ? "ok" : "missing",
                 cpu.dma_match == expect_ok && cpu.fw_ok ? "ok" : "wrong");

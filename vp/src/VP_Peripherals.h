@@ -60,12 +60,13 @@ SC_MODULE(Memory_VP) {
     }
 };
 
-// SYSCSR: APP_CTRL (0x00, bit0 releases the App), CHIP_ID (0x04), VERSION (0x08), GUARD (0x20)
+// SYSCSR: APP_CTRL (0x00, bit0 releases the App, ignored until VERIFIED when the gate is wired), CHIP_ID (0x04), VERSION (0x08), GUARD (0x20)
 // GUARD LOCK (write 1) holds the App in reset for good. The VP has no App RAM, so zeroization is instant
 SC_MODULE(SYSCSR_VP) {
     tlm_utils::simple_target_socket<SYSCSR_VP> target_socket;
     uint32_t app_ctrl = 0;
     bool     lock = false;
+    const bool* verified = nullptr;     // Boot_Verifier verdict: when set, APP_RUN only rises while it is true
 
     SC_CTOR(SYSCSR_VP) : target_socket("target_socket") {
         target_socket.register_b_transport(this, &SYSCSR_VP::b_transport);
@@ -79,6 +80,8 @@ SC_MODULE(SYSCSR_VP) {
         if (trans.is_write()) {
             if (off == 0x00) {
                 app_ctrl = *p & 1;
+                if (verified && !*verified)
+                    app_ctrl = 0;
                 std::cout << "[" << sc_time_stamp() + delay << "] SYSCSR: App Core "
                           << (app_running() ? "Released from reset" : "held in reset") << std::endl;
             }

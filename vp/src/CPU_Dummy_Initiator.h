@@ -26,6 +26,7 @@ namespace vp_map {
     const uint64_t TIMER0   = 0x40003000;
     const uint64_t WDT      = 0x40004000;
     const uint64_t DMA      = 0x40007000;
+    const uint64_t BOOTVER  = 0x40008000;
     const uint64_t SHA256   = 0x50000000;
     const uint64_t APP_ROM  = 0x60000000;
     const uint64_t GOLDEN   = 0x600;       // offset of the golden hash in the Boot ROM (same as dv/sw/mkhex.py)
@@ -42,6 +43,8 @@ SC_MODULE(CPU_Dummy_Initiator) {
     int      bus_errors = 0;
     bool     fw_mode = false;      // run fw/secure_boot/secure_boot.c instead of the scenario below
     int      fw_result = -1;       // secure_boot_run() result (sb_result_t)
+    bool     gate_held = false;    // APP_RUN written before CHECK did not release the App
+    uint32_t bv_status = 0;        // Boot_Verifier STATUS after CHECK (0x9 = verified, 0xA = failed)
 
     SC_CTOR(CPU_Dummy_Initiator) : initiator_socket("initiator_socket") {
         SC_THREAD(run_secure_boot_sequence);
@@ -138,6 +141,13 @@ SC_MODULE(CPU_Dummy_Initiator) {
                     rd(vp_map::WDT + 0x08));
 
         boot_ok = (st == SHA256_OK) && sha256_compare(digest, golden, 32) == 0;
+        // Hardware release gate: APP_RUN is refused until Boot_Verifier has checked the digest itself
+        wr(vp_map::SYSCSR + 0x00, 1);
+        gate_held = rd(vp_map::SYSCSR + 0x00) == 0;
+        wr(vp_map::BOOTVER + 0x0C, 1);          // APP_VER
+        wr(vp_map::BOOTVER + 0x00, 1);          // CHECK
+        bv_status = rd(vp_map::BOOTVER + 0x04);
+        std::printf("  Boot_Verifier STATUS = 0x%x, early APP_RUN %s\n", bv_status, gate_held ? "refused" : "ACCEPTED");
         if (boot_ok) {
             wr(vp_map::SYSCSR + 0x00, 1);       // APP_CTRL.APP_RUN = 1
             uart_puts("App released\n");
