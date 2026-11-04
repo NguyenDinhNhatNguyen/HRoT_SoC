@@ -23,9 +23,12 @@
 //    and Boot Guard in SYSCSR (Master locks the App out and clears its RAM)
 // ============================================================
 module SoC_Top #(
+    parameter VERIFY_GATE = 0,   // 1 = the App Core runs only after Boot_Verifier says VERIFIED (set to 1 once the firmware uses it, I-06)
     parameter BOOT_HEX = "../fw/build/firmware_imem.hex",   // secure_boot .text (fw/CMakeLists.txt)
     parameter RAM_HEX  = "../fw/build/firmware_dmem.hex",   // .rodata/.data, word 0 = 0x1000_0000
-    parameter APP_HEX  = "../fw/build/app_firmware.hex"
+    parameter APP_HEX  = "../fw/build/app_firmware.hex",
+    parameter [11:0] BV_GOLDEN_ADDR = 12'hFE0,   // Boot ROM slot of the expected hash (I-03)
+    parameter [11:0] BV_TAG_ADDR    = 12'hFC0    // Boot ROM slot of the expected HMAC tag
 )(
     input  wire       clk,
     input  wire       reset_system,  // power-on / push-button reset
@@ -196,12 +199,16 @@ module SoC_Top #(
     wire [31:0] reg_rdata [0:5];
 
     // APB bus (bridge on slave 1 -> APB_Decoder -> peripherals)
-    localparam NUM_APB = 8;
+    localparam NUM_APB = 9;
     wire [31:0] PADDR, PWDATA, PRDATA;
     wire [3:0]  PSTRB;
     wire        PSEL, PENABLE, PWRITE, PREADY, PSLVERR;
     wire [NUM_APB-1:0]    psel_s, pready_s, pslverr_s;
     wire [32*NUM_APB-1:0] prdata_s;
+
+    // SHA-256 digest seen by Boot_Verifier
+    wire [255:0] sha_digest;
+    wire         sha_done, sha_busy;
 
     genvar k;
     generate
@@ -214,7 +221,8 @@ module SoC_Top #(
                     .S_AXI_WVALID(M_AXI_WVALID & sel_w[k]),   .S_AXI_WREADY(s_wready[k]),   .S_AXI_WDATA(M_AXI_WDATA),
                     .S_AXI_BVALID(s_bvalid[k]),               .S_AXI_BREADY(M_AXI_BREADY),
                     .S_AXI_ARVALID(M_AXI_ARVALID & sel_r[k]), .S_AXI_ARREADY(s_arready[k]), .S_AXI_ARADDR(M_AXI_ARADDR),
-                    .S_AXI_RVALID(s_rvalid[k]),               .S_AXI_RREADY(M_AXI_RREADY),  .S_AXI_RDATA(s_rdata[k])
+                    .S_AXI_RVALID(s_rvalid[k]),               .S_AXI_RREADY(M_AXI_RREADY),  .S_AXI_RDATA(s_rdata[k]),
+                    .digest_out(sha_digest), .done_out(sha_done), .busy_out(sha_busy)
                 );
                 assign s_bresp[k] = 2'b00;
                 assign s_rresp[k] = 2'b00;
@@ -265,20 +273,25 @@ module SoC_Top #(
         .read_data(reg_rdata[0])
     );
 
+    wire [11:0] bv_rom_addr;
+    wire [31:0] bv_rom_data;
+
     // Slave 4: Boot ROM. Port A feeds the Master Core's fetch, port B serves loads over AXI (read-only)
     Dual_Port_ROM #(.INIT_FILE(BOOT_HEX)) boot_rom (
         .clk(clk),
         .addrA(boot_addr),
         .dataOutA(boot_data),
         .addrB(reg_raddr[4]),
-        .dataOutB(reg_rdata[4])
+        .dataOutB(reg_rdata[4]),
+        .addrC({20'b0, bv_rom_addr}),
+        .dataOutC(bv_rom_data)
     );
 
     // Slave 5: default slave, reads 0
     assign reg_rdata[5] = 32'b0;
 
     // ---------------- APB peripheral bus (Secure world) ----------------
-    // APB slaves: 0 = SYSCSR, 1 = UART0, 2 = GPIO0, 3 = TIMER0, 4 = WDT, 5 = PLIC-lite, 6 = Mailbox, 7 = Secure DMA
+    // APB slaves: 0 = SYSCSR, 1 = UART0, 2 = GPIO0, 3 = TIMER0, 4 = WDT, 5 = PLIC-lite, 6 = Mailbox, 7 = Secure DMA, 8 = Boot_Verifier
     APB_Decoder #(.NUM_SLV(NUM_APB)) apb_dec (
         .PADDR(PADDR), .PSEL(PSEL), .PSEL_S(psel_s),
         .PRDATA_S(prdata_s), .PREADY_S(pready_s), .PSLVERR_S(pslverr_s),
@@ -290,10 +303,19 @@ module SoC_Top #(
     wire zero_en;
     wire [9:0] zero_addr;
 
-    SYSCSR syscsr (
+    wire bv_verified;
+    Boot_Verifier #(.GOLDEN_ADDR(BV_GOLDEN_ADDR), .TAG_ADDR(BV_TAG_ADDR)) boot_verifier (
+        .clk(clk), .por_rst(reset_system), .sys_rst(sys_rst),
+        .sha_digest(sha_digest), .sha_done(sha_done), .sha_busy(sha_busy),
+        .rom_addr(bv_rom_addr), .rom_data(bv_rom_data), .verified(bv_verified),
+        .PADDR(PADDR[11:0]), .PSEL(psel_s[8]), .PENABLE(PENABLE), .PWRITE(PWRITE),
+        .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[287:256]), .PREADY(pready_s[8]), .PSLVERR(pslverr_s[8])
+    );
+
+    SYSCSR #(.VERIFY_GATE(VERIFY_GATE)) syscsr (
         .clk(clk), .por_rst(reset_system), .wdt_rst_req(wdt_rst),
         .sys_rst(sys_rst), .app_rst(app_rst), .app_zero_en(zero_en), .app_zero_addr(zero_addr),
-        .boot_strap(boot_strap),
+        .boot_strap(boot_strap), .verified(bv_verified),
         .bus_err(bus_err), .bus_err_write(bus_err_write), .bus_err_resp(bus_err_resp), .bus_err_addr(bus_err_addr),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[0]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[31:0]), .PREADY(pready_s[0]), .PSLVERR(pslverr_s[0])
@@ -437,7 +459,9 @@ module SoC_Top #(
         .addrA(app_instr_addr),
         .dataOutA(app_instr),
         .addrB(reg_raddr[3]),
-        .dataOutB(reg_rdata[3])
+        .dataOutB(reg_rdata[3]),
+        .addrC(32'b0),
+        .dataOutC()
     );
 
 endmodule

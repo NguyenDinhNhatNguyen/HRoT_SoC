@@ -37,7 +37,7 @@ module APB_Periph_tb;
     reg  [31:0] be_addr = 0;
 
     SYSCSR #(.RST_HOLD(3), .ZERO_WORDS(16)) u_sys (
-        .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA),
+        .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA), .verified(1'b0),
         .app_zero_en(zero_en), .app_zero_addr(zero_addr),
         .bus_err(be_pulse), .bus_err_write(be_write), .bus_err_resp(be_resp), .bus_err_addr(be_addr),
         .PADDR(PADDR), .PSEL(sel == 1), .PENABLE(PENABLE), .PWRITE(PWRITE), .PWDATA(PWDATA), .PSTRB(PSTRB),

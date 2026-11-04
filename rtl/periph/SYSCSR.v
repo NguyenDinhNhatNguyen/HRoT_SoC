@@ -5,6 +5,7 @@
 //
 // Registers (offset):
 //   0x00 APP_CTRL   RW  bit0 APP_RUN: 1 = release the App Core, 0 = hold it in reset
+//                   (with VERIFY_GATE a write of 1 is ignored until Boot_Verifier reports VERIFIED)
 //   0x04 CHIP_ID    RO  0x48524F54 ("HROT")
 //   0x08 VERSION    RO  0x0002_0000 (v2.0)
 //   0x0C BOOT_STRAP RO  [3:0] boot_strap pins, latched during reset
@@ -17,6 +18,7 @@
 //                   starts the zeroization of the App RAM. Reads bit0 LOCK, bit1 ZERO_BUSY, bit2 ZERO_DONE
 //   other offsets: read 0, writes ignored
 module SYSCSR #(
+    parameter VERIFY_GATE = 0,          // 1 = APP_RUN rises only while Boot_Verifier reports VERIFIED
     parameter RST_HOLD = 4,             // cycles sys_rst stays high after a reset request
     parameter ZERO_WORDS = 1024         // words of the App RAM that zeroization clears
 )(
@@ -28,6 +30,7 @@ module SYSCSR #(
     output            app_zero_en,     // Boot Guard is clearing the App RAM: write zero_addr with zero data
     output     [9:0]  app_zero_addr,   // word index being cleared
     input      [3:0]  boot_strap,
+    input             verified,        // Boot_Verifier verdict (ignored when VERIFY_GATE = 0)
 
     // Master bus error report from AXI4_Lite_Master
     input             bus_err,         // one-cycle pulse
@@ -150,7 +153,7 @@ module SYSCSR #(
             app_run <= 1'b0;
             strap_q <= boot_strap;      // latch the straps while in reset
         end else if (wr && PADDR == 12'h000 && PSTRB[0]) begin
-            app_run <= PWDATA[0];
+            app_run <= PWDATA[0] && (verified || !VERIFY_GATE);
         end
     end
     assign app_rst = sys_rst_q | ~app_run | lock_q;

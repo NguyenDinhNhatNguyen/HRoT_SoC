@@ -53,6 +53,8 @@ else
 fi
 (cd sim && "$QUESTA" -c -do run_ip.do < /dev/null)                                  > $LOG/ip.log 2>&1
 check "APB peripherals"             $LOG/ip.log        "RESULT: PASS"
+(cd sim && "$QUESTA" -c -do run_bv.do < /dev/null)                                  > $LOG/bv.log 2>&1
+check "Boot_Verifier and release gate" $LOG/bv.log      "RESULT: PASS"
 python3 dv/sw/mkhex.py sim > /dev/null
 (cd sim && "$QUESTA" -c -do run_soc.do < /dev/null)                                 > $LOG/soc.log 2>&1
 check "SoC: secure boot, good image" $LOG/soc.log      "RESULT: PASS"

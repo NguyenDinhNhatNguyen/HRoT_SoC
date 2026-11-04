@@ -21,7 +21,8 @@ module soc_tb;
     wire       uart1_tx;
     wire [7:0] gpio1_o;
 
-    SoC_Top #(.BOOT_HEX("boot.hex"), .RAM_HEX(""), .APP_HEX("app.hex")) dut(
+    SoC_Top #(.BOOT_HEX("boot.hex"), .RAM_HEX(""), .APP_HEX("app.hex"), .VERIFY_GATE(1),
+            .BV_GOLDEN_ADDR(12'h620), .BV_TAG_ADDR(12'h640)) dut(
         .clk(clk), .reset_system(rst), .app_running(),
         .uart0_tx(uart_tx), .uart0_rx(uart_rx), .gpio0_o(led), .gpio0_i(8'h00), .boot_strap(4'h0),
         .uart1_tx(uart1_tx), .uart1_rx(1'b1), .gpio1_o(gpio1_o), .gpio1_i(8'h00));

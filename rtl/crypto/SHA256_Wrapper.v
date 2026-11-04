@@ -20,7 +20,11 @@ module SHA256_Wrapper (
     input      [31:0] S_AXI_ARADDR,
     output            S_AXI_RVALID,
     input             S_AXI_RREADY,
-    output     [31:0] S_AXI_RDATA
+    output     [31:0] S_AXI_RDATA,
+    // Hardware view of the digest for Boot_Verifier
+    output    [255:0] digest_out,
+    output            done_out,
+    output            busy_out
 );
     wire        reg_wen;
     wire [31:0] reg_waddr, reg_wdata, reg_raddr;
@@ -59,6 +63,10 @@ module SHA256_Wrapper (
         .done(done),
         .hash_out(hash_out)
     );
+
+    assign digest_out = hash_out;
+    assign done_out   = done;
+    assign busy_out   = busy;
 
     // W0..W15 writes are ignored while busy so block_in can't change mid-hash
     always @(posedge clk) begin

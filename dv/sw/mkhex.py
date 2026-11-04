@@ -126,7 +126,7 @@ labels['rxwait'] = here()
 emit(LW(27, 23, 8), ANDI(27, 27, 4))
 br('b', 0, 27, 0, 'rxwait')
 emit(LW(28, 23, 4), ANDI(28, 28, 0xFF), SW(28, 25, 0))          # LED = the byte received
-emit(LUI(29, 0x40008), LW(30, 29, 0))                           # window past the last APB slave -> SLVERR, no hang
+emit(LUI(29, 0x40009), LW(30, 29, 0))                           # window past the last APB slave -> SLVERR, no hang
 
 # ---- Secure boot: hash the whole 4 KB App ROM and compare it with the golden hash in the Boot ROM ----
 # 1) The CPU copies 64 blocks of 16 words from the App ROM into the SHA-256 block registers
@@ -177,15 +177,26 @@ br('b', 1, 21, 22, 'fail')
 emit(ADDI(21, 0, 0xE), SW(21, 20, 0xC), LW(21, 20, 0xC))
 br('b', 1, 21, 0, 'fail')
 
-# Good image: Boot Guard must still be open. Release the App Core (SYSCSR APP_CTRL at 0x4000_0000)
+# Good image: Boot Guard must still be open
 emit(LUI(24, 0x40000), LW(21, 24, 0x20))
 br('b', 1, 21, 0, 'fail')
-emit(LUI(6, 0x40000), ADDI(7, 0, 1), SW(7, 6, 0))
+# Release gate (SoC_Top VERIFY_GATE = 1): APP_RUN is refused until Boot_Verifier (0x4000_8000) says VERIFIED
+emit(LUI(6, 0x40000), ADDI(7, 0, 1), SW(7, 6, 0), LW(21, 6, 0))
+br('b', 1, 21, 0, 'fail')                                        # APP_CTRL must still read 0
+emit(LUI(10, 0x40008), ADDI(11, 0, 1), SW(11, 10, 0x0C), SW(11, 10, 0))   # APP_VER = 1, then CHECK
+poll_bit(10, 4, 8)                                               # STATUS.CHECKED
+emit(LW(21, 10, 4), ADDI(22, 0, 9))
+br('b', 1, 21, 22, 'fail')                                       # VERIFIED | CHECKED and no FAIL
+emit(SW(7, 6, 0))                                                # now the App Core is released
 labels['pass'] = here()
 emit(JAL(0, 0))
 
 # Tampered image: lock the App out for good and clear its RAM, then try to release it anyway (must not work)
 labels['tamper'] = here()
+emit(LUI(10, 0x40008), ADDI(11, 0, 1), SW(11, 10, 0x0C), SW(11, 10, 0))   # Boot_Verifier must refuse this image
+poll_bit(10, 4, 8)
+emit(LW(21, 10, 4), ADDI(22, 0, 0xA))
+br('b', 1, 21, 22, 'fail')                                       # CHECKED | FAIL, never VERIFIED
 emit(LUI(24, 0x40000), ADDI(22, 0, 1), SW(22, 24, 0x20))
 poll_bit(24, 0x20, 4)                                            # GUARD.ZERO_DONE
 emit(LUI(6, 0x40000), ADDI(7, 0, 1), SW(7, 6, 0))
