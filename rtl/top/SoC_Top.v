@@ -162,12 +162,15 @@ module SoC_Top #(
     // ---------------- Address decode (1 master, 6 slaves) ----------------
     // Slave order: 0 = RAM, 1 = APB bridge, 2 = SHA-256, 3 = App ROM port B, 4 = Boot ROM port B,
     // 5 = default (DECERR)
-    wire [4:0] hit_w = {M_AXI_AWADDR[31:16] == 16'h0000, M_AXI_AWADDR[31:16] == 16'h6000,
-                        M_AXI_AWADDR[31:16] == 16'h5000, M_AXI_AWADDR[31:16] == 16'h4000,
-                        M_AXI_AWADDR[31:16] == 16'h1000};
-    wire [4:0] hit_r = {M_AXI_ARADDR[31:16] == 16'h0000, M_AXI_ARADDR[31:16] == 16'h6000,
-                        M_AXI_ARADDR[31:16] == 16'h5000, M_AXI_ARADDR[31:16] == 16'h4000,
-                        M_AXI_ARADDR[31:16] == 16'h1000};
+    // The three memories are 4 KB, so they decode 4 KB and everything above answers DECERR instead of
+    // aliasing back onto the memory (same window the DMA firewall allows). SHA-256 and the APB bridge
+    // keep a 64 KB window, they handle the empty part themselves
+    wire [4:0] hit_w = {M_AXI_AWADDR[31:12] == 20'h00000, M_AXI_AWADDR[31:12] == 20'h60000,
+                        M_AXI_AWADDR[31:16] == 16'h5000,  M_AXI_AWADDR[31:16] == 16'h4000,
+                        M_AXI_AWADDR[31:12] == 20'h10000};
+    wire [4:0] hit_r = {M_AXI_ARADDR[31:12] == 20'h00000, M_AXI_ARADDR[31:12] == 20'h60000,
+                        M_AXI_ARADDR[31:16] == 16'h5000,  M_AXI_ARADDR[31:16] == 16'h4000,
+                        M_AXI_ARADDR[31:12] == 20'h10000};
     wire [5:0] sel_w = {~|hit_w, hit_w};
     wire [5:0] sel_r = {~|hit_r, hit_r};
 
@@ -277,17 +280,16 @@ module SoC_Top #(
     );
 
     wire [11:0] bv_rom_addr;
-    wire [31:0] bv_rom_data;
+    wire        bv_busy;
+    wire [31:0] bv_rom_data = reg_rdata[4];
 
     // Slave 4: Boot ROM. Port A feeds the Master Core's fetch, port B serves loads over AXI (read-only)
     Dual_Port_ROM #(.INIT_FILE(BOOT_HEX)) boot_rom (
         .clk(clk),
         .addrA(boot_addr),
         .dataOutA(boot_data),
-        .addrB(reg_raddr[4]),
-        .dataOutB(reg_rdata[4]),
-        .addrC({20'b0, bv_rom_addr}),
-        .dataOutC(bv_rom_data)
+        .addrB(bv_busy ? {20'b0, bv_rom_addr} : reg_raddr[4]),   // Boot_Verifier borrows port B during CHECK
+        .dataOutB(reg_rdata[4])
     );
 
     // Slave 5: default slave, reads 0
@@ -310,7 +312,7 @@ module SoC_Top #(
     Boot_Verifier #(.GOLDEN_ADDR(BV_GOLDEN_ADDR), .TAG_ADDR(BV_TAG_ADDR)) boot_verifier (
         .clk(clk), .por_rst(reset_system), .sys_rst(sys_rst),
         .sha_digest(sha_digest), .sha_done(sha_done), .sha_busy(sha_busy),
-        .rom_addr(bv_rom_addr), .rom_data(bv_rom_data), .verified(bv_verified),
+        .rom_addr(bv_rom_addr), .rom_data(bv_rom_data), .busy(bv_busy), .verified(bv_verified),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[8]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[287:256]), .PREADY(pready_s[8]), .PSLVERR(pslverr_s[8])
     );
@@ -463,9 +465,7 @@ module SoC_Top #(
         .addrA(app_instr_addr),
         .dataOutA(app_instr),
         .addrB(reg_raddr[3]),
-        .dataOutB(reg_rdata[3]),
-        .addrC(32'b0),
-        .dataOutC()
+        .dataOutB(reg_rdata[3])
     );
 
 endmodule

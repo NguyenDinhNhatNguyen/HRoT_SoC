@@ -113,6 +113,11 @@ br('b', 1, 21, 22, 'fail')
 emit(LW(21, 20, 0x1C), LUI(22, 0x70000))
 br('b', 1, 21, 22, 'fail')
 emit(ADDI(22, 0, 1), SW(22, 20, 0x18))
+# The 4 KB memories do not alias: one word past each of them is DECERR and reads 0, not word 0 again
+for hi in (0x60001, 0x00001, 0x10001):
+    emit(LUI(14, hi), LW(13, 14, 0))
+    br('b', 1, 13, 0, 'fail')
+emit(ADDI(22, 0, 1), SW(22, 20, 0x18))
 # App ROM port B 0x6000_0000
 emit(LUI(9, 0x60000), LW(8, 9, 4), *LI(5, APP[1]))
 br('b', 1, 8, 5, 'fail')

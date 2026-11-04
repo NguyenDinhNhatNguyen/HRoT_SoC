@@ -15,6 +15,8 @@
 //   0x40-0x5C KEY0..7 RO  HMAC key, reads 0 after KEY_LOCK
 //   other offsets: read 0, writes ignored
 //
+// The ROM slots hold the digest as 8 big-endian words H0..H7, the layout fw/tools/golden.py writes (I-03).
+//
 // CHECK fails when SHA-256 does not hold a finished digest, when APP_VER < MIN_VER, or when any of
 // the 8 digest words differs from the Boot ROM slot. A passing CHECK raises MIN_VER to APP_VER.
 module Boot_Verifier #(
@@ -31,10 +33,12 @@ module Boot_Verifier #(
     input             sha_done,
     input             sha_busy,
 
-    // Boot ROM read port (negedge registered, the data follows the address within the cycle)
+    // Boot ROM read port (negedge registered, the data follows the address within the cycle).
+    // SoC_Top gives this block the ROM's AXI-side port while busy is high
     output reg [11:0] rom_addr,
     input      [31:0] rom_data,
 
+    output            busy,            // CHECK is reading the ROM: the ROM port belongs to this block
     output            verified,
 
     // APB4 slave
@@ -69,6 +73,7 @@ module Boot_Verifier #(
     wire        digest_ok = sha_done && !sha_busy;
 
     assign verified = ok_q;
+    assign busy     = (st == S_FETCH);
 
     // ---- Verdict, cleared by any system reset ----
     always @(posedge clk) begin

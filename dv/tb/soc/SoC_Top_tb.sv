@@ -124,7 +124,7 @@ module soc_tb;
         $display("app_core_reset_n=%b  app_ram[0]=%0d  zeroed RAM words=%0d", dut.app_core_reset_n, dut.app_ram.ram[0], zeros);
         $display("SLVERR=%0d SLVERR_R=%0d DECERR_W=%0d DECERR_R=%0d  stray DMA requests=%0d", slverr, slverr_r, decerr_w, decerr_r, dma_stray);
         $display("UART received %0d chars: \"%0s\"  LED=%h", nchar, uart_str, led);
-        ok = (cyc < MAXC) && slverr == 1 && slverr_r == 1 && decerr_w == 1 && decerr_r == 1
+        ok = (cyc < MAXC) && slverr == 1 && slverr_r == 1 && decerr_w == 1 && decerr_r == 4
              && nchar == 2 && uart_str[15:0] == "OK" && dma_stray == 0;
         if (tamper)
             ok = ok && dut.app_core_reset_n === 1'b0 && dut.syscsr.lock_q === 1'b1

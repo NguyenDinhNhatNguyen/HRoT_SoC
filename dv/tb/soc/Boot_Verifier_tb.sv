@@ -27,7 +27,7 @@ module Boot_Verifier_tb;
     Boot_Verifier #(.KEY(256'h0123456789ABCDEF_FEDCBA9876543210_0F1E2D3C4B5A6978_8796A5B4C3D2E1F0)) dut (
         .clk(clk), .por_rst(por), .sys_rst(sys_rst),
         .sha_digest(dig), .sha_done(sha_done), .sha_busy(sha_busy),
-        .rom_addr(rom_addr), .rom_data(rom_data), .verified(verified),
+        .rom_addr(rom_addr), .rom_data(rom_data), .busy(), .verified(verified),
         .PADDR(PADDR), .PSEL(sel == 1), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(4'hF), .PRDATA(rd_bv), .PREADY(), .PSLVERR()
     );
