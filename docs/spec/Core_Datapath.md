@@ -44,4 +44,4 @@ Sơ đồ đúng ở mức khối. Các điểm sau đơn giản hóa so với R
 3. **Bộ nhớ:** Instruction_Memory và Data_Memory vẽ trong tầng IF và MEM. Trong RTL hai khối này nằm ngoài lõi (Boot ROM và bus AXI4-Lite của `SoC_Top`), nên vẽ ở mép tầng, nối qua cổng của lõi.
 4. **Nhãn sót:** mũi tên MEM → MEM_WB_Reg còn chữ "Text".
 5. **Đầu vào của Hazard_Unit và Forwarding_Unit** (`MemRead_EX`, `Rd_EX`, `Rs1/Rs2`, `Rd_MEM`, `Rd_WB`, `RegWrite_*`) chưa vẽ.
-6. **Phần P-09 (26/10):** `Sys_Decoder`, `CSR_Unit`, các `Pipe_Reg` phụ, cổng `irq_timer`/`irq_ext` và đường `trap_redirect` về IF chưa có trong hình.
+6. **Phần P-09 (26/10):** `Sys_Decoder`, `CSR_Unit`, các `Pipe_Reg` phụ, cổng `irq_timer`/`irq_ext` và đường `trap_redirect` về IF chưa có trong hình. Cổng `data_err` vào `CSR_Unit` (P-24, 04/11) cũng chưa có.
