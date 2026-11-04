@@ -1,6 +1,6 @@
 # Hướng dẫn phát triển — HRoT SoC
 
-> Đọc file này trước khi sửa code. Sơ đồ khối SoC: `docs/spec/SoC_Block_Diagram.drawio`. Mô hình bảo mật và truy vết yêu cầu: `docs/spec/Security_Model.md`. Trạng thái và việc đang chờ: `docs/project/Project_Status.md`. Tiến độ, hạn và giao diện đã chốt (I-xx): [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) — **nguồn chính thức, đọc bản mới nhất trước khi làm**. Bản đồ địa chỉ/thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
+> Đọc file này trước khi sửa code. Bộ sơ đồ kiến trúc và lưu đồ (18 trang): `docs/diagrams/`. Mô hình bảo mật và truy vết yêu cầu: `docs/spec/Security_Model.md`. Trạng thái và việc đang chờ: `docs/project/Project_Status.md`. Tiến độ, hạn và giao diện đã chốt (I-xx): [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) — **nguồn chính thức, đọc bản mới nhất trước khi làm**. Bản đồ địa chỉ/thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 ## 1. Cấu trúc và phân công
 

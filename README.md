@@ -48,4 +48,4 @@ HRoT_SoC/
 Tài liệu nên đọc trước: [docs/guides/Dev_Guide.md](docs/guides/Dev_Guide.md) (phân công, quy ước, cách chạy),
 [docs/spec/SoC_Memory_Map.md](docs/spec/SoC_Memory_Map.md) (bản đồ địa chỉ và thanh ghi),
 [docs/spec/Security_Model.md](docs/spec/Security_Model.md) (mô hình bảo mật, yêu cầu và truy vết) và
-[docs/spec/SoC_Block_Diagram.drawio](docs/spec/SoC_Block_Diagram.drawio) (sơ đồ khối SoC, mở bằng draw.io).
+[docs/diagrams/](docs/diagrams/README.md) (bộ sơ đồ kiến trúc và lưu đồ, mở bằng draw.io).
