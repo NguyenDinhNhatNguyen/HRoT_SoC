@@ -21,7 +21,7 @@
 | — | Forwarding_Unit | `Forwarding_Unit` | ForwardA / ForwardB cho EX, ưu tiên MEM hơn WB |
 | ID | (chưa có trong sơ đồ, P-09) | `Sys_Decoder` | Giải mã lệnh SYSTEM (Zicsr, ECALL, EBREAK, MRET, WFI) và phát hiện lệnh không hợp lệ. Lệnh không hợp lệ bị tắt mọi tác dụng (ghi thanh ghi, bộ nhớ, rẽ nhánh), chỉ gây trap khi tới MEM |
 | IF/ID, ID/EX, EX/MEM | (chưa có trong sơ đồ, P-09) | `Pipe_Reg` | Thanh ghi phụ mang bit `valid`, thông tin CSR/trap và PC xuống MEM, cùng luật stall/flush với thanh ghi pipeline chính |
-| MEM | (chưa có trong sơ đồ, P-09) | `CSR_Unit` | CSR máy (`mstatus`, `misa`, `mie`, `mip`, `mtvec`, `mscratch`, `mepc`, `mcause`, `mtval`, `mhartid`…) và quyết định trap trên lệnh ở MEM |
+| MEM | (chưa có trong sơ đồ, P-09) | `CSR_Unit` | CSR máy (`mstatus`, `misa`, `mie`, `mip`, `mtvec`, `mscratch`, `mepc`, `mcause`, `mtval`, `mhartid`…) và quyết định trap trên lệnh ở MEM, gồm access fault khi `data_err` (P-24, `mcause` 5/7, `mtval` = địa chỉ) |
 
 ## Tín hiệu điều khiển pipeline (theo `RISCV_Core.v`)
 

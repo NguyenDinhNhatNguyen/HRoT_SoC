@@ -1,6 +1,7 @@
 # sim/run_fw.do -- whole-SoC testbenches of Phat's firmware and core (dv/tb/SoC_*_tb.sv). Run from sim/:
 #   vsim -c -do "set TB SoC_Fw_tb; do run_fw.do"                         Secure Boot firmware (P-13), good image
 #   vsim -c -do "set TB SoC_Fw_tb; set PLUSARGS +TAMPER; do run_fw.do"   Secure Boot firmware, tampered image
+#   vsim -c -do "set TB SoC_Fw_tb; set PLUSARGS +FAULT; do run_fw.do"    access fault on the APP_VER load (P-24)
 #   vsim -c -do "set TB SoC_Irq_tb; do run_fw.do"                        interrupts on both cores (P-14)
 #   vsim -c -do "set TB SoC_App_tb; do run_fw.do"                        firmware of both cores (P-16), add
 #                                                                        "set PLUSARGS +TAMPER" for a tampered App ROM

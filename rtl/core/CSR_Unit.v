@@ -11,9 +11,11 @@
 //   - interrupt (I-01): mstatus.MIE and an enabled pending line, MEI before MTI. Only taken on a valid
 //     instruction that does not access memory, so no bus transfer is ever cut or repeated. The
 //     instruction in MEM is cancelled and mepc points at it
+//   - access fault (P-24, I-01): data_err on the load (mcause 5) or store (7) in MEM, in the cycle its
+//     response arrives (bus no longer stalled). mtval = the data address. A faulting load writes no
+//     register, a faulting store was refused by the slave
 //   - illegal instruction (mcause 2), EBREAK (3), ECALL from M-mode (11), mtval = 0
 // MRET jumps to mepc and restores MIE from MPIE.
-// Access fault through data_err (mcause 5/7, I-01) is not in this version (planned after P-09).
 module CSR_Unit(
     input             clk, rst,
     input             stall,          // bus_stall: the pipeline is frozen
@@ -31,6 +33,9 @@ module CSR_Unit(
     input             mret,
     input             illegal,
     input      [31:2] pc,             // word address of the instruction (mepc)
+    input             data_err,       // its bus access ended with SLVERR or DECERR (P-24)
+    input             mem_write,      // the access is a store
+    input      [31:0] mem_addr,       // its data address (mtval of an access fault)
 
     // Interrupt lines (I-01): level, synchronous to clk, held until the source clears them
     input             irq_timer,
@@ -126,8 +131,9 @@ end
 // Trap decision
 wire meip      = irq_ext & mie_meie;
 wire mtip      = irq_timer & mie_mtie;
+wire fault     = data_err && mem_access;
 wire take_irq  = !stall && valid && !mem_access && mstatus_mie && (meip || mtip);
-wire take_exc  = !stall && valid && !take_irq && (illegal || csr_bad || ecall || ebreak);
+wire take_exc  = !stall && valid && !take_irq && (fault || illegal || csr_bad || ecall || ebreak);
 wire take_mret = !stall && valid && !take_irq && !take_exc && mret;
 wire do_csr_wr = !stall && valid && !take_irq && !take_exc && csr_op && csr_we;
 
@@ -135,6 +141,8 @@ reg [31:0] cause;
 always @(*) begin
     if (take_irq)
         cause = meip ? 32'h8000_000B : 32'h8000_0007;
+    else if (fault)
+        cause = mem_write ? 32'd7 : 32'd5;
     else if (illegal || csr_bad)
         cause = 32'd2;
     else if (ebreak)
@@ -162,7 +170,7 @@ always @(posedge clk) begin
     else if (take_irq || take_exc) begin
         mepc_q       <= pc;
         mcause       <= cause;
-        mtval        <= 32'b0;
+        mtval        <= (take_exc && fault) ? mem_addr : 32'b0;
         mstatus_mpie <= mstatus_mie;
         mstatus_mie  <= 1'b0;
     end

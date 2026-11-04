@@ -14,7 +14,7 @@ module RISCV_Core_tb;
 
     // DUT
     RISCV_Core dut (
-        .clk(clk), .rst(rst), .bus_stall(bus_stall),
+        .clk(clk), .rst(rst), .bus_stall(bus_stall), .data_err(1'b0),
         .instr_rdata(instr_rdata), .data_rdata(data_rdata),
         .instr_addr(instr_addr), .data_wdata(data_wdata), .data_wstrb(data_wstrb),
         .data_we(data_we), .data_re(data_re),

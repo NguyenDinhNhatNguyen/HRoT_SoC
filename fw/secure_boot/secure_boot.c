@@ -14,6 +14,7 @@
  * and KEY_LOCK: the App is
  * held until POR and its RAM is cleared (fail-safe, Nguyen's note on P-13, 04/11). If LOCK does not
  * finish the result is SB_HW_ERROR. A hang anywhere is caught by the WDT, and LOCK survives its reset.
+ * A trap goes to secure_boot_trap() (P-24): logged, then the same LOCK as any failure.
  * After the boot, main() kicks the WDT for ever and, after a release, secure_boot_relay_app() logs
  * the App's Mailbox words on UART0 (P-16).
  */
@@ -181,4 +182,16 @@ void secure_boot_relay_app(void)
     log_str("App says ");
     log_hex(w);
     log_str("\n");
+}
+
+void secure_boot_trap(uint32_t mcause, uint32_t mepc, uint32_t mtval)
+{
+    log_str("Trap mcause ");
+    log_hex(mcause);
+    log_str(" mepc ");
+    log_hex(mepc);
+    log_str(" mtval ");
+    log_hex(mtval);
+    log_str("\n");
+    (void)fail(SB_TRAP, "Trap");
 }

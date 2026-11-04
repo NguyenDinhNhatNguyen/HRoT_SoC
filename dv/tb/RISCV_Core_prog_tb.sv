@@ -9,6 +9,8 @@
 //  - Every finished access (load or store, bus not stalled) to ACC (0x3F4) bumps a counter that the
 //    program reads back at ACC_CNT (0x3F0), like a register with a side effect: an access that is
 //    cancelled and repeated, or that runs when it should have been cancelled, shows up in the count
+//  - Fault window (P-24): an access to 0xF000_0000 and up gets data_err in the cycle it completes, like a
+//    SLVERR/DECERR on the SoC bus. A store there writes nothing
 //  - Each program runs twice: without stall, and with random bus_stall (the pipeline must freeze correctly)
 //  - Result read from TOHOST (0x3FC): 1 = PASS, (n<<1)|1 = FAIL at CHECK number n
 // Plusarg: +HEX=<path to .hex> runs only that program (default paths are relative to sim/)
@@ -34,11 +36,13 @@ module RISCV_Core_prog_tb;
     wire        irq_timer   = dmem[IRQ[9:2]][0];
     wire        irq_ext     = dmem[IRQ[9:2]][1];
     wire [31:0] data_rdata  = dmem[data_addr[9:2]];
+    wire        fault_win   = data_addr[31:28] == 4'hF;
+    wire        data_err    = (data_we || data_re) && !bus_stall && fault_win;
 
     always @(posedge clk) begin
         if ((data_we || data_re) && !bus_stall && data_addr == ACC)
             dmem[ACC_CNT[9:2]] <= dmem[ACC_CNT[9:2]] + 32'd1;
-        if (data_we) begin
+        if (data_we && !fault_win) begin
             if (data_wstrb[0])
                 dmem[data_addr[9:2]][7:0]   <= data_wdata[7:0];
             if (data_wstrb[1])
@@ -51,7 +55,7 @@ module RISCV_Core_prog_tb;
     end
 
     RISCV_Core dut (
-        .clk(clk), .rst(rst), .bus_stall(bus_stall),
+        .clk(clk), .rst(rst), .bus_stall(bus_stall), .data_err(data_err),
         .irq_timer(irq_timer), .irq_ext(irq_ext),
         .instr_rdata(instr_rdata), .instr_addr(instr_addr),
         .data_rdata(data_rdata), .data_addr(data_addr), .data_wdata(data_wdata),

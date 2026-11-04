@@ -5,7 +5,8 @@
  * misa/mhartid/mstatus reset values, ECALL, EBREAK, illegal instructions (no side effects),
  * unknown CSR and write to a read-only CSR, MRET restoring mstatus.MIE, timer and external
  * interrupts (mie, mstatus.MIE, mip, MEI before MTI) and an interrupt in the middle of a loop
- * full of loads and stores (no store may run twice).
+ * full of loads and stores (no store may run twice), and access faults through data_err (P-24): load
+ * (mcause 5) and store (mcause 7) to the testbench's fault window at 0xF000_0000, mtval = address.
  *
  * ACC (0x3F4): the testbench counts every finished access to this word and shows the count at
  * ACC_CNT (0x3F0), so a load or store that runs twice, or runs when it should be cancelled, is caught.
@@ -26,7 +27,7 @@
 #define IRQ    0x3F8
 #define ACC    0x3F4
 #define ACC_CNT 0x3F0
-#define LAST   0x200        /* handler writes mcause, mepc, mstatus here */
+#define LAST   0x200        /* handler writes mcause, mepc, mstatus, mtval here */
 #define LOG    0x220        /* handler appends mcause at LOG + 4 * trap number */
 #define CNT    0x180        /* counter of the memory loop */
 #define SDST   0x100        /* target of the illegal store */
@@ -210,6 +211,38 @@ mem_loop:
     csrci mstatus, 8
     csrw  mie, x0
 
+    /* ---- 7. Access faults (P-24): the testbench gives data_err for any access at 0xF000_0000 and up ---- */
+    li    x12, 0x5A
+    li    x5, 0xF0000010
+fault_ld:
+    lw    x12, 0(x5)                /* load access fault: no register write */
+    CHECK x29, 15
+    CHECK x12, 0x5A
+    lw    x6, LAST(x0)
+    CHECK x6, 5
+    lw    x6, LAST+4(x0)
+    CHECK_ADDR x6, fault_ld
+    lw    x6, LAST+12(x0)
+    CHECK x6, 0xF0000010            /* mtval = the data address */
+fault_st:
+    sb    x12, 9(x5)                /* store access fault, byte store */
+    CHECK x29, 16
+    lw    x6, LAST(x0)
+    CHECK x6, 7
+    lw    x6, LAST+4(x0)
+    CHECK_ADDR x6, fault_st
+    lw    x6, LAST+12(x0)
+    CHECK x6, 0xF0000019
+    lw    x6, 0x018(x0)             /* the word 0xF000_0018 aliases in the testbench RAM: untouched */
+    CHECK x6, 0
+    lw    x13, 0x010(x0)            /* the next access works normally */
+    addi  x13, x13, 1
+    CHECK x13, 1
+    ecall                           /* mtval is 0 for every other trap */
+    CHECK x29, 17
+    lw    x6, LAST+12(x0)
+    CHECK x6, 0
+
     /* ---- PASS ---- */
     li   x5, 1
     sw   x5, TOHOST(x0)
@@ -229,6 +262,8 @@ trap_handler:
     sw   x27, LAST+4(x0)
     csrr x28, mstatus
     sw   x28, LAST+8(x0)
+    csrr x28, mtval
+    sw   x28, LAST+12(x0)
     slli x27, x29, 2
     sw   x26, LOG(x27)
     addi x29, x29, 1

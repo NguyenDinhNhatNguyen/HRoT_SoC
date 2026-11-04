@@ -353,6 +353,19 @@ static void t_gate_held(void)
     CHECK(strstr(g_sb.log, "Release gate held the App, App locked out\r\n") != NULL, "log: %s", g_sb.log);
 }
 
+/* S21: trap handler body (P-24): logs the trap, locks the App and the key, LED SB_TRAP */
+static void t_trap(void)
+{
+    printf("[S21] trap handler\n");
+    reset_all();
+    secure_boot_trap(5u, 0x00000abcu, 0x70000000u);
+    CHECK(g_sb.lock == 1u && g_sb.app_ctrl == 0u && g_sb.bv_key_lock, "lock=%u app_ctrl=%u key_lock=%d", g_sb.lock,
+          g_sb.app_ctrl, g_sb.bv_key_lock);
+    CHECK(strstr(g_sb.log, "Trap mcause 00000005 mepc 00000abc mtval 70000000\r\nTrap, App locked out\r\n") != NULL,
+          "log: %s", g_sb.log);
+    CHECK(g_sb.led == SB_TRAP && g_sb.wdt_kicks >= 1u, "LED=%02x kicks=%u", g_sb.led, g_sb.wdt_kicks);
+}
+
 int main(void)
 {
     t_good();
@@ -375,6 +388,7 @@ int main(void)
     t_bv_used();
     t_bv_rollback();
     t_gate_held();
+    t_trap();
     printf("\nSUMMARY SB: PASS = %d | FAIL = %d\n", g_pass, g_fail);
     printf("SB RESULT: %s\n", g_fail ? "FAIL" : "PASS");
     return g_fail != 0;

@@ -34,6 +34,7 @@ typedef enum {
     SB_LOCKED        = 0xEE,   /* hash mismatch */
     SB_BUS_ERROR     = 0xBE,   /* SYSCSR.BUS_ERR or DMA ERR_BUS while hashing or reading the golden hash */
     SB_SELFTEST_FAIL = 0x5F,   /* SHA-256 failed its NIST self-test */
+    SB_TRAP          = 0xAF,   /* a trap (access fault, illegal instruction...) reached the trap handler (P-24) */
     SB_VERIFY_FAIL   = 0xBF,   /* software compare matched but Boot_Verifier did not say VERIFIED, or the
                                   release gate held APP_RUN (hardware and software disagree, I-08) */
     SB_HW_ERROR      = 0xE0    /* Secure DMA error (firewall, timeout, busy), or LOCK did not finish */
@@ -45,6 +46,10 @@ sb_result_t secure_boot_run(void);
  * "App says <8 hex digits>" (P-16). Does not wait, call it in the idle loop (main.c), which
  * also kicks the WDT */
 void secure_boot_relay_app(void);
+
+/* Trap handler body (P-24), called from main.c's trap_handler: logs "Trap mcause .. mepc .. mtval ..",
+ * then Boot Guard LOCK and KEY_LOCK like every failure, LED SB_TRAP. Returns so it can be host tested */
+void secure_boot_trap(uint32_t mcause, uint32_t mepc, uint32_t mtval);
 
 #ifdef __cplusplus
 }

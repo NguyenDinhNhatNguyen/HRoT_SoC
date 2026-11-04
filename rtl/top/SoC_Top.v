@@ -68,6 +68,7 @@ module SoC_Top #(
         .bus_stall(master_bus_stall),
         .irq_timer(timer0_irq),
         .irq_ext(plic_irq),
+        .data_err(1'b0),                // P-24: master_data_err once mkhex.py has a trap handler
         .instr_addr(boot_addr),
         .instr_rdata(boot_data),
         .data_addr(master_data_addr),
@@ -126,9 +127,11 @@ module SoC_Top #(
     assign master_data_rdata = axi_resp_rdata;
     wire dma_resp_valid = axi_resp_valid & own_dma_q;
 
-    // TODO(P-09, I-01): access fault. data_err is high in the same cycle as resp_valid when a CPU access
+    // TODO(P-24, I-01): access fault. data_err is high in the same cycle as resp_valid when a CPU access
     // got SLVERR or DECERR (DMA errors are reported to the DMA and SYSCSR.BUS_ERR, not trapped).
-    // Connect .data_err(master_data_err) on master_core once the core has the port
+    // The core has the port since P-24 (04/11) and master_core ties it to 0 for now: connect
+    // .data_err(master_data_err) together with a trap handler in dv/sw/mkhex.py, whose test firmware
+    // makes bus errors on purpose (ROM write, 0x7000_0000, empty APB window)
     wire master_data_err = bus_err & master_resp_valid;
 
     AXI4_Lite_Master axi_master (
@@ -383,6 +386,7 @@ module SoC_Top #(
         .bus_stall(1'b0),
         .irq_timer(app_irq_timer),
         .irq_ext(app_irq_ext),
+        .data_err(1'b0),                // the App APB bus ignores PSLVERR for now (P-24)
         .instr_addr(app_instr_addr),
         .instr_rdata(app_instr),
         .data_addr(app_data_addr),

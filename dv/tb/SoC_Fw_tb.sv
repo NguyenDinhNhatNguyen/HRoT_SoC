@@ -11,6 +11,8 @@
 //  - The Master must never trap (mcause stays 0) and the Master AXI bus must see no error response
 //  - Since 04/11 the firmware runs the WDT (1 s): it must be on, kicked, and never have fired
 //  - VERIFY_GATE = 1: good image -> Boot_Verifier VERIFIED and KEY_LOCK, tampered -> never VERIFIED (I-08)
+//  - +FAULT      : good image, but the CPU's load of APP_VER (0x6000_0FFC) gets an access fault: data_err is
+//    forced for that response (SoC_Top still ties it to 0, P-24), the trap handler must lock the App out
 // Run from sim/ (sim/run_fw.do). Ends with "SoC_Fw_tb RESULT: PASS|FAIL".
 module SoC_Fw_tb;
 
@@ -32,6 +34,17 @@ module SoC_Fw_tb;
         .clk(clk), .reset_system(rst), .app_running(),
         .uart0_tx(uart0_tx), .uart0_rx(1'b1), .gpio0_o(led), .gpio0_i(8'h00), .boot_strap(4'h0),
         .uart1_tx(uart1_tx), .uart1_rx(1'b1), .gpio1_o(gpio1_o), .gpio1_i(8'h00));
+
+    // +FAULT: access fault on the APP_VER load
+    // (the force takes a plain wire: iverilog evaluates an expression on the right of a force only once)
+    integer fault = 0;
+    wire    fault_err = dut.master_resp_valid && dut.master_data_re && dut.master_data_addr == 32'h6000_0FFC;
+    initial begin
+        if ($test$plusargs("FAULT")) begin
+            fault = 1;
+            force dut.master_core.data_err = fault_err;
+        end
+    end
 
     // Golden hash into the Boot ROM, +TAMPER after that (the ROMs load their images at time 0)
     reg [31:0] golden [0:7];
@@ -57,6 +70,7 @@ module SoC_Fw_tb;
     reg            seen_released = 0;
     reg            seen_locked = 0;
     reg            seen_hash = 0;
+    reg            seen_trap = 0;
     reg      [7:0] ch;
     always @(posedge clk) begin
         if (dut.uart0.PSEL && dut.uart0.PENABLE && dut.uart0.PWRITE && dut.uart0.PADDR == 12'h000) begin
@@ -77,6 +91,8 @@ module SoC_Fw_tb;
                 seen_released = 1;
             if (win[8*14-1:0] == "App locked out")
                 seen_locked = 1;
+            if (win[8*20-1:0] == "Trap mcause 00000005")
+                seen_trap = 1;
         end
     end
 
@@ -152,7 +168,7 @@ module SoC_Fw_tb;
         for (i = 0; i < 1024; i = i + 1)
             if (dut.app_ram.ram[i] === 32'b0)
                 zeros = zeros + 1;
-        $display("%s run: firmware finished after %0d cycles, LED=%h", tamper ? "Tampered" : "Good", cyc, led);
+        $display("%s run: firmware finished after %0d cycles, LED=%h", fault ? "Fault" : tamper ? "Tampered" : "Good", cyc, led);
         $display("UART0 %0d chars, hash printed: %0s", nchar, seen_hash ? hash_txt : "(none)");
         $display("golden                 : %0s", golden_text(0));
         $display("app_core_reset_n=%b lock=%b zero_done=%b app_ram[0]=%0d zeroed words=%0d mcause=%h bus errors=%0d",
@@ -165,10 +181,15 @@ module SoC_Fw_tb;
         $display("Boot_Verifier checked=%b verified=%b fail=%b key_lock=%b", dut.boot_verifier.checked,
                  dut.boot_verifier.ok_q, dut.boot_verifier.fail_q, dut.boot_verifier.key_lock);
         ok = (cyc < MAXC) && seen_start && seen_hash && bus_errs == 0
-             && dut.master_core.u_CSR_Unit.mcause === 32'b0
+             && dut.master_core.u_CSR_Unit.mcause === (fault ? 32'd5 : 32'b0)
              && dma_runs == 1 && dma_errs == 0 && cpu_rom_reads == 0
              && dut.wdt.en === 1'b1 && dut.wdt.load == 32'd50_000_000 && wdt_fired == 0;
-        if (tamper)
+        if (fault)
+            ok = ok && led == 8'hAF && seen_trap && seen_locked && !seen_released && dut.app_core_reset_n === 1'b0
+                    && dut.syscsr.lock_q === 1'b1 && dut.syscsr.zero_done === 1'b1
+                    && dut.master_core.u_CSR_Unit.mtval === 32'h6000_0FFC && dut.boot_verifier.checked === 1'b0
+                    && dut.boot_verifier.key_lock === 1'b1;
+        else if (tamper)
             ok = ok && led == 8'hEE && seen_locked && !seen_released && dut.app_core_reset_n === 1'b0
                     && dut.boot_verifier.ok_q === 1'b0
                     && dut.syscsr.lock_q === 1'b1 && dut.syscsr.zero_done === 1'b1 && zeros == 1024

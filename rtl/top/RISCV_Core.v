@@ -14,6 +14,8 @@
 // - Zicsr and machine-mode traps (P-09): CSR_Unit works on the instruction in MEM. CSR results arrive
 //   late like loads, so a dependent instruction waits one cycle (load-use stall). Interrupt inputs
 //   irq_timer and irq_ext follow I-01: level-high, synchronous to clk, held until the source clears them
+// - Access fault (P-24, I-01): data_err high in the cycle the data access in MEM completes (bus_stall
+//   low) means SLVERR or DECERR, and traps with mcause 5 (load) or 7 (store), mtval = data_addr
 //
 // Integration notes:
 // - Keep ALUResult_MEM declared only once
@@ -37,6 +39,7 @@ module RISCV_Core(
     output [3:0]  data_wstrb,
     output        data_we,
     output        data_re,
+    input         data_err,      // the data access finishing this cycle got an error response (P-24)
 
     output [31:0] PC_debug,
     output [31:0] Instr_debug,
@@ -474,6 +477,9 @@ CSR_Unit u_CSR_Unit(
     .mret       (mret_MEM),
     .illegal    (illegal_MEM),
     .pc         (PC_MEM),
+    .data_err   (data_err),
+    .mem_write  (MemWrite_MEM),
+    .mem_addr   (data_addr),
     .irq_timer  (irq_timer),
     .irq_ext    (irq_ext),
     .csr_rdata  (csr_rdata),
