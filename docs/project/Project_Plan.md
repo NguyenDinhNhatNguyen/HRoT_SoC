@@ -14,8 +14,8 @@
 - **Kiến trúc tham chiếu:** SoC RISC-V hai lõi kiểu công nghiệp — lõi boot/điều khiển (vai trò như Ibex) nắm quyền khởi động, lõi ứng dụng (vai trò như CVA6) bị giữ reset tới khi image được xác thực. Rút gọn cho đồ án và thêm cách ly vật lý.
 - **Hai lõi RV32I 5 tầng tự viết:** Master (Secure) chạy từ Boot ROM 4 KB riêng + RAM 4 KB, App chạy từ ROM App (cổng A của Dual-Port ROM) + RAM riêng, bị giữ reset tới khi Master cho phép.
 - **Cách ly vật lý:** mỗi thế giới có bus và bộ nhớ riêng, chỉ nối nhau qua cổng B chỉ đọc của ROM App (Master đọc để băm) và Mailbox (Tuần 10).
-- **Bus Secure:** AXI4-Lite (RAM, SHA-256, ROM App cổng B, default slave DECERR) + cầu AXI→APB ra bus ngoại vi (SYSCSR, UART0, GPIO0, TIMER0, WDT, PLIC-lite, Mailbox).
-- **Bảo mật phần cứng:** SHA-256 tăng tốc (66 chu kỳ/block), Boot Guard + Zeroization (băm sai → khóa App tới khi bật lại nguồn, xóa RAM App), Secure DMA nạp ROM App vào SHA, tường lửa AXI ở cổng master DMA, golden hash nằm trong Boot ROM.
+- **Bus Secure:** AXI4-Lite (RAM, SHA-256, ROM App cổng B, default slave DECERR) + cầu AXI→APB ra bus ngoại vi (SYSCSR, UART0, GPIO0, TIMER0, WDT, PLIC-lite, Mailbox, Secure DMA, Boot_Verifier).
+- **Bảo mật phần cứng:** SHA-256 tăng tốc (66 chu kỳ/block), Boot_Verifier (phần cứng tự so digest với golden hash, cổng nhả App `VERIFY_GATE`, chống rollback, khóa HMAC), Boot Guard + Zeroization (băm sai → khóa App tới khi bật lại nguồn, xóa RAM App), Secure DMA nạp ROM App vào SHA, tường lửa AXI ở cổng master DMA, golden hash nằm trong Boot ROM.
 - **Bộ nhớ** đọc/ghi đồng bộ ở cạnh xuống: suy ra M4K/BRAM mà lõi không phải sửa (đường đọc còn nửa chu kỳ).
 - **RTL tổng hợp viết Verilog-2001** (Quartus 13 chỉ hỗ trợ một phần SystemVerilog), không dùng IP/primitive riêng hãng. SystemVerilog chỉ dùng trong testbench.
 - **FPGA:** DE2 (Cyclone II EP2C35F672C6) bằng Quartus II 13.0sp1, kit Xilinx (chưa chốt, đang thử Artix-7 xc7a35t) bằng Vivado 2025.2. Cùng RTL, chỉ khác top bọc chân và constraints (`fpga/intel_de2`, `fpga/xilinx`).
@@ -28,7 +28,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 | --- | --- |
 | `0x0000_0000` 4 KB | Boot ROM (`firmware_imem.hex`) |
 | `0x1000_0000` 4 KB | RAM Master (`firmware_dmem.hex`) |
-| `0x4000_0000` | Bus APB: SYSCSR `+0x0000`, UART0 `+0x1000`, GPIO0 `+0x2000`, TIMER0 `+0x3000`, WDT `+0x4000`, PLIC `+0x5000`, Mailbox `+0x6000` |
+| `0x4000_0000` | Bus APB: SYSCSR `+0x0000`, UART0 `+0x1000`, GPIO0 `+0x2000`, TIMER0 `+0x3000`, WDT `+0x4000`, PLIC `+0x5000`, Mailbox `+0x6000`, Secure DMA `+0x7000`, Boot_Verifier `+0x8000` |
 | `0x5000_0000` | SHA-256 |
 | `0x6000_0000` 4 KB | ROM App cổng B (chỉ đọc, ghi → `SLVERR`) |
 | còn lại | default slave → `DECERR` |

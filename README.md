@@ -1,19 +1,20 @@
 # HRoT_SoC
 
 SoC RISC-V hai lõi bất đối xứng với cách ly vật lý và khởi động bảo mật (Hardware Root of Trust & Secure Boot).
-Master Core băm firmware của App Core bằng SHA-256 phần cứng và App Core chỉ được nhả reset khi hash khớp.
+Master Core băm firmware của App Core bằng SHA-256 phần cứng (CPU hoặc Secure DMA), khối Boot_Verifier tự so digest với golden hash trong Boot ROM,
+và App Core chỉ được nhả reset khi phần cứng báo VERIFIED. Ảnh sai thì Boot Guard khóa App tới khi cấp nguồn lại và xóa RAM App.
 
 ## Chạy nhanh (trong WSL, tại thư mục gốc repo)
 
 | Lệnh | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ bằng QuestaSim + SystemC (TB đơn vị, lõi, UVM, HAL, ngoại vi APB, SoC secure boot, VP) |
+| `make test` | Regression toàn bộ bằng QuestaSim + SystemC (TB đơn vị, lõi, UVM, HAL, ngoại vi APB, Boot_Verifier, SoC secure boot, firmware thật của hai lõi, ngắt, access fault, VP) |
 | `make sim-unit` | 11 testbench đơn vị của lõi |
 | `make sim-core TB=RISCV_Core_tb` | Mô phỏng lõi (mặc định `RISCV_Core_prog_tb`) |
 | `make sim-uvm TEST=<test> SEED=<n>` | UVM AXI4-Lite (mặc định `axi4_lite_full_test`) |
-| `make sim-soc` / `make sim-ip` | Mô phỏng toàn SoC / ngoại vi APB (SYSCSR, UART, GPIO, TIMER, WDT) |
+| `make sim-soc` / `make sim-ip` / `make sim-bv` | Mô phỏng toàn SoC / ngoại vi APB (SYSCSR, UART, GPIO, TIMER, WDT, PLIC, Mailbox) / Boot_Verifier và cổng nhả App |
 | `make vp` | Virtual Platform SystemC chạy HAL thật (image đúng và image bị sửa) |
-| `make fw` | Build firmware Master (`fw/build/firmware_imem.hex`, `firmware_dmem.hex`) |
+| `make fw` | Build firmware Master và App (`fw/build/firmware_imem.hex`, `firmware_dmem.hex`, `app_firmware.hex`) |
 | `make de2` | Quartus II 13.0sp1 cho DE2 (Cyclone II), kết quả trong `fpga/intel_de2/build` |
 | `make xilinx PART=<part>` | Vivado 2025.2 cho kit Xilinx, kết quả trong `fpga/xilinx/build` |
 
@@ -26,17 +27,17 @@ Mỗi testbench in một dòng tổng kết bằng tiếng Anh (`... RESULT: PAS
 ```text
 HRoT_SoC/
 ├── rtl/            RTL dùng chung cho mô phỏng và FPGA (xem rtl/README.md)
-│   ├── core/       lõi RV32I 5 tầng
-│   ├── bus/        AXI4-Lite master/slave, cầu AXI→APB, bộ giải mã APB
-│   ├── periph/     SYSCSR, UART, GPIO, TIMER, WDT, FIFO
+│   ├── core/       lõi RV32I 5 tầng, có Zicsr và trap máy
+│   ├── bus/        AXI4-Lite master/slave, cầu AXI→APB, bộ giải mã APB, Secure DMA và tường lửa
+│   ├── periph/     SYSCSR, Boot_Verifier, UART, GPIO, TIMER, WDT, PLIC-lite, Mailbox, FIFO
 │   ├── mem/        Boot ROM, RAM, ROM App hai cổng
 │   ├── crypto/     lõi SHA-256 và vỏ AXI
 │   └── top/        RISCV_Core.v, SoC_Top.v
 ├── dv/             kiểm chứng (xem dv/README.md)
 │   ├── tb/         testbench lõi, tb/soc/ chứa testbench ngoại vi APB và toàn SoC
-│   ├── agents/ env/ tests/   môi trường UVM AXI4-Lite và SHA-256
+│   ├── agents/ env/ tests/   môi trường UVM AXI4-Lite, SHA-256 và APB
 │   └── sw/         mkhex.py: firmware thử viết tay cho SoC_Top_tb và FPGA
-├── fw/             firmware Master: HAL, crt0, linker script, secure boot
+├── fw/             firmware: HAL, driver, crt0, linker script, Secure Boot (Master) và app demo (App)
 ├── vp/             Virtual Platform SystemC/TLM-2.0 (xem vp/README.md)
 ├── sim/            script Questa, regress.sh, run_vp.sh
 ├── fpga/           top bọc chân, constraints, script build và báo cáo FPGA (xem fpga/README.md)
@@ -44,5 +45,7 @@ HRoT_SoC/
 └── docs/           tài liệu (xem docs/README.md)
 ```
 
-Tài liệu nên đọc trước: [docs/guides/Dev_Guide.md](docs/guides/Dev_Guide.md) (phân công, quy ước, cách chạy)
-và [docs/spec/SoC_Memory_Map.md](docs/spec/SoC_Memory_Map.md) (bản đồ địa chỉ và thanh ghi).
+Tài liệu nên đọc trước: [docs/guides/Dev_Guide.md](docs/guides/Dev_Guide.md) (phân công, quy ước, cách chạy),
+[docs/spec/SoC_Memory_Map.md](docs/spec/SoC_Memory_Map.md) (bản đồ địa chỉ và thanh ghi),
+[docs/spec/Security_Model.md](docs/spec/Security_Model.md) (mô hình bảo mật, yêu cầu và truy vết) và
+[docs/spec/SoC_Block_Diagram.drawio](docs/spec/SoC_Block_Diagram.drawio) (sơ đồ khối SoC, mở bằng draw.io).

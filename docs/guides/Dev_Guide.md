@@ -1,6 +1,6 @@
 # Hướng dẫn phát triển — HRoT SoC
 
-> Đọc file này trước khi sửa code. Trạng thái và việc đang chờ: `docs/project/Project_Status.md`. Tiến độ, hạn và giao diện đã chốt (I-xx): [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) — **nguồn chính thức, đọc bản mới nhất trước khi làm**. Bản đồ địa chỉ/thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
+> Đọc file này trước khi sửa code. Sơ đồ khối SoC: `docs/spec/SoC_Block_Diagram.drawio`. Mô hình bảo mật và truy vết yêu cầu: `docs/spec/Security_Model.md`. Trạng thái và việc đang chờ: `docs/project/Project_Status.md`. Tiến độ, hạn và giao diện đã chốt (I-xx): [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) — **nguồn chính thức, đọc bản mới nhất trước khi làm**. Bản đồ địa chỉ/thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 ## 1. Cấu trúc và phân công
 
@@ -22,7 +22,7 @@
 - Store: `data_wdata` đã lặp byte/half lên mọi lane, `data_wstrb[3:0]` chọn lane. Load: `data_rdata` là word căn lề, lõi tự dịch và mở rộng dấu/0.
 - Truy cập lệch lề không được hỗ trợ (không trap).
 - **Zicsr và trap máy (P-09, 26/10):** CSR `mstatus` (MIE, MPIE, MPP đọc 11), `misa` (RV32I), `mie` (MTIE, MEIE), `mip` (MTIP, MEIP, chỉ đọc), `mtvec` (chỉ chế độ direct), `mscratch`, `mepc`, `mcause`, `mtval`, `mvendorid`/`marchid`/`mimpid`/`mhartid` (đọc 0). CSR khác hoặc ghi vào CSR chỉ đọc là lệnh không hợp lệ. Trap: ngắt (`mcause` 0x8000000B / 0x80000007), lệnh không hợp lệ (2), EBREAK (3), ECALL (11), `mtval` = 0. MRET khôi phục MIE từ MPIE. FENCE, FENCE.I, WFI chạy như NOP. Trap xử lý ở tầng MEM: lệnh cũ hơn đã xong, lệnh mới hơn bị hủy. Ngắt chỉ nhận trên lệnh không truy cập bộ nhớ, nên một lệnh load/store không bao giờ bị cắt hay chạy lại. Sau reset `mstatus.MIE = 0` và `mie = 0`, nên firmware cũ chạy như trước.
-- **Cổng ngắt (I-01, chốt 25/10, có trong lõi từ P-09):** `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Trong `SoC_Top` đã nối từ 27/10 (P-14): Master `irq_timer` ← TIMER0, `irq_ext` ← PLIC-lite. App `irq_timer` ← TIMER1, `irq_ext` ← UART1 | GPIO1 | Mailbox. Access fault (P-24, có trong lõi từ 04/11): `data_err` mức cao trong chu kỳ truy cập dữ liệu ở MEM kết thúc (`bus_stall` thấp) → trap `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ, load lỗi không ghi thanh ghi. `SoC_Top` tạm nối 0 cho cả hai lõi, Nguyên nối `master_data_err` cùng lúc thêm trap handler cho `mkhex.py`. Firmware Master có trap handler (`crt0.S` → `trap_handler` → `secure_boot_trap()`): khóa App và KEY, LED `0xAF`, in mcause/mepc/mtval, rồi đá WDT mãi.
+- **Cổng ngắt (I-01, chốt 25/10, có trong lõi từ P-09):** `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Trong `SoC_Top` đã nối từ 27/10 (P-14): Master `irq_timer` ← TIMER0, `irq_ext` ← PLIC-lite. App `irq_timer` ← TIMER1, `irq_ext` ← UART1 | GPIO1 | Mailbox. Access fault (P-24, có trong lõi từ 04/11): `data_err` mức cao trong chu kỳ truy cập dữ liệu ở MEM kết thúc (`bus_stall` thấp) → trap `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ, load lỗi không ghi thanh ghi. Từ 04/11 (N-37) `SoC_Top` nối `master_data_err` (SLVERR hoặc DECERR của truy cập CPU, không tính lỗi của DMA) vào lõi Master, chương trình thử `mkhex.py` có trap handler quay về sau lệnh lỗi và đếm 7 lỗi cố ý. Lõi App vẫn nối 0 vì bus APB của App bỏ qua `PSLVERR`. Firmware Master có trap handler (`crt0.S` → `trap_handler` → `secure_boot_trap()`): khóa App và KEY, LED `0xAF`, in mcause/mepc/mtval, rồi đá WDT mãi.
 - **ASIC (R8, chốt trước Tuần 12):** khi Nguyên thêm bộ nhớ đọc cạnh lên, lõi cần tín hiệu chờ ở IF và MEM để chịu 1 chu kỳ trễ. Ở MEM dùng lại `bus_stall`, ở IF thêm cổng mới. P-09 xong mà chưa chốt tên cổng này, cần chốt cùng Nguyên trước Tuần 12.
 - Reset active-high, PC reset = `0x0`. Register file không reset (x1..x31 là X đến khi được ghi).
 
@@ -32,12 +32,12 @@ Nguồn chính thức: `docs/spec/SoC_Memory_Map.md`. Tóm tắt:
 
 | Địa chỉ | Vùng | Ghi chú |
 | --- | --- | --- |
-| `0x0000_0000` 4 KB | Boot ROM | cổng A fetch lệnh (`.text`), cổng B cho `lw` đọc dữ liệu chỉ-đọc (`.rodata`, golden hash). Ghi → `SLVERR`. Nạp `firmware_imem.hex` |
+| `0x0000_0000` 4 KB | Boot ROM | cổng A fetch lệnh (`.text`), cổng B cho `lw` đọc dữ liệu chỉ-đọc (`.rodata`, golden hash). Ghi → `SLVERR`. Nạp `firmware_imem.hex`. Khi Boot_Verifier chạy `CHECK` (khoảng 9 chu kỳ) nó mượn cổng B, firmware đừng `lw` từ Boot ROM lúc đó |
 | `0x1000_0000` 4 KB | RAM Master | nạp `firmware_dmem.hex` (`.rodata/.data`), `.bss` + stack |
-| `0x4000_0000` | Cầu AXI→APB | SYSCSR `0x4000_0000` (APP_CTRL ở offset 0), UART0 `+0x1000`, GPIO0 `+0x2000`, TIMER0 `+0x3000`, WDT `+0x4000`, PLIC-lite `+0x5000`, Mailbox `+0x6000`, Secure DMA `+0x7000` |
+| `0x4000_0000` | Cầu AXI→APB | SYSCSR `0x4000_0000` (APP_CTRL ở offset 0), UART0 `+0x1000`, GPIO0 `+0x2000`, TIMER0 `+0x3000`, WDT `+0x4000`, PLIC-lite `+0x5000`, Mailbox `+0x6000`, Secure DMA `+0x7000`, Boot_Verifier `+0x8000` (cổng nhả App bằng phần cứng, xem `SoC_Memory_Map.md`) |
 | `0x5000_0000` | SHA-256 | `docs/spec/SHA256_Register_Map.md`, `fw/hal/sha256_regs.h`, 66 chu kỳ START→DONE. Offset `0x100`–`0xFFFF` đọc 0 |
 | `0x6000_0000` 4 KB | ROM App, cổng B | chỉ đọc (để băm), ghi → `SLVERR` |
-| còn lại | default slave | `DECERR`, không treo bus |
+| còn lại | default slave | `DECERR`, không treo bus. Từ 04/11 ba bộ nhớ 4 KB giải mã đúng 4 KB: đọc hay ghi ngoài vùng ra `DECERR`, không còn lặp về đầu bộ nhớ |
 
 Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x0000_xxxx` đọc được ROM nên `.rodata` và golden hash đặt được trong ROM (N-21). Từ 27/10 `linker.ld` đặt `.text` và `.rodata` trong ROM. Từ 04/11 code dùng tới `0xFBF`, 64 byte cuối để dành: tag HMAC ở `0xFC0` (chưa dùng), golden hash ở `0xFE0` dưới dạng 8 word big-endian H0..H7, khớp cách Boot_Verifier so (I-03). Thế giới App có bản đồ riêng (UART1, GPIO1, TIMER1, Mailbox ở `0x4000_xxxx`, địa chỉ khác là RAM App), xem `docs/spec/SoC_Memory_Map.md`. Lõi App không đọc được ROM của nó như dữ liệu và RAM App không nạp sẵn, nên firmware App không được có `.rodata` hay `.data` (`fw/app/app.ld` báo lỗi khi build), chữ in ra phải gửi từng ký tự (P-16).
 
@@ -47,11 +47,11 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 
 | Lệnh (thư mục gốc repo) | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256, APB), HAL host, APB, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`), VP. Log ở `build/logs/`. Bước bị SKIP (thiếu gcc hoặc toolchain) làm regression FAIL, `ALLOW_SKIP=1 make test` để chấp nhận. `SEED=<n> make test` đổi seed của các test UVM ngẫu nhiên |
+| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256, APB), HAL host, APB, Boot_Verifier, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`, cổng nhả App bật), firmware thật của hai lõi, ngắt, access fault, VP. Log ở `build/logs/`. Bước bị SKIP (thiếu gcc hoặc toolchain) làm regression FAIL, `ALLOW_SKIP=1 make test` để chấp nhận. `SEED=<n> make test` đổi seed của các test UVM ngẫu nhiên |
 | `make sim-unit` | 11 TB đơn vị (`sim/run_unit.do`), mỗi TB in `SUMMARY <TÊN>: PASS = x \| FAIL = y` |
 | `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định, chạy `core_isa_test` và `core_trap_test`) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |
 | `make sim-uvm TEST=<test> SEED=<n>` | UVM: `base_test` \| `axi4_lite_wstrb_test` \| `axi4_lite_rand_test` \| `axi4_lite_full_test`, thêm `+RESET_AT_NS=<t>` qua `PLUSARGS` trong `run_uvm.do`. SHA-256 thật: `set DUT sha256` (test `sha256_*`). Ngoại vi APB thật: `set DUT apb` (test `apb_reg_test`, `apb_periph_test`, `apb_full_test`) |
-| `make sim-ip` / `make sim-soc` / `make vp` | APB (SYSCSR, GPIO, UART, TIMER, WDT, PLIC-lite, Mailbox) / toàn SoC (thêm tham số `set PLUSARGS +TAMPER` trong `sim/run_soc.do` để chạy ảnh bị sửa) / Virtual Platform |
+| `make sim-ip` / `make sim-bv` / `make sim-soc` / `make vp` | APB (SYSCSR, GPIO, UART, TIMER, WDT, PLIC-lite, Mailbox) / Boot_Verifier và cổng nhả App (`Boot_Verifier_tb`, 30 check) / toàn SoC (thêm tham số `set PLUSARGS +TAMPER` trong `sim/run_soc.do` để chạy ảnh bị sửa) / Virtual Platform |
 | `make fw` | `fw/build/firmware_imem.hex` (Boot ROM, đã có golden ở `0xFE0`), `firmware_dmem.hex`, `app_firmware.hex` và `app_firmware.bin` (ROM App đủ 4 KB, APP_VER ở word `0xFFC` lấy từ biến CMake `APP_VERSION`, `sha256sum` của `.bin` = golden, I-04), `.dis`, `.map` |
 | `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO/Mailbox, Secure Boot (`sb_host_test`), bước ghép golden (`rom_image_test.py`) rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và các driver |
 | `vsim -c -do "set TB SoC_Fw_tb; do run_fw.do"` (trong `sim/`) | Firmware Secure Boot thật trên toàn SoC (cần `make fw` trước), thêm `set PLUSARGS +TAMPER` để chạy ảnh bị sửa. `set TB SoC_Irq_tb` chạy test ngắt hai lõi (P-14). `set TB SoC_App_tb` chạy firmware thật của cả hai lõi với golden lấy từ build (P-16), có `+TAMPER` |
@@ -69,6 +69,7 @@ Từ P-22 (26/10), `regress.sh` chạy mỗi TB đơn vị bằng một `vsim` r
 - `*.svh` chỉ được `` `include `` vào `hrot_dv_pkg.sv`, không biên dịch riêng.
 - RTL reset active-high, còn interface UVM `axi4_lite_if` và `apb_if` reset active-low (`rst_n`).
 - Firmware: C11 freestanding, rv32i (không M), không libc, nhân/chia lấy từ libgcc, build `-Os` từ 27/10 để vừa Boot ROM 4 KB. Địa chỉ ngoại vi lấy theo `docs/spec/SoC_Memory_Map.md` (I-02).
+- Sau mỗi lần đổi RTL phải chạy lại `make de2`: bộ nhớ DE2 phải còn 135.168 bit và `RISCV_Core:master_core` phải có trong báo cáo map. Mô phỏng không bắt được lỗi Quartus bỏ cả lõi khi một ROM có cổng đọc thứ ba (04/11, xem `docs/project/FPGA_Results.md`).
 - Đổi bản đồ địa chỉ hay giao diện giữa hai người: cập nhật mục "Mốc & Giao diện" trong sheet và báo trước.
 - Viết comment, tài liệu: không dùng dấu `;` trong câu, bảng Markdown dùng dòng phân cách `| --- | --- |`.
 - Mỗi dòng code chỉ một lệnh kết thúc bằng `;`. Lệnh sau `if`, `else`, `else if`, `for`, `while` và sau nhãn `case` (kể cả `default:`) xuống dòng mới, thụt vào một mức (4 dấu cách). Trong C/C++, khối `{ ... }` có từ hai lệnh trở lên phải viết trên nhiều dòng. Riêng hàm một lệnh như `{ return x; }` được giữ trên một dòng.
