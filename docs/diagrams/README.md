@@ -1,6 +1,6 @@
 # Bộ sơ đồ kiến trúc và lưu đồ vận hành
 
-File `HRoT_SoC_Diagrams.drawio` gồm 18 trang, mở bằng [draw.io](https://app.diagrams.net) hoặc draw.io Desktop. Mỗi trang có một ảnh PNG (độ phân giải 2x) trong `png/` để chèn thẳng vào báo cáo. Tên khối và tên dây viết bằng tiếng Anh, mô tả bằng tiếng Việt khi cần.
+File `HRoT_SoC_Diagrams.drawio` gồm 21 trang, mở bằng [draw.io](https://app.diagrams.net) hoặc draw.io Desktop. Mỗi trang có một ảnh PNG (độ phân giải 2x) trong `png/` để chèn thẳng vào báo cáo. Tên khối và tên dây viết bằng tiếng Anh, mô tả bằng tiếng Việt khi cần.
 
 ## Danh sách trang
 
@@ -24,6 +24,9 @@ File `HRoT_SoC_Diagrams.drawio` gồm 18 trang, mở bằng [draw.io](https://ap
 | 16 | `16_interrupt_and_trap_flow.png` | Ngắt và ngoại lệ, vào trap, `trap_handler`, MRET | Lõi, firmware | `CSR_Unit.v`, `fw/startup/crt0.S` |
 | 17 | `17_reset_and_power_flow.png` | POR, WDT, SW_RESET: cái nào xóa gì | Reset và nguồn | `SYSCSR.v`, `Boot_Verifier.v` |
 | 18 | `18_verification_flow.png` | `make test`, `regress.sh`, luồng FPGA và các điểm kiểm | Kiểm chứng | `sim/regress.sh`, `Makefile` |
+| 19 | `19_kv260_pmod_j2.png` | Chân Pmod J2 của KV260: chân connector, net, chân FPGA, cổng SoC | FPGA, nạp board | sơ đồ AMD XTP682, `fpga/xilinx/kv260/kv260.xdc` |
+| 20 | `20_vp_architecture.png` | Virtual Platform: initiator (C++ hoặc firmware `--fw`), `VP_Bus`, các target, phần chưa mô hình hóa | Virtual Platform | `vp/src/` |
+| 21 | `21_fpga_testbed.png` | Testbed FPGA: top của DE2, KV260 và Artix-7, `SoC_Top`, nạp và kiểm | FPGA | `fpga/`, `docs/project/PPA_FPGA.md` |
 
 ## Quy ước hình
 

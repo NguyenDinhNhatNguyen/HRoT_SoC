@@ -14,3 +14,5 @@ Virtual Platform SystemC 2.3.3 hoặc 2.3.4 / TLM-2.0 (loosely-timed) của th�
 Chạy: `make vp` (gọi `sim/run_vp.sh`), gồm 4 kịch bản: image đúng và image bị sửa 1 bit (`--tamper`), mỗi loại chạy với kịch bản C++ của `CPU_Dummy_Initiator` và với firmware Secure Boot thật (`--fw`, `fw/secure_boot/secure_boot.c`, P-13). Cả bốn phải in `VP RESULT: PASS`. Ở chế độ `--fw`, firmware ghi LED GPIO0 nên VP in một dòng lỗi bus ở `0x4000_2000` (VP chưa có mô hình GPIO), không ảnh hưởng kết quả. Hai kịch bản C++ kiểm thêm cổng nhả App (`SYSCSR_VP.verified`): `APP_RUN` ghi trước `CHECK` bị từ chối, sau `CHECK` ảnh đúng cho `STATUS` = `0x9`, ảnh bị sửa cho `0xA`. Từ 04/11 VP có mô hình Boot_Verifier ở `0x4000_8000` (`vp/src/BootVerifier_VP.h`, Phát thêm cho I-08): chế độ `--fw` với ảnh đúng phải được VERIFIED và khóa KEY.
 
 Chưa mô hình hóa: GPIO, PLIC-lite, Mailbox, bus và ngoại vi của thế giới App, ngắt, reset do WDT.
+
+Sơ đồ khối của VP: `docs/diagrams/png/20_vp_architecture.png` (trang 20 của `docs/diagrams/HRoT_SoC_Diagrams.drawio`).

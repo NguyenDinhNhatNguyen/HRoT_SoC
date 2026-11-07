@@ -20,6 +20,7 @@ REGISTRY = [
     ("pg_arch3", "app_world"), ("pg_arch3", "security_arch"),
     ("pg_flow1", "secure_boot_flow"), ("pg_flow2", "tamper_flow"), ("pg_flow2", "check_fsm"), ("pg_flow3", "dma_fsm"),
     ("pg_flow2", "bus_flow"), ("pg_flow2", "irq_flow"), ("pg_flow2", "reset_flow"), ("pg_flow3", "verif_flow"),
+    ("pg_arch4", "pmod_j2"), ("pg_arch4", "vp_arch"), ("pg_arch4", "fpga_testbed"),
 ]
 
 pages = [getattr(importlib.import_module(m), f)() for m, f in REGISTRY]
