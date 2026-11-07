@@ -25,6 +25,12 @@ Không còn. `c12b74d`, `98df2fa`, `d862477` đã lên GitHub (07/11, tới `ce2
 | D-01 đến D-07 | Nạp và chạy trên DE2, đối chiếu `de2_pins.tcl` với manual DE2 | Sheet, tab Hướng dẫn & Kiểm thử |
 | F-02, F-03 | Đã chạy lại 07/11, đạt: `make xilinx` WNS +3,228 ns, WHS +0,018 ns. `make kv260` WNS +5,517 ns, WHS +0,011 ns, clk_pl_0 50 MHz | Log trong `fpga/*/build` |
 
+## Việc chờ người khác (không cần board)
+| Việc | Chờ ai | Ghi chú |
+| --- | --- | --- |
+| N-30 SDC ASIC | Phát (P-20, P-21) | `asic/SoC_Top.sdc` là khung, cần `CLK_PERIOD_NS` và `IO_DELAY_NS` theo PDK, và kiểm lại việc đồng bộ các đầu vào bất đồng bộ (kể cả `reset_system`) |
+| N-31 khớp chương báo cáo | Dàn ý chương báo cáo | Sơ đồ và README đã xong, 21 trang sơ đồ |
+
 ## Điều đã biết nhưng chưa chắc
 - Số J2 đã khớp sơ đồ nguyên lý AMD XTP682 (rev 1.0 và 2.0, trang 17). Chân FPGA (H12, E10...) lấy từ XDC của AMD (Kria-PYNQ), sơ đồ carrier card chỉ tới connector SOM. Chưa đo trên board.
 - Nhãn và ID overlay đã đối chiếu mã nguồn linux-xlnx, chưa chạy trên board.
