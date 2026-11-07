@@ -18,15 +18,15 @@
 | Mục | Việc | Ở đâu |
 | --- | --- | --- |
 | M-1 | Kit mượn có đủ nguồn 12 V 3 A, thẻ microSD, cáp micro-USB | Sheet, tab Mua sắm & Mượn |
-| M-2 | Đo J2: J2.9, J2.10 là GND, J2.11, J2.12 là 3,3 V, J2.1 và J2.3 đúng HDA11 và HDA12 | Sheet, K-03 |
-| M-3 | Đối chiếu UG1089 v1.4: dung lượng thẻ SD, bảng chân Pmod J2 (trang v1.4 thử mở trả 404) | Sheet |
+| M-2 | Chạy `fpga/xilinx/kv260/pintest/build/pinwalk.bit` (đã build, chưa thử trên board), đo J2 xem từng chân sáng đúng thứ tự. Cần chuyển thành .bit.bin và .dtbo riêng để nạp | Sheet, K-03 |
+| M-3 | Xong phần tài liệu: UG1089 v1.4 và sơ đồ nguyên lý AMD XTP682 (rev 1.0 và 2.0) đã đọc. Số J2 khớp README | Sheet |
 | M-4 | Boot thử, thẻ SD có ảnh Kria Linux, `sudo xmutil listapps` | Sheet |
 | K-01 đến K-10 | Nạp và chạy trên KV260 (overlay, `install_on_board.sh`, UART 115200, LED) | Sheet, tab Hướng dẫn & Kiểm thử |
 | D-01 đến D-07 | Nạp và chạy trên DE2, đối chiếu `de2_pins.tcl` với manual DE2 | Sheet, tab Hướng dẫn & Kiểm thử |
-| F-02, F-03 | Chạy lại `make xilinx` và `make kv260`, so WNS và WHS với tiêu chí (build ngày 07/11 đang chạy nền, chưa đọc kết quả) | Log trong `fpga/*/build` |
+| F-02, F-03 | Đã chạy lại 07/11, đạt: `make xilinx` WNS +3,228 ns, WHS +0,018 ns. `make kv260` WNS +5,517 ns, WHS +0,011 ns, clk_pl_0 50 MHz | Log trong `fpga/*/build` |
 
 ## Điều đã biết nhưng chưa chắc
-- Số Pmod pin và J2 khớp XDC của AMD (Kria-PYNQ) và XDC của ikwzm/Kv260-Pmod-gpio-emio, chưa khớp sơ đồ nguyên lý. GND và 3,3 V (J2.9 đến J2.12) suy từ chuẩn Digilent.
+- Số J2 đã khớp sơ đồ nguyên lý AMD XTP682 (rev 1.0 và 2.0, trang 17). Chân FPGA (H12, E10...) lấy từ XDC của AMD (Kria-PYNQ), sơ đồ carrier card chỉ tới connector SOM. Chưa đo trên board.
 - Nhãn và ID overlay đã đối chiếu mã nguồn linux-xlnx, chưa chạy trên board.
 - UG1089 v1.4 xác nhận nguồn 12 V 3 A và hộp kit không kèm nguồn hay thẻ SD.
 
