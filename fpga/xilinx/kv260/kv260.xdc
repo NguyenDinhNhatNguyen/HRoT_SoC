@@ -6,9 +6,9 @@ set_false_path -to   [get_ports {led[*] led_app uart_tx}]
 
 # Pins: the 8 PMOD pins HDA11 to HDA18 (3.3 V bank), taken from AMD's own constraints for the KV260
 # https://github.com/Xilinx/kria-vitis-platforms  kv260/platforms/kv260_bist/xdc/pin.xdc
-# The HDA names are the carrier card nets. Pmod pin numbers (cross-checked from AMD's Kria-PYNQ base.xdc
-# and the third-party ikwzm/Kv260-Pmod-gpio-emio XDC, not the schematic): pin1..4 = HDA11..HDA14,
-# pin7..10 = HDA15..HDA18, see README.md for the table
+# The HDA names are the carrier card nets. J2 pin numbers are from AMD's carrier card schematic XTP682
+# (rev 1.0 and rev 2.0, sheet 17): J2.1 HDA11, J2.2 HDA15, J2.3 HDA12, J2.4 HDA16, J2.5 HDA13, J2.6 HDA17,
+# J2.7 HDA14, J2.8 HDA18, J2.9 and J2.10 GND, J2.11 and J2.12 3.3 V. See README.md for the table
 set_property PACKAGE_PIN H12 [get_ports uart_tx]
 set_property PACKAGE_PIN E10 [get_ports uart_rx]
 set_property PACKAGE_PIN D10 [get_ports led_app]
