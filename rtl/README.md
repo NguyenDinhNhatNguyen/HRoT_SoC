@@ -11,4 +11,4 @@ RTL Verilog-2001 (Quartus II 13.0sp1 đọc được), dùng chung cho mô phỏ
 | `crypto/` | `SHA256_Core`, `SHA256_Wrapper` | 66 chu kỳ mỗi block |
 | `top/` | `RISCV_Core.v`, `SoC_Top.v` | `SoC_Top` dùng `` `default_nettype none `` |
 
-Bản đồ địa chỉ: [docs/spec/SoC_Memory_Map.md](../docs/spec/SoC_Memory_Map.md). Thêm file mới vào một thư mục có sẵn thì không phải sửa script: `sim/*.do` và `fpga/*/build.tcl` lấy hết `*.v` trong `core`, `bus`, `periph`, `mem`, `crypto`.
+Bản đồ địa chỉ: [docs/spec/SoC_Memory_Map.md](../docs/spec/SoC_Memory_Map.md). Thêm file mới vào một thư mục có sẵn thì không phải sửa script: `sim/*.do` và `fpga/<hãng>/<kit>/build.tcl` lấy hết `*.v` trong `core`, `bus`, `periph`, `mem`, `crypto`.

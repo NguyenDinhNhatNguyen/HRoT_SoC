@@ -10,7 +10,7 @@
 | Công cụ | Quartus II 64-bit 13.0.1 Build 232 SP1 Web Edition | Vivado 2025.2 (win64) Build 6299465 |
 | Clock | `clk50`, 50 MHz (chu kỳ 20 ns) | `clk`, 50 MHz (chu kỳ 20 ns) |
 | Lệnh | `make de2` | `make xilinx PART=xc7a35tcpg236-1` |
-| Top | `fpga/intel_de2/DE2_Top.v` | `fpga/xilinx/Xilinx_Top.v` |
+| Top | `fpga/intel/de2/DE2_Top.v` | `fpga/xilinx/artix7/Xilinx_Top.v` |
 
 ## DE2 (Cyclone II)
 
@@ -74,7 +74,7 @@ Ngưỡng theo dõi (R2 trong `Project_Plan.md`): DE2 còn dư khoảng 7% so v�
 - Bộ nhớ DE2 (135.168 bit M4K) không đổi qua các lần đo từ 24/10.
 - Lần đo 04/11 bắt được một lỗi mà mô phỏng không thấy: khi Boot ROM có cổng đọc thứ ba cho Boot_Verifier, Quartus không còn ánh xạ ROM vào M4K, ROM thành hằng 0 và toàn bộ lõi Master bị tối ưu mất (LE giả 6.871, bộ nhớ 70.144 bit). Kiểm tra nhanh sau mỗi lần đo: bộ nhớ phải giữ 135.168 bit và `RISCV_Core:master_core` phải còn trong báo cáo map. Cách sửa là cho Boot_Verifier mượn cổng B của ROM.
 - Ở lần `9f9e66a`, Quartus báo `irq_timer`/`irq_ext` của hai lõi chưa nối nên tự nối GND. Từ lần 27/10 dây ngắt đã nối (P-14), logic ngắt trong `CSR_Unit` không còn bị rút gọn nên LE tăng 239, Quartus không còn cảnh báo cổng hở.
-- Báo cáo gốc của lần `9f9e66a` nằm ở `fpga/intel_de2/build/output_files/` trên máy Phát (thư mục build, không commit). Báo cáo trong `fpga/reports/` vẫn là của lần đo 26/10 của Nguyên.
+- Báo cáo gốc của lần `9f9e66a` nằm ở `fpga/intel/de2/build/output_files/` trên máy Phát (thư mục build, không commit). Báo cáo trong `fpga/reports/` vẫn là của lần đo 26/10 của Nguyên.
 
 ## Cách thêm một lần đo
 

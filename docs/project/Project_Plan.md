@@ -18,7 +18,7 @@
 - **Bảo mật phần cứng:** SHA-256 tăng tốc (66 chu kỳ/block), Boot_Verifier (phần cứng tự so digest với golden hash, cổng nhả App `VERIFY_GATE`, chống rollback, khóa HMAC), Boot Guard + Zeroization (băm sai → khóa App tới khi bật lại nguồn, xóa RAM App), Secure DMA nạp ROM App vào SHA, tường lửa AXI ở cổng master DMA, golden hash nằm trong Boot ROM.
 - **Bộ nhớ** đọc/ghi đồng bộ ở cạnh xuống: suy ra M4K/BRAM mà lõi không phải sửa (đường đọc còn nửa chu kỳ).
 - **RTL tổng hợp viết Verilog-2001** (Quartus 13 chỉ hỗ trợ một phần SystemVerilog), không dùng IP/primitive riêng hãng. SystemVerilog chỉ dùng trong testbench.
-- **FPGA:** DE2 (Cyclone II EP2C35F672C6) bằng Quartus II 13.0sp1, kit Xilinx Kria KV260 (chốt 07/11, chip xck26-sfvc784-2LV-c, clock từ PS) bằng Vivado 2025.2. Cùng RTL, chỉ khác top bọc chân và constraints (`fpga/intel_de2`, `fpga/xilinx`).
+- **FPGA:** DE2 (Cyclone II EP2C35F672C6) bằng Quartus II 13.0sp1, kit Xilinx Kria KV260 (chốt 07/11, chip xck26-sfvc784-2LV-c, clock từ PS) bằng Vivado 2025.2. Cùng RTL, chỉ khác top bọc chân và constraints (`fpga/intel/de2`, `fpga/xilinx/artix7`, `fpga/xilinx/kv260`).
 
 ### Bản đồ địa chỉ thế giới Secure
 

@@ -13,7 +13,7 @@
 | `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình tự kiểm tra cho lõi (`core_isa_test`, `core_trap_test`) · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
 | `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), driver Secure DMA (`dma.h`, P-15), driver Mailbox (`mailbox.h`, P-16), driver WDT (`wdt.h`), driver Boot_Verifier (`boot_verifier.h`, I-08), crt0, linker script, Secure Boot (`fw/secure_boot`, P-13), firmware App demo (`fw/app`, P-16), `fw/tools/golden.py`, `fw/tools/rom_image.py` | Phát |
 | `vp/` | Virtual Platform SystemC/TLM-2.0 (chạy HAL thật) | Nguyên |
-| `fpga/` (`intel_de2`, `xilinx`, `reports`) · `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC | Nguyên · Phát |
+| `fpga/` (`intel/de2`, `xilinx/artix7`, `xilinx/kv260`, `reports`) · `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC | Nguyên · Phát |
 
 ## 2. Giao kèo của `RISCV_Core` với bên ngoài
 
@@ -57,7 +57,7 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 | `make -C fw/hal/test test` · `crosscheck` · `rv32` | Driver UART/GPIO/Mailbox, Secure Boot (`sb_host_test`), bước ghép golden (`rom_image_test.py`) rồi HAL SHA-256 trên host · so với `sha256sum` · build rv32i cả HAL và các driver |
 | `vsim -c -do "set TB SoC_Fw_tb; do run_fw.do"` (trong `sim/`) | Firmware Secure Boot thật trên toàn SoC (cần `make fw` trước), thêm `set PLUSARGS +TAMPER` để chạy ảnh bị sửa. `set TB SoC_Irq_tb` chạy test ngắt hai lõi (P-14). `set TB SoC_App_tb` chạy firmware thật của cả hai lõi với golden lấy từ build (P-16), có `+TAMPER` |
 | Tạo lại hex test lõi | lệnh ở đầu `dv/tests/asm/core_isa_test.S` và `core_trap_test.S` (test trap cần `-march=rv32i_zicsr_zifencei` từ P-19 vì có FENCE.I) |
-| `make de2` / `make xilinx PART=<part>` | Quartus / Vivado, kết quả ở `fpga/*/build/`, báo cáo đã lưu ở `fpga/reports/` |
+| `make de2` / `make xilinx PART=<part>` / `make kv260` | Quartus / Vivado (Artix-7 thử) / Vivado (KV260), kết quả ở `fpga/<hãng>/<kit>/build/`, báo cáo đã lưu ở `fpga/reports/` |
 
 Từ P-22 (26/10), `regress.sh` chạy mỗi TB đơn vị bằng một `vsim` riêng và cho mọi `vsim` đọc stdin từ `/dev/null`, nên `make test` không còn đứng chờ ở dấu nhắc `VSIM(paused)>`. `sim/run_vp.sh` nhận cả SystemC 2.3.3 (`lib-linux64/`) lẫn 2.3.4 (`lib/`) qua biến `SYSTEMC_HOME`.
 

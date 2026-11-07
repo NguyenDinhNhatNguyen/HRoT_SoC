@@ -1,5 +1,5 @@
 # Build output and generated files (never committed). "build/" matches any build directory,
-# including fw/build, vp/build and fpga/*/build.
+# including fw/build, vp/build and fpga/*/*/build.
 build/
 sim/work/
 sim/transcript

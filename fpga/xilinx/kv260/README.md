@@ -1,11 +1,11 @@
 # Kria KV260
 
-SoC trên kit Kria KV260 (K26 SOM, chip `xck26-sfvc784-2LV-c`). Phần PL của K26 không có dao động riêng nên clock và reset lấy từ PS qua block design. Lõi `rtl/` không đổi, `KV260_Top.v` bọc `Xilinx_Top.v`.
+SoC trên kit Kria KV260 (K26 SOM, chip `xck26-sfvc784-2LV-c`). Phần PL của K26 không có dao động riêng nên clock và reset lấy từ PS qua block design. Lõi `rtl/` không đổi, `KV260_Top.v` gọi thẳng `SoC_Top` nên thư mục này tự đủ, không phụ thuộc `artix7/`.
 
 | File | Việc |
 | --- | --- |
 | `kv260_bd.tcl` | Block design chỉ có Zynq UltraScale+ PS, `pl_clk0` 50 MHz từ IOPLL, `pl_resetn0` |
-| `KV260_Top.v` | Top: nối `pl_clk0` và `pl_resetn0` vào `Xilinx_Top`, công tắc và boot strap tied 0 |
+| `KV260_Top.v` | Top: nối `pl_clk0` và `pl_resetn0` vào `SoC_Top`, công tắc và boot strap tied 0 |
 | `kv260.xdc` | Chân PMOD, false path |
 | `build_kv260.tcl` | Tổng hợp, place, route, báo cáo, `kv260.bit` |
 | `firmware/` | Overlay `.dtsi`, `shell.json`, `template.bif`, `install_on_board.sh` để nạp lên board |

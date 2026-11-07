@@ -16,8 +16,9 @@ và App Core chỉ được nhả reset khi phần cứng báo VERIFIED. Ảnh s
 | `make sim-soc` / `make sim-ip` / `make sim-bv` | Mô phỏng toàn SoC / ngoại vi APB (SYSCSR, UART, GPIO, TIMER, WDT, PLIC, Mailbox) / Boot_Verifier và cổng nhả App |
 | `make vp` | Virtual Platform SystemC chạy HAL thật (image đúng và image bị sửa) |
 | `make fw` | Build firmware Master và App (`fw/build/firmware_imem.hex`, `firmware_dmem.hex`, `app_firmware.hex`) |
-| `make de2` | Quartus II 13.0sp1 cho DE2 (Cyclone II), kết quả trong `fpga/intel_de2/build` |
-| `make xilinx PART=<part>` | Vivado 2025.2 cho kit Xilinx, kết quả trong `fpga/xilinx/build` |
+| `make de2` | Quartus II 13.0sp1 cho DE2 (Cyclone II), kết quả trong `fpga/intel/de2/build` |
+| `make xilinx PART=<part>` | Vivado 2025.2 cho Artix-7 thử, kết quả trong `fpga/xilinx/artix7/build` |
+| `make kv260` | Vivado 2025.2 cho Kria KV260, ra `fpga/xilinx/kv260/build/kv260.bit` |
 
 Quy ước: chỉ làm việc trên nhánh `main`, chạy `make test` trước khi push. Mô phỏng chỉ dùng QuestaSim
 (Makefile gọi Questa/Quartus/Vivado trên Windows qua WSL interop, đường dẫn đặt ở đầu Makefile).

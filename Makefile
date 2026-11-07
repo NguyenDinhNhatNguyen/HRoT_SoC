@@ -71,13 +71,13 @@ hex:
 	echo 00000000 > $(HEX_DIR)/zero.hex
 
 de2: hex
-	cd fpga/intel_de2 && $(QUARTUS) -t build.tcl $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))
+	cd fpga/intel/de2 && $(QUARTUS) -t build.tcl $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))
 
 xilinx: hex
-	cd fpga/xilinx && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
+	cd fpga/xilinx/artix7 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
 
 kv260: hex
 	cd fpga/xilinx/kv260 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build_kv260.tcl -tclargs xck26-sfvc784-2LV-c $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
 
 clean:
-	rm -rf build fw/build fpga/intel_de2/build fpga/xilinx/build vp/build sim/work sim/transcript sim/*.wlf sim/*.hex sim/labels.vh
+	rm -rf build fw/build fpga/intel/de2/build fpga/xilinx/artix7/build fpga/xilinx/kv260/build vp/build sim/work sim/transcript sim/*.wlf sim/*.hex sim/labels.vh

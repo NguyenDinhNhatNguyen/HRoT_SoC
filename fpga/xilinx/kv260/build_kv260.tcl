@@ -18,7 +18,7 @@ set argv [list $part $boot_hex $ram_hex $app_hex "$here/build"]
 source $here/kv260_bd.tcl
 
 read_verilog [concat [glob $root/rtl/{core,bus,periph,mem,crypto}/*.v] \
-                     [list $root/rtl/top/RISCV_Core.v $root/rtl/top/SoC_Top.v $root/fpga/xilinx/Xilinx_Top.v $here/KV260_Top.v]]
+                     [list $root/rtl/top/RISCV_Core.v $root/rtl/top/SoC_Top.v $here/KV260_Top.v]]
 read_xdc $here/kv260.xdc
 
 synth_design -top KV260_Top -part $part \

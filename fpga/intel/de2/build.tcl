@@ -1,10 +1,10 @@
-# Quartus II 13.0sp1 build for the DE2, run from fpga/intel_de2 (or just `make de2`):
+# Quartus II 13.0sp1 build for the DE2, run from fpga/intel/de2 (or just `make de2`):
 #   quartus_sh -t build.tcl [boot_hex] [ram_hex] [app_hex]
 # Output goes to build/ (project, .sof, reports), which is not committed.
 load_package flow
 
 set here     [file normalize [file dirname [info script]]]
-set root     [file normalize "$here/../.."]
+set root     [file normalize "$here/../../.."]
 set boot_hex [expr {[llength $argv] > 0 ? [lindex $argv 0] : "$root/fw/build/firmware_imem.hex"}]
 set ram_hex  [expr {[llength $argv] > 1 ? [lindex $argv 1] : "$root/fw/build/firmware_dmem.hex"}]
 set app_hex  [expr {[llength $argv] > 2 ? [lindex $argv 2] : "$root/fw/build/app_firmware.hex"}]
