@@ -46,7 +46,7 @@ Hai thế giới: **Secure** (lõi Master, bus AXI, ngoại vi APB, Secure DMA, 
 
 | # | Giới hạn | Hệ quả |
 | --- | --- | --- |
-| L1 | `VERIFY_GATE` mặc định 0 trong `SoC_Top` và `DE2_Top` | Cổng chỉ có hiệu lực khi bật. Firmware đã gọi `CHECK` (P-13, I-08), còn phải đặt 1 trước RTL freeze và chạy lại test firmware với cổng bật |
+| L1 | `VERIFY_GATE` mặc định 1 trong `SoC_Top` từ 07/11 (đã đóng giới hạn cũ). `SYSCSR` riêng lẻ vẫn mặc định 0 | `SoC_Irq_tb` đặt 0 vì chương trình assembly của nó nhả App không qua `CHECK`. Dùng `SoC_Top` với mặc định thì App chỉ chạy sau `VERIFIED` |
 | L2 | `MIN_VER` và `KEY_LOCK` xóa bởi POR, FPGA không có bộ nhớ không mất dữ liệu | Mô hình OTP chỉ đúng trong một lần cấp nguồn. Bản ASIC cần OTP hoặc eFuse thật |
 | L3 | Khóa HMAC là hằng trong RTL (tham số `KEY`) | Chỉ để demo, không phải khóa bí mật |
 | L4 | Chỉ so hash hoặc HMAC, không có chữ ký bất đối xứng | Không có chuỗi chứng chỉ và không thu hồi khóa |
