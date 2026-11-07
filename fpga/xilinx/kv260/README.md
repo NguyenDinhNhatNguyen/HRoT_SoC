@@ -14,14 +14,18 @@ SoC trên kit Kria KV260 (K26 SOM, chip `xck26-sfvc784-2LV-c`). Phần PL của 
 
 KV260 chỉ có một header PL còn trống là PMOD (8 chân, các net `HDA11` đến `HDA18`). Chân lấy từ XDC của chính AMD (`Xilinx/kria-vitis-platforms`, `kv260/platforms/kv260_bist/xdc/pin.xdc`).
 
-| Cổng | Net | Chân |
-| --- | --- | --- |
-| `uart_tx` | HDA11 | H12 |
-| `uart_rx` | HDA12 | E10 |
-| `led_app` | HDA13 | D10 |
-| `led[0]` đến `led[4]` | HDA14 đến HDA18 | C11, B10, E12, D11, B11 |
+| Cổng | Net | Chân FPGA | Pmod pin | J2 |
+| --- | --- | --- | --- | --- |
+| `uart_tx` | HDA11 | H12 | 1 | J2.1 |
+| `uart_rx` | HDA12 | E10 | 2 | J2.3 |
+| `led_app` | HDA13 | D10 | 3 | J2.5 |
+| `led[0]` | HDA14 | C11 | 4 | J2.7 |
+| `led[1]` | HDA15 | B10 | 7 | J2.2 |
+| `led[2]` | HDA16 | E12 | 8 | J2.4 |
+| `led[3]` | HDA17 | D11 | 9 | J2.6 |
+| `led[4]` | HDA18 | B11 | 10 | J2.8 |
 
-Chỉ có 5 LED vì PMOD chỉ có 8 chân. Mã kết quả boot (8 bit) vẫn in đầy đủ trên UART. Tên net HDA là tên của carrier card, số chân vật lý trên PMOD khác với số HDA, nên đối chiếu với sơ đồ nguyên lý carrier card trước khi cắm module ngoài. UART cần module USB-UART mức 3,3 V, chọn chéo TX và RX theo module.
+Chỉ có 5 LED vì PMOD chỉ có 8 chân. Mã kết quả boot (8 bit) vẫn in đầy đủ trên UART. Pmod pin 5 và 11 là GND, pin 6 và 12 là 3,3 V. Cột Pmod pin và J2 đối chiếu từ hai nguồn bên thứ ba khớp nhau (sơ đồ chân của Tom Verbeure và ví dụ I2S của AMD), chưa đối chiếu với sơ đồ nguyên lý carrier card, nên đo lại trước khi cắm module ngoài. UART cần module USB-UART mức 3,3 V, chọn chéo TX và RX theo module.
 
 ## Build và nạp
 
@@ -34,6 +38,6 @@ Chuyển đổi có thể làm ngay trên PC bằng `firmware/make_on_pc.ps1` (d
 ## Chưa kiểm chứng trên board
 
 - Overlay và script làm theo mẫu AMD nhưng chưa chạy trên board thật.
-- ID clock 71 (PL0) lấy từ overlay `kv260-smartcam.dtsi` của AMD, chưa tự đối chiếu với tài liệu.
+- Các nhãn overlay (`fpga_full`, `amba`, `zynqmp_clk`, `zynqmp_reset`), ID clock 71 (PL0) và reset 116 đến 119 đã đối chiếu với mã nguồn linux-xlnx, chưa thử trên board.
 - Baud UART đúng 115200 chỉ khi PL0 thật sự là 50 MHz (bản dựng cho 50,000 MHz).
-- Vị trí các chân PMOD trên connector vật lý.
+- Số chân vật lý của PMOD chưa đối chiếu với sơ đồ nguyên lý.
