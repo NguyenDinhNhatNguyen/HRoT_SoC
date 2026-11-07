@@ -35,4 +35,6 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 
 execute_flow -compile
+# Power estimate with the default toggle rates (not a measurement), written to output_files/hrot_de2.pow.rpt
+execute_module -tool pow
 project_close

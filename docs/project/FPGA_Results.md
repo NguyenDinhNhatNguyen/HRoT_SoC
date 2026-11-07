@@ -23,6 +23,7 @@
 | 26/10 | `9f9e66a` | Lõi thêm Zicsr và trap máy, cổng `irq_timer`/`irq_ext` (P-09, chưa nối trong `SoC_Top`), P-23 đã commit | 10.270 (31%) | 4.840 | 135.168 (28%) | 52 | 53,73 MHz | +1,389 ns (hold +0,391 ns) | Phát |
 | 27/10 | `9f9e66a` + P-13, P-14 (commit `c739654`) | Nối 4 dây ngắt vào hai lõi trong `SoC_Top` (P-14). Boot ROM vẫn là firmware thử của `mkhex.py` (target `make hex`) | 10.509 (32%) | 4.842 | 135.168 (28%) | 52 | 54,21 MHz | +1,554 ns (hold +0,391 ns) | Phát |
 | 04/11 | `f9f82fb` + nối `data_err`, `VERIFY_GATE = 1` | Cổng nhả App bật ở `DE2_Top`, `master_data_err` nối vào lõi Master (P-24), trap handler trong chương trình thử. Boot ROM vẫn là chương trình thử `mkhex.py` | 10.982 (33%) | 4.925 | 135.168 (28%) | 52 | 54,07 MHz | +1,505 ns (tính từ Fmax) | Nguyên |
+| 07/11 | `ce29a2e` | Chạy lại để thêm ước tính công suất (N-30), RTL không đổi so với 04/11. Boot ROM vẫn là chương trình thử `mkhex.py` | 10.982 (33%) | 4.925 | 135.168 (28%) | 52 | 54,07 MHz | +1,505 ns (tính từ Fmax) | Nguyên |
 
 Ô "—" là số chưa có trong báo cáo đã lưu. Setup slack của các dòng Nguyên đo tính từ Fmax (slack = 20 ns − 1000/Fmax), riêng dòng 25/10 lấy từ ghi chú review.
 
@@ -45,6 +46,7 @@ Thay đổi qua từng bước:
 | 26/10 | `d912cdc` + bản thử P-23 | Khối Tuần 8–10 của Nguyên, lõi reset đồng bộ ở `IF_ID_Reg`, `ID_EX_Reg` | 5.530 (26,59%) | 4.092 (9,84%) | 2,5 (5%) | 25 | +3,519 ns | +0,034 ns | 60,7 MHz | Nguyên |
 | 26/10 | `9f9e66a` | P-09 | chưa đo | | | | | | | |
 | 04/11 | `f9f82fb` + nối `data_err`, `VERIFY_GATE = 1` | Cùng thay đổi như dòng DE2 cùng ngày. Gồm P-09, P-13, P-14, P-24 của Phát | 6.136 (29,50%) | 4.401 (10,58%) | 2,5 (5%) | 25 | +3,273 ns | +0,014 ns | 63,8 MHz | Nguyên |
+| 07/11 | `ce29a2e` | Chạy lại để thêm ước tính công suất (N-30) | 6.137 (29,50%) | 4.401 (10,58%) | 2,5 (5%) | 25 | +3,228 ns | +0,018 ns | 59,6 MHz | Nguyên |
 
 Fmax ước tính = 1000 / (20 − WNS) MHz. Vivado không in Fmax trực tiếp. DSP dùng 0 ở mọi lần đo.
 
@@ -56,7 +58,7 @@ Bản `9f9e66a` chưa đo riêng trên Artix-7 vì máy Phát chưa cài Vivado,
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 07/11 | `55ce694` + IOPLL và chân PMOD | PL0 lấy từ IOPLL (đúng 50 MHz), 8 chân PMOD gán theo XDC của AMD, ra `kv260.bit` (7,8 MB) | 6.045 (5,16%) | 4.365 (1,86%) | 2,5 (1,74%) | +5,517 ns | +0,011 ns | 50,000 MHz | Nguyên |
 
-Báo cáo ở `fpga/reports/kv260_*.rpt`. Lần đầu (clock lấy từ RPLL, chưa gán chân) ra 48,485 MHz nên đổi sang IOPLL. Hold chỉ +0,011 ns, theo dõi. Vivado cấp giấy phép cho `xck26`.
+Báo cáo ở `fpga/reports/kv260_*.rpt`. Công suất ước tính của cả ba kit và cách đọc chúng ở `PPA_FPGA.md`. Lần đầu (clock lấy từ RPLL, chưa gán chân) ra 48,485 MHz nên đổi sang IOPLL. Hold chỉ +0,011 ns, theo dõi. Vivado cấp giấy phép cho `xck26`.
 
 ## Đường găng (DE2)
 

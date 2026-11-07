@@ -24,3 +24,5 @@ route_design
 
 report_utilization    -file utilization.rpt
 report_timing_summary -file timing_summary.rpt
+# Power estimate with the default switching activity (not a measurement)
+report_power          -file power.rpt
