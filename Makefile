@@ -11,6 +11,7 @@
 #   make fw          build the Master firmware (CMake + riscv64-unknown-elf)
 #   make de2         synthesis + P&R for the DE2 (Quartus II 13.0sp1)
 #   make xilinx      synthesis + P&R for a Xilinx part (Vivado 2025.2), PART=...
+#   make kv260       synthesis + P&R for the Kria KV260 (Vivado 2025.2), clock from the PS
 #   make clean       remove build output
 # Windows tools are called through WSL interop by absolute path, so PATH doesn't matter.
 # Simulation uses QuestaSim only, never ModelSim.
@@ -74,6 +75,9 @@ de2: hex
 
 xilinx: hex
 	cd fpga/xilinx && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
+
+kv260: hex
+	cd fpga/xilinx/kv260 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build_kv260.tcl -tclargs xck26-sfvc784-2LV-c $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
 
 clean:
 	rm -rf build fw/build fpga/intel_de2/build fpga/xilinx/build vp/build sim/work sim/transcript sim/*.wlf sim/*.hex sim/labels.vh
