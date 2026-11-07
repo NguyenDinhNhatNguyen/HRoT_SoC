@@ -59,6 +59,7 @@ def verif_flow():
             yy += 64
     reg = p.block("regress.sh", "Greps each log for its PASS marker. ** Error or Fatal is a failure. A SKIP also fails", 400, 520, 760, 70, "bus")
     res = p.term("PASS / FAIL per check<br>logs in build/logs/", 1360, 520, 250, 70, "ok")
+    p.block("make cov", "Questa coverage: 12 runs, 16 covergroups (SHA-256, APB, core) and code coverage", 1360, 380, 250, 110, "per")
     p.wire(src, g, "vsim, vlog, make", "n")
     p.wire(reg, res, "", "ok")
     p.group("FPGA flow (separate from make test)", 250, 680, 1400, 260, "sys")

@@ -47,10 +47,11 @@ def secure_boot_flow():
     fail = p.group("fail(code, why): the only way out of a failed boot", fx, fy, fw, fh, "sec", dashed=False, size=13)
     steps = [
         ("1. Kick WDT", 40), ("2. bv_key_lock(): hide the HMAC key", 40),
-        ("3. Write SYSCSR.GUARD = LOCK<br>Boot Guard locks the App (sticky until POR)", 60),
-        ("4. Hardware zeroizes the App RAM (1024 words)", 50),
-        ("5. Poll GUARD.ZERO_DONE (limit SB_GUARD_POLL_LIMIT)", 50),
-        ("6. Log the reason on UART0", 40), ("7. LED = result code (GPIO0), kick WDT", 50),
+        ("3. Log the reason on UART0", 40),
+        ("4. Write SYSCSR.GUARD = LOCK<br>Boot Guard locks the App (sticky until POR)", 60),
+        ("5. Hardware zeroizes the App RAM (1024 words)", 50),
+        ("6. Poll GUARD.ZERO_DONE (limit SB_GUARD_POLL_LIMIT)", 50),
+        ("7. Log ', App locked out', LED = result code (GPIO0), kick WDT", 50),
     ]
     sy = fy + 520
     sids = []

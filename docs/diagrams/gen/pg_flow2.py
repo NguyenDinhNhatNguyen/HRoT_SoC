@@ -26,18 +26,19 @@ def tamper_flow():
     fi, fp, _ = stack(p, 240, 100, [
         ("term", "fail(code, why) called<br>(hash mismatch, bus error, trap...)", 52, "bad"),
         ("step", "wdt_kick(), bv_key_lock()<br>hide the HMAC key", 52, "sec"),
+        ("step", "Log the reason on UART0", 40, "bus"),
         ("step", "Write SYSCSR.GUARD = LOCK", 44, "sys"),
         ("step", "Poll GUARD.ZERO_DONE<br>(limit SB_GUARD_POLL_LIMIT)", 52, "bus"),
         ("dec", "ZERO_DONE seen?", 70, None),
-        ("step", "Log the reason on UART0<br>LED = result code, kick WDT", 52, "bus"),
+        ("step", "Log ', App locked out'<br>LED = result code, kick WDT", 52, "bus"),
         ("term", "App locked out (result code)", 44, "bad"),
     ], 330)
     for a, b in zip(fi, fi[1:]):
         p.wire(a, b, "", "n")
     bad = p.step("SB_HW_ERROR 0xE0<br>log: LOCK did not finish<br>App stays in reset anyway (LOCK is set)", 380, 790, 300, 66, "bad") if False else None
     hz = p.step("Result SB_HW_ERROR 0xE0: App stays in reset anyway,<br>because LOCK is already set", 70, 880, 340, 60, "bad")
-    p.wire(fi[4], hz, "No", "bad", pts=[(45, fp[4][0] + 35), (45, 910)], exit=("0", "0.5"), entry=("0", "0.5"), dashed=True)
-    p.text("Yes", 250, fp[4][0] + 72, 40, 20, 11, True, "#2E7D32")
+    p.wire(fi[5], hz, "No", "bad", pts=[(45, fp[5][0] + 35), (45, 910)], exit=("0", "0.5"), entry=("0", "0.5"), dashed=True)
+    p.text("Yes", 250, fp[5][0] + 72, 40, 20, 11, True, "#2E7D32")
     hi, hp, _ = stack(p, 770, 100, [
         ("step", "LOCK flop set (sticky), zero_busy = 1,<br>zero_cnt = 0", 60, "sec"),
         ("step", "app_rst = 1 at once<br>(sys_rst OR NOT APP_RUN OR LOCK)", 60, "sys"),
@@ -46,8 +47,8 @@ def tamper_flow():
     ], 330)
     for a, b in zip(hi, hi[1:]):
         p.wire(a, b, "", "sec")
-    p.wire(fi[2], hi[0], "GUARD write", "sys", exit=("1", "0.5"), entry=("0", "0.5"))
-    p.wire(hi[3], fi[3], "ZERO_DONE bit", "sec", pts=[(770, 720), (480, 720), (480, fp[3][0] + 26)], exit=("0.5", "1"), entry=("1", "0.5"), dashed=True)
+    p.wire(fi[3], hi[0], "GUARD write", "sys", exit=("1", "0.5"), entry=("0", "0.5"))
+    p.wire(hi[3], fi[4], "ZERO_DONE bit", "sec", pts=[(770, 720), (480, 720), (480, fp[4][0] + 26)], exit=("0.5", "1"), entry=("1", "0.5"), dashed=True)
     p.group("After the lockdown", 540, 780, 460, 280, "zone")
     a1 = p.step("Release attempt: write APP_CTRL = 1", 560, 830, 420, 40, "sys")
     a2 = p.decision("LOCK = 1?", 640, 890, 260, 70)
@@ -101,43 +102,6 @@ def check_fsm():
     p.text("Rules: CHECK runs once per system reset. A passing CHECK raises MIN_VER to APP_VER. MIN_VER and KEY_LOCK survive sys_rst, only POR clears them. While BUSY the ROM Port B belongs to this block.", 880, 1000, 340, 100, 11)
     return p
 
-
-def dma_fsm():
-    p = Page("14 Secure DMA FSM and Firewall Decision", 1560, 960)
-    p.text("Secure DMA FSM and Firewall Decision (rtl/bus/Secure_DMA.v, DMA_Firewall.v)", 40, 8, 1000, 28, 16, True)
-    idle = p.block("IDLE", "START with NBLK > 0: BUSY = 1, ptr = SRC, left = NBLK, w = 0, first = 1. NBLK = 0: DONE at once", 60, 120, 300, 100, "sha")
-    rd = p.block("RD", "Read the source word at ptr (App ROM). Response: swap the bytes if SWAP", 480, 120, 300, 100, "sha")
-    wr = p.block("WR", "Write the word into SHA W[w]. Then ptr += 4, w += 1", 900, 120, 300, 100, "sha")
-    ctl = p.block("CTL", "w = 15: write SHA CTRL = START (and INIT on the first block)", 900, 360, 300, 90, "sha")
-    poll = p.block("POLL", "Read SHA STATUS until DONE = 1. Request stays up, a not-done answer polls again", 480, 360, 300, 90, "sha")
-    p.wire(idle, rd, "Request read", "sha")
-    p.wire(rd, wr, "Word received", "sha")
-    p.wire(wr, rd, "w < 15 and not padding", "sha", pts=[(1050, 270), (630, 270)], exit=("0.5", "1"), entry=("0.5", "1"))
-    p.wire(wr, ctl, "w = 15", "sha")
-    p.wire(ctl, poll, "CTRL written", "sha")
-    nxt = p.step("left > 1: left -= 1, w = 0, back to RD for the next 64-byte block", 480, 520, 300, 56, "sha")
-    pad = p.step("left = 1 and PAD: hash the padding block (state WR with in_pad)", 60, 520, 330, 56, "sha")
-    done = p.step("left = 1 without PAD, or the padding block done:<br>BUSY = 0, DONE = 1, back to IDLE", 480, 640, 300, 64, "ok")
-    p.wire(poll, nxt, "DONE, more blocks", "sha")
-    p.wire(poll, pad, "DONE, last block with PAD", "sha", pts=[(630, 480), (225, 480)], exit=("0", "0.5"), entry=("0.5", "0"))
-    p.wire(poll, done, "DONE, last block", "ok", pts=[(840, 480), (840, 672)], exit=("1", "0.5"), entry=("1", "0.5"))
-    p.wire(nxt, rd, "", "sha", pts=[(440, 548), (440, 170)], exit=("0", "0.5"), entry=("0", "0.5"))
-    p.wire(pad, wr, "", "sha", pts=[(225, 720), (1250, 720), (1250, 170)], exit=("0.5", "1"), entry=("1", "0.5"), dashed=True)
-    err = p.step("In RD, WR, CTL and POLL: fw_viol sets ERR_FW. A bus error response (resp_err) sets ERR_BUS.<br>Either way: BUSY = 0, DONE = 1, back to IDLE, no trap", 60, 790, 560, 70, "bad")
-    p.group("Firewall decision for every request (DMA_Firewall.v)", 700, 740, 780, 190, "sec", dashed=False)
-    d1 = p.decision("aligned?", 730, 790, 150, 70)
-    d2 = p.decision("write?", 920, 790, 130, 70)
-    r1 = p.step("Read: App ROM window<br>0x6000_0000 + 4 KB, or<br>SHA STATUS 0x5000_0044?", 1090, 770, 190, 70, "sec")
-    r2 = p.step("Write: SHA registers<br>0x5000_0000 to 0x5000_0043?", 1090, 850, 190, 60, "sec")
-    ok = p.term("allow", 1320, 770, 120, 40, "ok")
-    no = p.term("violation: ERR_FW", 1290, 860, 180, 40, "bad")
-    p.wire(d1, d2, "Yes", "n")
-    p.wire(d2, r1, "No", "n", exit=("1", "0.3"), entry=("0", "0.5"))
-    p.wire(d2, r2, "Yes", "n", exit=("1", "0.7"), entry=("0", "0.5"))
-    p.wire(r1, ok, "Yes", "ok")
-    p.wire(r2, ok, "Yes", "ok", pts=[(1300, 880), (1300, 790)], exit=("1", "0.5"), entry=("0", "0.8")) if False else None
-    p.wire(r2, no, "No", "bad")
-    return p
 
 
 def bus_flow():
@@ -239,39 +203,4 @@ def reset_flow():
     p.text("Boot Guard LOCK, ZERO_BUSY, ZERO_DONE: the App stays locked after a failed boot<br>Boot_Verifier MIN_VER: the anti-rollback floor<br>Boot_Verifier KEY_LOCK: the key stays hidden after use<br>RST_CAUSE: set to POR by POR, WDT and SW bits are added by those resets (RW1C to clear)", 850, 400, 640, 160, 13)
     p.wire(gen, g1, "sys_rst", "sys")
     p.text("A hung boot is caught by the WDT, which started before the hash. The reset keeps LOCK, so a boot that failed once cannot release the App after a watchdog reset.", 420, 400, 320, 120, 12)
-    return p
-
-
-def verif_flow():
-    p = Page("18 Verification Flow", 1700, 900)
-    p.text("Verification Flow (make test, sim/regress.sh, then the FPGA flow)", 40, 8, 1000, 28, 16, True)
-    src = p.block("Sources", "rtl, dv, fw, vp, sim scripts", 30, 380, 160, 80, "neutral")
-    p.group("make test (QuestaSim 10.2c and SystemC, run in WSL)", 250, 50, 1050, 780, "bus")
-    col = [
-        ("Core", 270, 100, [("11 unit testbenches", "core"), ("ISA program, trap test", "core"), ("RISCV_Core_tb", "core"), ("Hazard test", "core")]),
-        ("UVM", 520, 100, [("AXI4-Lite full", "per"), ("Reset mid-transaction", "per"), ("SHA-256, SHA-256 with reset", "per"), ("APB peripherals", "per")]),
-        ("IP", 770, 100, [("HAL SHA-256 on host", "sha"), ("APB peripherals (79 checks)", "per"), ("Boot_Verifier_tb (30 checks)", "sec")]),
-        ("SoC", 1020, 100, [("Secure boot: good, +TAMPER", "sys"), ("Firmware: good, tampered, access fault", "sys"), ("App firmware: good, tampered", "sys"), ("Interrupts, both cores", "sys"), ("VP: 4 scenarios", "mem")]),
-    ]
-    firsts = []
-    for title, x, y, items in col:
-        p.text(title, x, y - 30, 200, 24, 13, True)
-        yy = y
-        for i, (n, k) in enumerate(items):
-            b = p.block(n, "", x, yy, 230, 56, k)
-            if i == 0:
-                firsts.append(b)
-            yy += 76
-    reg = p.block("regress.sh", "Greps each log for its PASS marker. ** Error or Fatal is a failure. A SKIP also fails", 400, 600, 760, 70, "bus")
-    p.wire(src, firsts[0], "vsim, vlog, make", "n", pts=[(210, 420), (210, 128)], exit=("1", "0.5"), entry=("0", "0.5"))
-    res = p.term("PASS / FAIL per check, logs in build/logs/", 1370, 400, 270, 60, "ok")
-    p.wire(reg, res, "", "ok", pts=[(1340, 635), (1340, 430)], exit=("1", "0.5"), entry=("0", "0.5")) if False else None
-    p.wire(reg, res, "", "ok", exit=("1", "0.5"), entry=("0.5", "1"), pts=[(1500, 635)])
-    p.group("FPGA flow", 250, 860, 1050, 120, "sys") if False else None
-    de2 = p.block("make de2", "Quartus II 13.0sp1. Check: 135,168 memory bits and master_core in the map report", 1340, 520, 330, 80, "sys")
-    xil = p.block("make xilinx", "Vivado 2025.2. Check WNS and WHS, fpga/reports", 1340, 640, 330, 70, "sys")
-    p.wire(src, de2, "", "sys", pts=[(110, 860), (1500, 860)], exit=("0.5", "1"), entry=("0.5", "1"), dashed=True) if False else None
-    rep = p.block("fpga/reports", "Fit summary, Fmax, Artix-7 timing and utilization", 1340, 740, 330, 70, "sys")
-    p.wire(de2, rep, "", "sys", exit=("0.5", "1"), entry=("0.5", "0"), pts=[(1505, 620)]) if False else None
-    p.text("The FPGA run finds what simulation cannot: a ROM with three read ports lost its M4K mapping and Quartus removed the Master Core (04/11).", 1340, 150, 330, 100, 11)
     return p
