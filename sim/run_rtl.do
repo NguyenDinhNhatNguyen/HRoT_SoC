@@ -19,9 +19,10 @@ vlib work
 
 vlog -sv {*}$COV_RTL ../rtl/core/*.v
 vlog -sv {*}$COV_RTL ../rtl/top/RISCV_Core.v
+vlog -sv ../dv/tb/RISCV_Core_sva.sv              ;# assertions bound to every RISCV_Core (P-19)
 vlog -sv {*}$COV_DV ../dv/tb/$TB.sv
 
-vsim -voptargs="+acc" {*}$COV_SIM work.$TB
+vsim -voptargs="+acc" {*}$COV_SIM work.$TB work.RISCV_Core_sva_bind
 if {[info exists COV]} {coverage save -onexit $COV}
 if {[batch_mode]} {log -r /*} else {add wave -position insertpoint sim:/$TB/dut/*}
 run -all

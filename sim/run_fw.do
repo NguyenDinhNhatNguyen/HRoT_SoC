@@ -20,9 +20,10 @@ vlib work
 vlog -sv ../rtl/core/*.v
 vlog -sv ../rtl/bus/*.v ../rtl/periph/*.v ../rtl/mem/*.v ../rtl/crypto/*.v
 vlog -sv ../rtl/top/RISCV_Core.v ../rtl/top/SoC_Top.v
+vlog -sv ../dv/tb/RISCV_Core_sva.sv              ;# assertions on both cores (P-19)
 vlog -sv ../dv/tb/$TB.sv
 
-vsim -voptargs="+acc" work.$TB {*}$PLUSARGS
+vsim -voptargs="+acc" work.$TB work.RISCV_Core_sva_bind {*}$PLUSARGS
 if {[batch_mode]} {log -r /*} else {add wave -position insertpoint sim:/$TB/dut/*}
 run -all
 if {[batch_mode]} {quit -f}

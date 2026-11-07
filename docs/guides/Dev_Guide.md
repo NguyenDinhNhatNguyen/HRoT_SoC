@@ -68,6 +68,7 @@ Từ P-22 (26/10), `regress.sh` chạy mỗi TB đơn vị bằng một `vsim` r
 - RTL/TB Verilog: comment và chuỗi in ra bằng tiếng Anh (từ 25/10/2026, toàn bộ file RTL core, DV và firmware của Phát đã chuyển sang ngày 25/10). Mỗi file có `` `timescale 1ns / 1ps ``, kết thúc bằng newline, xuống dòng LF.
 - TB tự kiểm tra, in một dòng `SUMMARY <TÊN>: PASS = x | FAIL = y` (hoặc `<tb> RESULT: PASS|FAIL`) và gọi `$finish`. `regress.sh` dựa vào dòng này.
 - `*.svh` chỉ được `` `include `` vào `hrot_dv_pkg.sv`, không biên dịch riêng.
+- Assertion của lõi (P-19): `dv/tb/RISCV_Core_sva.sv` có 11 assertion về cổng dữ liệu, fetch và trap, bind vào mọi `RISCV_Core` qua module `RISCV_Core_sva_bind`. `sim/run_rtl.do` và `sim/run_fw.do` biên dịch file này và đưa `work.RISCV_Core_sva_bind` làm top thứ hai của `vsim` (Questa 10.2c không elaborate `bind` để ở compilation unit). Chỉ chạy trên Questa. Assertion FAIL in `** Error`, nên `make test` tính là FAIL.
 - RTL reset active-high, còn interface UVM `axi4_lite_if` và `apb_if` reset active-low (`rst_n`).
 - Firmware: C11 freestanding, rv32i (không M), không libc, nhân/chia lấy từ libgcc, build `-Os` từ 27/10 để vừa Boot ROM 4 KB. Địa chỉ ngoại vi lấy theo `docs/spec/SoC_Memory_Map.md` (I-02).
 - Sau mỗi lần đổi RTL phải chạy lại `make de2`: bộ nhớ DE2 phải còn 135.168 bit và `RISCV_Core:master_core` phải có trong báo cáo map. Mô phỏng không bắt được lỗi Quartus bỏ cả lõi khi một ROM có cổng đọc thứ ba (04/11, xem `docs/project/FPGA_Results.md`).

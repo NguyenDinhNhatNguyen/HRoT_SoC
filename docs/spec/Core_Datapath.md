@@ -1,6 +1,6 @@
 # Sơ đồ khối datapath lõi RISC-V 5 tầng
 
-> Người giữ: Phát (P-07). Cập nhật: 26/10/2026 (thêm phần CSR và trap của P-09). RTL: `rtl/core/`, ghép tầng ở `rtl/top/RISCV_Core.v`.
+> Người giữ: Phát (P-07). Cập nhật: 07/11/2026 (đối chiếu với trang 04 của bộ sơ đồ N-31), 26/10/2026 (thêm phần CSR và trap của P-09). RTL: `rtl/core/`, ghép tầng ở `rtl/top/RISCV_Core.v`.
 
 ![Sơ đồ khối datapath 5 tầng](img/core_datapath_5stage.webp)
 
@@ -45,3 +45,5 @@ Sơ đồ đúng ở mức khối. Các điểm sau đơn giản hóa so với R
 4. **Nhãn sót:** mũi tên MEM → MEM_WB_Reg còn chữ "Text".
 5. **Đầu vào của Hazard_Unit và Forwarding_Unit** (`MemRead_EX`, `Rd_EX`, `Rs1/Rs2`, `Rd_MEM`, `Rd_WB`, `RegWrite_*`) chưa vẽ.
 6. **Phần P-09 (26/10):** `Sys_Decoder`, `CSR_Unit`, các `Pipe_Reg` phụ, cổng `irq_timer`/`irq_ext` và đường `trap_redirect` về IF chưa có trong hình. Cổng `data_err` vào `CSR_Unit` (P-24, 04/11) cũng chưa có.
+
+Từ 05/11 có bản vẽ mới ở mức khối: trang 04 của bộ sơ đồ (`docs/diagrams/png/04_master_core.png`, Nguyên vẽ cho N-31, sinh từ `docs/diagrams/gen/pg_arch2.py`). Trang này đã giải quyết điểm 1 (Hazard_Detection chỉ giữ PC và chèn bubble, `bus_stall` vẽ riêng), điểm 3 (bộ nhớ lệnh và cổng dữ liệu nằm ngoài lõi), điểm 4 và điểm 6 (Sys_Decoder, CSR_Unit, `irq_timer`/`irq_ext`, redirect của trap và MRET, `data_err`), chỉ chưa vẽ các `Pipe_Reg` phụ. Điểm 2 và 5 (đường hồi tiếp EX → IF, WB → Register_File, dữ liệu forward, đầu vào của Hazard_Detection và Forwarding_Unit) trang 04 mới ghi bằng chữ. Báo cáo dùng trang 04 cho hình mức khối, chỉ cần vẽ thêm nếu muốn một hình mức tín hiệu.

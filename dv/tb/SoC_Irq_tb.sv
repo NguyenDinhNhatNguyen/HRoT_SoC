@@ -5,7 +5,8 @@
 //  - App   : TIMER1 -> irq_timer, Mailbox from the Secure world -> irq_ext
 //  - The testbench pulses gpio0_i[0] when the Master shows 0xA1 and again on 0xA2
 //  - Each program shows its result on its LEDs: 0x01 = PASS, 0x80 | step = FAIL
-// VERIFY_GATE stays 0: the assembly programs release the App Core with APP_CTRL directly, without a CHECK.
+// VERIFY_GATE = 0, set here on purpose: the assembly programs release the App Core with APP_CTRL directly,
+// without a CHECK, so this test keeps working if the SoC_Top default becomes 1 (N-26).
 // Run from sim/ (sim/run_fw.do with TB = SoC_Irq_tb). Ends with "SoC_Irq_tb RESULT: PASS|FAIL".
 module SoC_Irq_tb;
 
@@ -21,7 +22,7 @@ module SoC_Irq_tb;
     wire       uart0_tx;
     wire       uart1_tx;
 
-    SoC_Top #(.BOOT_HEX("../dv/tests/asm/soc_irq_master.hex"), .RAM_HEX(""),
+    SoC_Top #(.VERIFY_GATE(0), .BOOT_HEX("../dv/tests/asm/soc_irq_master.hex"), .RAM_HEX(""),
               .APP_HEX("../dv/tests/asm/soc_irq_app.hex")) dut(
         .clk(clk), .reset_system(rst), .app_running(),
         .uart0_tx(uart0_tx), .uart0_rx(1'b1), .gpio0_o(led0), .gpio0_i(gpio0_i), .boot_strap(4'h0),
