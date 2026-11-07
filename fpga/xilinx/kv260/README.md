@@ -25,7 +25,7 @@ KV260 chỉ có một header PL còn trống là PMOD (8 chân, các net `HDA11`
 | `led[3]` | HDA17 | D11 | 9 | J2.6 |
 | `led[4]` | HDA18 | B11 | 10 | J2.8 |
 
-Chỉ có 5 LED vì PMOD chỉ có 8 chân. Mã kết quả boot (8 bit) vẫn in đầy đủ trên UART. Pmod pin 5 và 11 là GND, pin 6 và 12 là 3,3 V. Cột Pmod pin và J2 đối chiếu từ hai nguồn bên thứ ba khớp nhau (sơ đồ chân của Tom Verbeure và ví dụ I2S của AMD), chưa đối chiếu với sơ đồ nguyên lý carrier card, nên đo lại trước khi cắm module ngoài. UART cần module USB-UART mức 3,3 V, chọn chéo TX và RX theo module.
+Chỉ có 5 LED vì PMOD chỉ có 8 chân. Mã kết quả boot (8 bit) vẫn in đầy đủ trên UART. Theo chuẩn Digilent 2x6, Pmod pin 5 và 11 là GND, pin 6 và 12 là 3,3 V (J2.9 và J2.10 là GND, J2.11 và J2.12 là 3,3 V, suy từ chuẩn, chưa thấy nguồn nào liệt kê). UG1089 xác nhận J2 là header Digilent Pmod 2x6 cấp 3,3 V, 100 mA. Cột chân FPGA khớp XDC của AMD (`Xilinx/Kria-PYNQ`, `kv260/base/vivado/constraints/base.xdc`). Cột J2 khớp XDC của `ikwzm/Kv260-Pmod-gpio-emio` (có chú thích `J2.n` cho từng chân) và hai nguồn trước đó (sơ đồ chân của Tom Verbeure, ví dụ I2S của AMD). Chưa đối chiếu với sơ đồ nguyên lý carrier card (bảng chân của UG1089 không có trong bản v1.0 đã đọc), nên đo thông mạch trước khi cắm module ngoài. UART cần module USB-UART mức 3,3 V, chọn chéo TX và RX theo module.
 
 ## Build và nạp
 
