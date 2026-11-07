@@ -29,6 +29,7 @@ Không còn. `c12b74d`, `98df2fa`, `d862477` đã lên GitHub (07/11, tới `ce2
 | Việc | Chờ ai | Ghi chú |
 | --- | --- | --- |
 | N-30 SDC ASIC | Phát (P-20, P-21) | `asic/SoC_Top.sdc` là khung, cần `CLK_PERIOD_NS` và `IO_DELAY_NS` theo PDK, và kiểm lại việc đồng bộ các đầu vào bất đồng bộ (kể cả `reset_system`) |
+| N-30 số sơ bộ ASIC | không cần chờ | `make asic-yosys` (WSL, docker `iic-osic-tools` phải chạy): 72.012 µm² logic, 7.004 flop, F_max 249 MHz với NanGate45, bộ nhớ là black box. Chỉ là xu hướng. Số chính thức chạy Genus trên server trường với GPDK45, không commit file PDK |
 | N-31 khớp chương báo cáo | Dàn ý chương báo cáo | Sơ đồ và README đã xong, 21 trang sơ đồ |
 
 ## Điều đã biết nhưng chưa chắc
