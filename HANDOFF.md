@@ -12,7 +12,7 @@
 | Sheet: tab "Hướng dẫn & Kiểm thử" và "Mua sắm & Mượn" | Xong |
 
 ## Commit chưa push
-`c12b74d` ignore file firmware KV260, `98df2fa` và `d862477` bảng chân Pmod trong README và `kv260.xdc`. Chỉ push khi Nguyên nói.
+Không còn. `c12b74d`, `98df2fa`, `d862477` đã lên GitHub (07/11, tới `ce29a2e`).
 
 ## Việc chờ kiểm (cần board hoặc cần người)
 | Mục | Việc | Ở đâu |

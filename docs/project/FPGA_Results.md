@@ -79,5 +79,5 @@ Ngưỡng theo dõi (R2 trong `Project_Plan.md`): DE2 còn dư khoảng 7% so v�
 ## Cách thêm một lần đo
 
 1. Chạy `make de2` (máy Phát: `make de2 QUARTUS=/mnt/d/altera/13.0sp1/quartus/bin64/quartus_sh.exe`) hoặc `make xilinx`.
-2. Lấy số từ `fpga/intel_de2/build/output_files/hrot_de2.fit.summary` (LE, thanh ghi, bộ nhớ, chân) và `hrot_de2.sta.rpt` (mục "Slow Model Fmax Summary", "Slow Model Setup: 'clk50'"), hoặc từ `artix7_utilization.rpt`, `artix7_timing_summary.rpt` của Vivado.
+2. Lấy số từ `fpga/intel/de2/build/output_files/hrot_de2.fit.summary` (LE, thanh ghi, bộ nhớ, chân) và `hrot_de2.sta.rpt` (mục "Slow Model Fmax Summary", "Slow Model Setup: 'clk50'"), hoặc từ `artix7_utilization.rpt`, `artix7_timing_summary.rpt` của Vivado.
 3. Thêm một dòng vào bảng, ghi commit đã đo (nếu đo trên thay đổi chưa commit thì ghi rõ), người đo, và đường găng nếu đổi.
