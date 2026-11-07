@@ -12,6 +12,7 @@
 #   make de2         synthesis + P&R for the DE2 (Quartus II 13.0sp1)
 #   make xilinx      synthesis + P&R for a Xilinx part (Vivado 2025.2), PART=...
 #   make kv260       synthesis + P&R for the Kria KV260 (Vivado 2025.2), clock from the PS
+#   make asic-yosys  trend numbers for SoC_Top with Yosys + NanGate45 in docker (asic/run_yosys.sh)
 #   make clean       remove build output
 # Windows tools are called through WSL interop by absolute path, so PATH doesn't matter.
 # Simulation uses QuestaSim only, never ModelSim.
@@ -32,7 +33,7 @@ RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx clean
+.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys clean
 
 test:
 	bash sim/regress.sh
@@ -75,6 +76,9 @@ de2: hex
 
 xilinx: hex
 	cd fpga/xilinx/artix7 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build.tcl -tclargs $(PART) $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
+
+asic-yosys:
+	bash asic/run_yosys.sh
 
 kv260: hex
 	cd fpga/xilinx/kv260 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build_kv260.tcl -tclargs xck26-sfvc784-2LV-c $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
