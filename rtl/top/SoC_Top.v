@@ -72,6 +72,7 @@ module SoC_Top #(
         .data_err(master_data_err),     // P-24: SLVERR or DECERR on a CPU access traps (mcause 5 load, 7 store)
         .instr_addr(boot_addr),
         .instr_rdata(boot_data),
+        .instr_stall(1'b0),             // R8: the Boot ROM answers in the same cycle (falling-edge read)
         .data_addr(master_data_addr),
         .data_wdata(master_data_wdata),
         .data_wstrb(master_data_wstrb),
@@ -389,6 +390,7 @@ module SoC_Top #(
         .data_err(1'b0),                // the App APB bus ignores PSLVERR for now (P-24)
         .instr_addr(app_instr_addr),
         .instr_rdata(app_instr),
+        .instr_stall(1'b0),             // R8: same for the App ROM
         .data_addr(app_data_addr),
         .data_wdata(app_data_wdata),
         .data_wstrb(app_data_wstrb),

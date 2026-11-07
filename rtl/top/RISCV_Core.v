@@ -7,7 +7,8 @@
 // - bus_stall freezes the global pipeline
 // - Forwarding_Unit and Hazard_Detection are integrated inside RISCV_Core
 // - Instruction and data memories sit outside the core:
-//     instr_rdata must be valid before the next rising edge after instr_addr changes
+//     instr_rdata must be valid before the next rising edge after instr_addr changes, otherwise hold
+//     instr_stall = 1 (R8: a rising-edge SRAM for the ASIC answers one cycle late)
 //     data_rdata must be valid before the next rising edge after data_addr changes, otherwise hold bus_stall = 1
 //     (the SoC memories read synchronously on the falling edge, so the core still sees the data in the same cycle)
 // - Byte/half load and store: data_wstrb selects the byte lanes, MEM_Stage sign- or zero-extends loads
@@ -16,6 +17,9 @@
 //   irq_timer and irq_ext follow I-01: level-high, synchronous to clk, held until the source clears them
 // - Access fault (P-24, I-01): data_err high in the cycle the data access in MEM completes (bus_stall
 //   low) means SLVERR or DECERR, and traps with mcause 5 (load) or 7 (store), mtval = data_addr
+// - Fetch wait (R8): instr_stall high = instr_rdata is not valid this cycle. The core treats it like a
+//   load-use stall: PC and IF/ID hold, a bubble goes into ID/EX, EX/MEM/WB keep running. A redirect
+//   (branch, jump, trap) still wins. Tie it to 0 when the instruction memory answers in the same cycle
 //
 // Integration notes:
 // - Keep ALUResult_MEM declared only once
@@ -32,6 +36,7 @@ module RISCV_Core(
 
     input  [31:0] instr_rdata,
     output [31:0] instr_addr,
+    input         instr_stall,   // instr_rdata not valid this cycle, fetch waits (R8)
 
     input  [31:0] data_rdata,
     output [31:0] data_addr,
@@ -54,7 +59,7 @@ wire [31:0] PCTarget_EX_out;
 wire        LoadUseStall;
 wire        PipelineStall;
 
-assign PipelineStall = bus_stall | LoadUseStall;
+assign PipelineStall = bus_stall | LoadUseStall | instr_stall;
 
 wire flush_IF_ID;
 wire flush_ID_EX;
@@ -66,7 +71,7 @@ wire        redirect_any = PCSrc_EX | trap_redirect;
 wire [31:0] redirect_pc  = trap_redirect ? trap_target : PCTarget_EX_out;
 
 assign flush_IF_ID = redirect_any & ~bus_stall;
-assign flush_ID_EX = (redirect_any | LoadUseStall) & ~bus_stall;
+assign flush_ID_EX = (redirect_any | LoadUseStall | instr_stall) & ~bus_stall;
 
 // WB feedback to ID_EX
 wire        RegWrite_WB;

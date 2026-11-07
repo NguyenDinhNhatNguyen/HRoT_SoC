@@ -16,7 +16,7 @@ module RISCV_Core_tb;
     RISCV_Core dut (
         .clk(clk), .rst(rst), .bus_stall(bus_stall), .data_err(1'b0),
         .instr_rdata(instr_rdata), .data_rdata(data_rdata),
-        .instr_addr(instr_addr), .data_wdata(data_wdata), .data_wstrb(data_wstrb),
+        .instr_addr(instr_addr), .instr_stall(1'b0), .data_wdata(data_wdata), .data_wstrb(data_wstrb),
         .data_we(data_we), .data_re(data_re),
         .PC_debug(PC_debug), .Instr_debug(Instr_debug),
         .RegWrite_WB_debug(RegWrite_WB_debug), .Rd_WB_debug(Rd_WB_debug), .Result_WB_debug(Result_WB_debug)

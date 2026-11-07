@@ -11,7 +11,9 @@
 //    cancelled and repeated, or that runs when it should have been cancelled, shows up in the count
 //  - Fault window (P-24): an access to 0xF000_0000 and up gets data_err in the cycle it completes, like a
 //    SLVERR/DECERR on the SoC bus. A store there writes nothing
-//  - Each program runs twice: without stall, and with random bus_stall (the pipeline must freeze correctly)
+//  - Each program runs three times: without stall, with random bus_stall (the pipeline must freeze correctly),
+//    and with random bus_stall plus random instr_stall (R8: the fetch waits). While instr_stall is high the
+//    ROM answers 0xFFFF_FFFF, an illegal instruction, so a core that took it would trap and fail the program
 //  - Result read from TOHOST (0x3FC): 1 = PASS, (n<<1)|1 = FAIL at CHECK number n
 // Plusarg: +HEX=<path to .hex> runs only that program (default paths are relative to sim/)
 module RISCV_Core_prog_tb;
@@ -20,9 +22,9 @@ module RISCV_Core_prog_tb;
     localparam IRQ       = 32'h3F8;
     localparam ACC       = 32'h3F4;
     localparam ACC_CNT   = 32'h3F0;
-    localparam MAX_CYCLE = 5000;
+    localparam MAX_CYCLE = 8000;
 
-    reg clk = 1'b0, rst = 1'b1, bus_stall = 1'b0;
+    reg clk = 1'b0, rst = 1'b1, bus_stall = 1'b0, instr_stall = 1'b0;
     always #5 clk = ~clk;
 
     wire [31:0] instr_addr, data_addr, data_wdata;
@@ -32,7 +34,7 @@ module RISCV_Core_prog_tb;
     reg  [31:0] imem [0:511];
     reg  [31:0] dmem [0:255];
 
-    wire [31:0] instr_rdata = imem[instr_addr[10:2]];
+    wire [31:0] instr_rdata = instr_stall ? 32'hFFFF_FFFF : imem[instr_addr[10:2]];
     wire        irq_timer   = dmem[IRQ[9:2]][0];
     wire        irq_ext     = dmem[IRQ[9:2]][1];
     wire [31:0] data_rdata  = dmem[data_addr[9:2]];
@@ -57,7 +59,7 @@ module RISCV_Core_prog_tb;
     RISCV_Core dut (
         .clk(clk), .rst(rst), .bus_stall(bus_stall), .data_err(data_err),
         .irq_timer(irq_timer), .irq_ext(irq_ext),
-        .instr_rdata(instr_rdata), .instr_addr(instr_addr),
+        .instr_rdata(instr_rdata), .instr_addr(instr_addr), .instr_stall(instr_stall),
         .data_rdata(data_rdata), .data_addr(data_addr), .data_wdata(data_wdata),
         .data_wstrb(data_wstrb), .data_we(data_we), .data_re(data_re),
         .PC_debug(), .Instr_debug(), .RegWrite_WB_debug(), .Rd_WB_debug(), .Result_WB_debug()
@@ -72,7 +74,8 @@ module RISCV_Core_prog_tb;
     //             instruction cut by an interrupt does not count). Key = {instr[30], funct3, opcode}, and
     //             {instr[31:20], funct3, opcode} for the system instructions. Loads and stores x stall mode
     //   cg_trap:  each trap cause and MRET, with and without random bus_stall
-    //   cg_pipe:  forwarding paths, load-use stall, taken branch or jump, trap redirect, stalled access
+    //   cg_pipe:  forwarding paths, load-use stall, taken branch or jump, trap redirect, stalled access,
+    //             fetch wait (instr_stall) alone, with a redirect and with a load-use stall
     wire        leave_mem = !rst && dut.valid_MEM && !bus_stall && !dut.u_CSR_Unit.take_irq;
     wire [31:0] mem_instr = imem[dut.PC_MEM[10:2]];
     wire [10:0] key       = {mem_instr[30], mem_instr[14:12], mem_instr[6:0]};
@@ -137,8 +140,9 @@ module RISCV_Core_prog_tb;
             wildcard bins store = {11'b?_???_0100011};
         }
         cp_stall: coverpoint stall_mode {
-            bins off = {0};
-            bins on  = {1};
+            bins off   = {0};
+            bins bus   = {1};
+            bins fetch = {2};
         }
         mem_x_stall: cross cp_mem, cp_stall;
     endgroup
@@ -156,8 +160,9 @@ module RISCV_Core_prog_tb;
             bins mret    = {[33'h1_0000_0000:33'h1_FFFF_FFFF]};
         }
         cp_stall: coverpoint stall_mode {
-            bins off = {0};
-            bins on  = {1};
+            bins off   = {0};
+            bins bus   = {1};
+            bins fetch = {2};
         }
         cause_x_stall: cross cp_cause, cp_stall;
     endgroup
@@ -178,6 +183,9 @@ module RISCV_Core_prog_tb;
         cp_trap_rd:   coverpoint dut.trap_redirect { bins hit = {1'b1}; }
         cp_mem_stall: coverpoint (bus_stall && (data_we || data_re)) { bins hit = {1'b1}; }
         load_use_x_stall: cross cp_load_use, cp_mem_stall;
+        cp_fetch_wait:     coverpoint (instr_stall && !bus_stall)       { bins hit = {1'b1}; }
+        cp_wait_redirect:  coverpoint (instr_stall && dut.flush_IF_ID) { bins hit = {1'b1}; }
+        cp_wait_load_use:  coverpoint (instr_stall && dut.LoadUseStall) { bins hit = {1'b1}; }
     endgroup
 
     cg_instr c_instr = new();
@@ -185,9 +193,11 @@ module RISCV_Core_prog_tb;
     cg_pipe  c_pipe  = new();
 `endif
 
-    // Random bus_stall on ~30% of cycles (second run only)
-    always @(negedge clk)
-        bus_stall <= (stall_mode != 0) && !rst && (($urandom % 10) < 3);
+    // Random bus_stall on ~30% of cycles (second and third run), random instr_stall on ~30% (third run)
+    always @(negedge clk) begin
+        bus_stall   <= (stall_mode != 0) && !rst && (($urandom % 10) < 3);
+        instr_stall <= (stall_mode == 2) && !rst && (($urandom % 10) < 3);
+    end
 
     task automatic run_program(input [255:0] name);
         integer cycles;
@@ -230,6 +240,8 @@ module RISCV_Core_prog_tb;
             run_program("No stall");
             stall_mode = 1;
             run_program("Random bus_stall");
+            stall_mode = 2;
+            run_program("Random bus_stall and instr_stall");
         end
     endtask
 

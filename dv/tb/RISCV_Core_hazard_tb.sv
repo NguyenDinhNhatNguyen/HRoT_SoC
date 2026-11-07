@@ -11,7 +11,7 @@ module RISCV_Core_hazard_tb;
     wire [4:0]  rd;
 
     RISCV_Core dut(
-        .clk(clk),.rst(rst),.bus_stall(1'b0),.data_err(1'b0),.instr_rdata(imem[ia[7:2]]),.instr_addr(ia),
+        .clk(clk),.rst(rst),.bus_stall(1'b0),.data_err(1'b0),.instr_rdata(imem[ia[7:2]]),.instr_addr(ia),.instr_stall(1'b0),
         .data_rdata(dmem[da[7:2]]),.data_addr(da),.data_wdata(dw),.data_we(we),.data_re(re),
         .PC_debug(pcd),.Instr_debug(ind),.RegWrite_WB_debug(rw),.Rd_WB_debug(rd),.Result_WB_debug(res));
 

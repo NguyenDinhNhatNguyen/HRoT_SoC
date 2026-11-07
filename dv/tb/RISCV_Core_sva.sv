@@ -10,7 +10,7 @@
 //               a_stall_holds    while bus_stall is high the access stays exactly the same (I-01 bus contract)
 //   fetch       a_pc_aligned     the fetch address is word aligned
 //               a_pc_redirect    a branch, jump or trap redirect lands on its target the next cycle
-//               a_pc_hold        a load-use stall or bus_stall without a redirect holds the PC
+//               a_pc_hold        a load-use stall, instr_stall (R8) or bus_stall without a redirect holds the PC
 //   traps       a_no_trap_stall  no trap and no redirect from MEM while bus_stall is high
 //               a_irq_not_mem    an interrupt is taken only on an instruction that is not a load or store
 //               a_trap_target    a trap jumps to mtvec, MRET to mepc

@@ -30,6 +30,7 @@
 | `LoadUseStall` | `Hazard_Detection` (load ở EX, lệnh ở ID đọc đúng thanh ghi đó) | Giữ PC và IF/ID, chèn bubble vào ID/EX |
 | `PCSrc_EX` | `Branch_Unit` (nhánh lấy, JAL, JALR) | PC nhảy tới `PCTarget_EX`, flush IF/ID và ID/EX |
 | `bus_stall` | Bên ngoài lõi (`SoC_Top`: `(data_we \| data_re) & ~resp_valid`) | Đóng băng toàn pipeline: PC, IF/ID, ID/EX, EX/MEM, MEM/WB |
+| `instr_stall` | Bên ngoài lõi (R8, 07/11). `SoC_Top` nối 0 vì ROM trả dữ liệu ngay trong chu kỳ | `instr_rdata` chưa hợp lệ: giống stall load-use, PC và IF/ID giữ, ID/EX nhận bubble, EX/MEM/WB vẫn chạy. Redirect vẫn được ưu tiên |
 | `ForwardA`, `ForwardB` | `Forwarding_Unit` | Chọn toán hạng EX từ thanh ghi, MEM (`ForwardResult_MEM`) hoặc WB (`Result_WB`) |
 | `trap_redirect` | `CSR_Unit` (trap hoặc MRET ở MEM, chỉ khi không `bus_stall`) | PC nhảy tới `mtvec` (trap) hoặc `mepc` (MRET), flush IF/ID, ID/EX và biến lệnh rời EX thành bubble. Ưu tiên hơn `PCSrc_EX` |
 | `trap_kill` | `CSR_Unit` (trap) | Hủy lệnh ở MEM: không ghi thanh ghi. Ngắt chỉ nhận trên lệnh hợp lệ không truy cập bộ nhớ, nên không giao dịch bus nào bị cắt hay lặp |
