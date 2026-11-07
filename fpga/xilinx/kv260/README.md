@@ -29,7 +29,7 @@ Chỉ có 5 LED vì PMOD chỉ có 8 chân. Mã kết quả boot (8 bit) vẫn i
 make kv260        # trong WSL, ra fpga/xilinx/kv260/build/kv260.bit và báo cáo
 ```
 
-Nạp theo cách của AMD cho firmware PL tùy biến (Linux Kria): chép `kv260.bit` vào `firmware/`, rồi trên board chạy `install_on_board.sh` (cần `sudo apt install bootgen-xlnx device-tree-compiler`). Script đổi `.bit` thành `.bit.bin` bằng `bootgen`, đổi `.dtsi` thành `.dtbo` bằng `dtc`, chép vào `/lib/firmware/xilinx/kv260-hrot/` và gọi `xmutil unloadapp`, `xmutil loadapp`. Clock PL0 do overlay đặt (`assigned-clock-rates`), không phải do bitstream.
+Chuyển đổi có thể làm ngay trên PC bằng `firmware/make_on_pc.ps1` (dùng `bootgen` và `dtc` của Vitis, đã chạy thử ra `.bit.bin` và `.dtbo`), khi đó board không cần mạng. Hoặc làm trên board: nạp theo cách của AMD cho firmware PL tùy biến (Linux Kria): chép `kv260.bit` vào `firmware/`, rồi trên board chạy `install_on_board.sh` (cần `sudo apt install bootgen-xlnx device-tree-compiler`). Script đổi `.bit` thành `.bit.bin` bằng `bootgen`, đổi `.dtsi` thành `.dtbo` bằng `dtc`, chép vào `/lib/firmware/xilinx/kv260-hrot/` và gọi `xmutil unloadapp`, `xmutil loadapp`. Clock PL0 do overlay đặt (`assigned-clock-rates`), không phải do bitstream.
 
 ## Chưa kiểm chứng trên board
 
