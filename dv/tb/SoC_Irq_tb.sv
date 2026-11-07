@@ -6,7 +6,7 @@
 //  - The testbench pulses gpio0_i[0] when the Master shows 0xA1 and again on 0xA2
 //  - Each program shows its result on its LEDs: 0x01 = PASS, 0x80 | step = FAIL
 // VERIFY_GATE = 0, set here on purpose: the assembly programs release the App Core with APP_CTRL directly,
-// without a CHECK, so this test keeps working if the SoC_Top default becomes 1 (N-26).
+// without a CHECK, while the SoC_Top default is 1 since 07/11 (N-26).
 // Run from sim/ (sim/run_fw.do with TB = SoC_Irq_tb). Ends with "SoC_Irq_tb RESULT: PASS|FAIL".
 module SoC_Irq_tb;
 
