@@ -54,9 +54,9 @@ Bản `9f9e66a` chưa đo riêng trên Artix-7 vì máy Phát chưa cài Vivado,
 
 | Ngày | Commit | Thay đổi | LUT | FF | BRAM tile | WNS | WHS | Clock | Người đo |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 07/11 | `09670b9` + `make kv260` | Lần đo đầu: block design chỉ có PS, `pl_clk0` đặt 50 MHz, chân chưa gán (cổng tự đặt, chưa ra bitstream) | 6.045 (5,16%) | 4.368 (1,86%) | 2,5 (1,74%) | +6,070 ns | +0,015 ns | 48,485 MHz (PLL của PS chia ra, không đúng 50) | Nguyên |
+| 07/11 | `55ce694` + IOPLL và chân PMOD | PL0 lấy từ IOPLL (đúng 50 MHz), 8 chân PMOD gán theo XDC của AMD, ra `kv260.bit` (7,8 MB) | 6.045 (5,16%) | 4.365 (1,86%) | 2,5 (1,74%) | +5,517 ns | +0,011 ns | 50,000 MHz | Nguyên |
 
-Báo cáo ở `fpga/reports/kv260_*.rpt`. Hold chỉ +0,015 ns, theo dõi. Clock thực 48,485 MHz làm baud UART `BAUD_DIV = 26` lệch khoảng 3% so với 115200, nên kiểm lại khi nối UART.
+Báo cáo ở `fpga/reports/kv260_*.rpt`. Lần đầu (clock lấy từ RPLL, chưa gán chân) ra 48,485 MHz nên đổi sang IOPLL. Hold chỉ +0,011 ns, theo dõi. Vivado cấp giấy phép cho `xck26`.
 
 ## Đường găng (DE2)
 

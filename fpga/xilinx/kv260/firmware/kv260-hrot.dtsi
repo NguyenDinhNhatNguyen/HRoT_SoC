@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device-tree overlay for the HRoT_SoC PL design on the Kria KV260.
+ * Modelled on AMD's kv260-smartcam.dtsi (Xilinx/kria-apps-firmware). The design has no AXI or AFI
+ * connection to the PS, so only the PL reset, the firmware name and the PL0 clock are set.
+ * clocks 71 is PL0_REF in the smartcam overlay, and the SoC runs on it at 50 MHz.
+ */
+
+/dts-v1/;
+/plugin/;
+
+&fpga_full {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	firmware-name = "kv260-hrot.bit.bin";
+	resets = <&zynqmp_reset 116>, <&zynqmp_reset 117>, <&zynqmp_reset 118>, <&zynqmp_reset 119>;
+};
+
+&amba {
+	clocking0: clocking0 {
+		#clock-cells = <0>;
+		assigned-clock-rates = <50000000>;
+		assigned-clocks = <&zynqmp_clk 71>;
+		clock-output-names = "fabric_clk";
+		clocks = <&zynqmp_clk 71>;
+		compatible = "xlnx,fclk";
+	};
+};

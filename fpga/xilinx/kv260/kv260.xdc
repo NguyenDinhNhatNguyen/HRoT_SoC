@@ -4,7 +4,18 @@
 set_false_path -from [get_ports uart_rx]
 set_false_path -to   [get_ports {led[*] led_app uart_tx}]
 
-# Pin assignments: not set yet. AMD publishes no carrier card XDC. UG1089 points to the carrier card
-# schematic, so take PACKAGE_PIN and IOSTANDARD from there (PMOD CC J2 or another header) and
-# check the IO voltage of the bank before connecting any external module. Example of the form:
-# set_property -dict {PACKAGE_PIN <pin> IOSTANDARD LVCMOS33} [get_ports uart_tx]
+# Pins: the 8 PMOD pins HDA11 to HDA18 (3.3 V bank), taken from AMD's own constraints for the KV260
+# https://github.com/Xilinx/kria-vitis-platforms  kv260/platforms/kv260_bist/xdc/pin.xdc
+# The HDA names are the carrier card nets, check them against the PMOD connector in the carrier card
+# schematic before wiring a module (the physical pin numbers of the PMOD differ from the HDA numbering)
+set_property PACKAGE_PIN H12 [get_ports uart_tx]
+set_property PACKAGE_PIN E10 [get_ports uart_rx]
+set_property PACKAGE_PIN D10 [get_ports led_app]
+set_property PACKAGE_PIN C11 [get_ports {led[0]}]
+set_property PACKAGE_PIN B10 [get_ports {led[1]}]
+set_property PACKAGE_PIN E12 [get_ports {led[2]}]
+set_property PACKAGE_PIN D11 [get_ports {led[3]}]
+set_property PACKAGE_PIN B11 [get_ports {led[4]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {uart_tx uart_rx led_app led[*]}]
+set_property SLEW SLOW [get_ports {uart_tx led_app led[*]}]
+set_property DRIVE 4 [get_ports {uart_tx led_app led[*]}]

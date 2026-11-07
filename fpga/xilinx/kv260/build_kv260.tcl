@@ -1,6 +1,6 @@
 # Vivado build for the Kria KV260, run from fpga/xilinx/kv260 (or `make kv260`):
 #   vivado -mode batch -source build_kv260.tcl -tclargs <part> [boot_hex] [ram_hex] [app_hex]
-# Stops after place and route and the reports. There is no bitstream until kv260.xdc has the pins.
+# Runs synthesis, place and route, the reports and the bitstream (kv260.bit).
 set here [file normalize [file dirname [info script]]]
 set root [file normalize "$here/../../.."]
 set part     [expr {[llength $argv] > 0 ? [lindex $argv 0] : "xck26-sfvc784-2LV-c"}]
@@ -29,3 +29,4 @@ route_design
 
 report_utilization    -file utilization.rpt
 report_timing_summary -file timing_summary.rpt
+write_bitstream -force kv260.bit
