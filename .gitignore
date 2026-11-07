@@ -24,3 +24,24 @@ fpga/xilinx/kv260/firmware/kv260-hrot.bif
 fpga/xilinx/kv260/firmware/kv260-hrot.bit.bin
 fpga/xilinx/kv260/firmware/kv260-hrot.dtbo
 fpga/xilinx/kv260/firmware/kv260.bit
+
+
+# ASIC flow: PDK-derived files and run outputs are never committed (the repo is public).
+# Only text reports go into the repo. Cell libraries stay on the school server.
+asic/run*/
+asic/out*/
+asic/lib/
+asic/pdk/
+asic/**/*.gds
+asic/**/*.gds2
+asic/**/*.oas
+asic/**/*.spef
+asic/**/*.sdf
+asic/**/*.def
+asic/**/*.lib
+asic/**/*.lef
+asic/**/*.tf
+asic/**/*.captbl
+asic/**/*.db
+asic/**/*_netlist.v
+asic/**/*_pnr.v
