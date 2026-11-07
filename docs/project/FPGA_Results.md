@@ -50,6 +50,14 @@ Fmax ước tính = 1000 / (20 − WNS) MHz. Vivado không in Fmax trực tiếp
 
 Bản `9f9e66a` chưa đo riêng trên Artix-7 vì máy Phát chưa cài Vivado, dòng 04/11 là lần đo đầu sau P-09, P-13, P-14 và P-24. Hold chỉ còn +0,014 ns, vẫn dương nhưng sát, theo dõi ở các lần đo sau.
 
+## Kria KV260 (xck26-sfvc784-2LV-c)
+
+| Ngày | Commit | Thay đổi | LUT | FF | BRAM tile | WNS | WHS | Clock | Người đo |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 07/11 | `09670b9` + `make kv260` | Lần đo đầu: block design chỉ có PS, `pl_clk0` đặt 50 MHz, chân chưa gán (cổng tự đặt, chưa ra bitstream) | 6.045 (5,16%) | 4.368 (1,86%) | 2,5 (1,74%) | +6,070 ns | +0,015 ns | 48,485 MHz (PLL của PS chia ra, không đúng 50) | Nguyên |
+
+Báo cáo ở `fpga/reports/kv260_*.rpt`. Hold chỉ +0,015 ns, theo dõi. Clock thực 48,485 MHz làm baud UART `BAUD_DIV = 26` lệch khoảng 3% so với 115200, nên kiểm lại khi nối UART.
+
 ## Đường găng (DE2)
 
 | Lần đo | Đường găng | Slack |

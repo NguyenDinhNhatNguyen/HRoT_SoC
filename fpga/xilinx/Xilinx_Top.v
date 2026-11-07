@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-// Board wrapper for a Xilinx kit (not chosen yet). The SoC itself lives in rtl/, shared with the DE2.
+// Generic board wrapper for a Xilinx part (Artix-7 trial build, and the core of the KV260 top). The SoC itself lives in rtl/, shared with the DE2.
 // Once the kit is picked, change the ports here and in constraints.xdc, never rtl/.
 module Xilinx_Top #(
     parameter BOOT_HEX = "firmware_imem.hex",
