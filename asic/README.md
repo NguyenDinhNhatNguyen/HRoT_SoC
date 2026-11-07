@@ -45,5 +45,18 @@ Giới hạn, chỉ là xu hướng:
 - NanGate45 là thư viện mở, không phải GPDK45, và Yosys khác Genus.
 - Bộ nhớ là black box: không có diện tích bộ nhớ, đường đi qua bộ nhớ không được tính giờ, `Data_Memory` mất 32 cổng AND của `MemRead`. Diện tích ASIC thật phải cộng macro SRAM.
 - SDC tối thiểu: độ trễ I/O bằng 0, không có `set_max_transition` hay `set_max_fanout`, không đặt dây, clock lý tưởng.
-- 7.004 flip-flop nhiều hơn 4.925 thanh ghi của Quartus trên DE2. Có thể do Yosys giữ cả các khối mà top FPGA nối hằng (UART1, GPIO1) còn Quartus rút gọn chúng, chưa kiểm.
+- 7.004 flip-flop nhiều hơn 4.925 thanh ghi của Quartus trên DE2. Phần lớn là file thanh ghi: một `Register_File` ra 1.024 flip-flop trong Yosys (đo riêng, `$_DFFE_PP_`), hai lõi là 2.048. Quartus đưa file thanh ghi vào M4K, nên bộ nhớ DE2 là 135.168 bit = 131.072 bit của 4 bộ nhớ cộng 4.096 bit (2 lõi, mỗi lõi 2 bản cho 2 cổng đọc). Chênh 7.004 − 4.925 = 2.079 nên còn 31 flip-flop chưa giải thích.
+- Yosys báo `check` không có vòng tổ hợp, không có chân nhiều driver hay chân không driver (0 vấn đề), không suy ra latch, và chỉ một cảnh báo: bộ nhớ `W` của SHA-256 (16 × 32 bit) thành thanh ghi.
+- Không kiểm tương đương netlist với RTL. Tên flip-flop mất sau tổng hợp nên so sánh tự động không khớp được, và netlist cần mô hình hành vi của cell NanGate45 để mô phỏng. Việc này để cho LEC (Conformal) trên server trường, như `rv32i_soc` làm.
 - Không kiểm tương đương netlist với RTL.
+
+## Macro SRAM của trường
+
+Chân của `sram_2k_macro` (từ `rv32i_soc`, `syn/yosys/sram_2k_macro_bb.v`): `CLK`, `CEN`, `WEN`, `A[9:0]`, `D[31:0]`, `Q[31:0]`. Một cổng địa chỉ, nghĩa là bộ nhớ một cổng đọc ghi (1RW) sâu 1.024 từ 32 bit (4 KB). Theo `docs/macro_notes.md` của `rv32i_soc`, 16 KB là 4 macro.
+
+| Bộ nhớ của `SoC_Top` | Cổng cần | Ghép với macro |
+| --- | --- | --- |
+| `master_ram`, `app_ram` (`Data_Memory`) | 1 cổng đọc ghi, có `wstrb` | Vừa một macro, cần wrapper cho byte enable (macro không có chân tương ứng) |
+| `boot_rom`, `app_rom` (`Dual_Port_ROM`) | 2 cổng đọc cùng lúc (A: lấy lệnh, B: AXI và Boot_Verifier) | Một macro chỉ có một cổng nên cần hai macro chứa cùng nội dung, hoặc chia thời gian truy cập (đổi thiết kế) |
+
+Chưa biết diện tích, thời gian truy cập và lớp kim loại chắn của macro: các số này nằm ở `.lib`, `.lef` trên server (`rv32i_soc` có `scripts/macro_info.sh` để in ra). Macro cho `Q` ra ở chu kỳ sau, khác bộ nhớ đọc cạnh xuống hiện tại, nên thay vào là sửa thiết kế (đường lấy lệnh của lõi), cần Phát xác nhận.
