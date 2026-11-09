@@ -4,7 +4,7 @@
 # Follows AMD's flow (Xilinx/kria-apps-firmware): .bit to .bit.bin with bootgen, .dtsi to .dtbo with dtc,
 # then the three files go to /lib/firmware/xilinx/<name>/ and xmutil loads them
 set -e
-NAME=kv260-hrot
+NAME=${1:-kv260-hrot}  # e.g. ./install_on_board.sh kv260-pinwalk
 cd "$(dirname "$0")"
 # Skip the conversion when make_on_pc.ps1 already made $NAME.bit.bin and $NAME.dtbo on the PC
 if [ ! -f $NAME.bit.bin ] || [ ! -f $NAME.dtbo ]; then

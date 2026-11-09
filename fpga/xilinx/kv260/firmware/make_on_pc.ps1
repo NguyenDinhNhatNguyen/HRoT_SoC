@@ -2,11 +2,12 @@
 # so the board needs no internet and no apt install. Run in PowerShell from this folder after
 # `make kv260` (copies ..\build\kv260.bit here). Then copy kv260-hrot.bit.bin, kv260-hrot.dtbo,
 # shell.json and install_on_board.sh to the board and run install_on_board.sh there.
-param([string]$Vitis = "D:\AMDDesignTools\2025.2\Vitis")
+param([string]$Vitis = "D:\AMDDesignTools\2025.2\Vitis", [string]$name = "kv260-hrot", [string]$Bit = "..\build\kv260.bit")
 $ErrorActionPreference = "Stop"
-$name = "kv260-hrot"
 Set-Location $PSScriptRoot
-Copy-Item ..\build\kv260.bit "$name.bit" -Force
+Copy-Item $Bit "$name.bit" -Force
+# Other names (e.g. -name kv260-pinwalk -Bit ..\pintest\build\pinwalk.bit) reuse the kv260-hrot overlay
+if ($name -ne "kv260-hrot") { (Get-Content kv260-hrot.dtsi -Raw) -replace "kv260-hrot", $name | Set-Content -Encoding ascii "$name.dtsi" }
 (Get-Content template.bif -Raw) -replace '@BIT@', "$name.bit" | Set-Content -Encoding ascii "$name.bif"
 & "$Vitis\bin\bootgen.bat" -image "$name.bif" -arch zynqmp -o "$name.bit.bin" -w
 & "$Vitis\bin\dtc.exe" -I dts -O dtb -o "$name.dtbo" "$name.dtsi"

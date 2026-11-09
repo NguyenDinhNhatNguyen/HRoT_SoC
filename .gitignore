@@ -24,6 +24,7 @@ fpga/xilinx/kv260/firmware/kv260-hrot.bif
 fpga/xilinx/kv260/firmware/kv260-hrot.bit.bin
 fpga/xilinx/kv260/firmware/kv260-hrot.dtbo
 fpga/xilinx/kv260/firmware/kv260.bit
+fpga/xilinx/kv260/firmware/kv260-pinwalk.*
 
 
 # ASIC flow: PDK-derived files and run outputs are never committed (the repo is public).
