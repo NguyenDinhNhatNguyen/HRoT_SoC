@@ -5,6 +5,7 @@
 #   vsim -c -do "set TB SoC_Irq_tb; do run_fw.do"                        interrupts on both cores (P-14)
 #   vsim -c -do "set TB SoC_App_tb; do run_fw.do"                        firmware of both cores (P-16), add
 #                                                                        "set PLUSARGS +TAMPER" for a tampered App ROM
+#   vsim -c -do "set TB ASIC_Top_tb; do run_fw.do"                       ASIC wrapper: reset synchronizer, then both firmwares
 # SoC_Fw_tb and SoC_App_tb need the firmware first: make fw (fw/build/firmware_imem.hex, firmware_dmem.hex,
 # app_firmware.hex). SoC_App_tb takes the golden hash from firmware_imem.hex, as built.
 # app.hex comes from dv/sw/mkhex.py, fw_golden.hex from fw/tools/golden.py app.hex,
@@ -19,7 +20,7 @@ vlib work
 
 vlog -sv ../rtl/core/*.v
 vlog -sv ../rtl/bus/*.v ../rtl/periph/*.v ../rtl/mem/*.v ../rtl/crypto/*.v
-vlog -sv ../rtl/top/RISCV_Core.v ../rtl/top/SoC_Top.v
+vlog -sv ../rtl/top/RISCV_Core.v ../rtl/top/SoC_Top.v ../asic/ASIC_Top.v
 vlog -sv ../dv/tb/RISCV_Core_sva.sv              ;# assertions on both cores (P-19)
 vlog -sv ../dv/tb/$TB.sv
 
