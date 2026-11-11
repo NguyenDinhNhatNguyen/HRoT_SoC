@@ -8,7 +8,7 @@ và App Core chỉ được nhả reset khi phần cứng báo VERIFIED. Ảnh s
 
 | Lệnh | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ bằng QuestaSim + SystemC (TB đơn vị, lõi, UVM, HAL, ngoại vi APB, Boot_Verifier, SoC secure boot, firmware thật của hai lõi, ngắt, access fault, VP) |
+| `make test` | Regression toàn bộ bằng QuestaSim + SystemC (TB đơn vị, lõi, UVM, HAL, ngoại vi APB, Boot_Verifier, SoC secure boot, firmware thật của hai lõi, ngắt, access fault, top ASIC `ASIC_Top`, VP) |
 | `make cov` | Coverage trên QuestaSim (code coverage và covergroup của lõi, SHA-256, APB), báo cáo ở `build/cov/` |
 | `make sim-unit` | 11 testbench đơn vị của lõi |
 | `make sim-core TB=RISCV_Core_tb` | Mô phỏng lõi (mặc định `RISCV_Core_prog_tb`) |

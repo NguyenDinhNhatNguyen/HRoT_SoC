@@ -47,7 +47,7 @@ Lõi là Harvard nhưng Boot ROM có cổng đọc dữ liệu: `lw` từ `0x000
 
 | Lệnh (thư mục gốc repo) | Việc |
 | --- | --- |
-| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256, APB), HAL host, APB, Boot_Verifier, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`, cổng nhả App bật), firmware thật của hai lõi, ngắt, access fault, VP. Log ở `build/logs/`. Bước bị SKIP (thiếu gcc hoặc toolchain) làm regression FAIL, `ALLOW_SKIP=1 make test` để chấp nhận. `SEED=<n> make test` đổi seed của các test UVM ngẫu nhiên |
+| `make test` | Regression toàn bộ (`sim/regress.sh`): 11 TB đơn vị, chương trình ISA, `RISCV_Core_tb`, hazard, UVM (full + reset giữa giao dịch, SHA-256, APB), HAL host, APB, Boot_Verifier, SoC secure boot (ảnh đúng và ảnh bị sửa `+TAMPER`, cổng nhả App bật), firmware thật của hai lõi, ngắt, access fault, `ASIC_Top_tb` (bộ đồng bộ reset của top ASIC, từ 11/11), VP. Log ở `build/logs/`. Bước bị SKIP (thiếu gcc hoặc toolchain) làm regression FAIL, `ALLOW_SKIP=1 make test` để chấp nhận. `SEED=<n> make test` đổi seed của các test UVM ngẫu nhiên |
 | `make cov` | Coverage (P-19, `sim/cov.sh`): test lõi, SHA-256 và APB trên Questa với code coverage (`+cover`) và covergroup (`+define+HROT_COV`), gộp UCDB, báo cáo ở `build/cov/` (`summary.txt`, `cvg.txt`, `code.txt`, `html/`). Mã 0 khi mọi lần chạy PASS và đạt mục tiêu của test plan SHA-256 mục 6. Không nằm trong `make test` |
 | `make sim-unit` | 11 TB đơn vị (`sim/run_unit.do`), mỗi TB in `SUMMARY <TÊN>: PASS = x \| FAIL = y` |
 | `make sim-core TB=<tb>` | `RISCV_Core_prog_tb` (mặc định, chạy `core_isa_test` và `core_trap_test`) \| `RISCV_Core_tb` \| `RISCV_Core_hazard_tb` |

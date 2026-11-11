@@ -5,7 +5,7 @@
 | File | Nội dung |
 | --- | --- |
 | `SoC_Top.sdc` | Khung SDC cho `SoC_Top`: một clock `clk`, false path cho các đầu vào bất đồng bộ, `set_output_delay` cho đầu ra |
-| `ASIC_Top.v`, `ASIC_Top.sdc` | Top cấp chip bọc `SoC_Top` (Phát, 09/11): bộ đồng bộ reset bật bất đồng bộ, nhả đồng bộ 2 flop từ chân `rst_pad_n`, như `DE2_Top` làm trên FPGA. SDC đi kèm tính giờ `reset_system` bên trong (đã qua bộ đồng bộ). Test: `dv/tb/ASIC_Top_tb.sv` (`set TB ASIC_Top_tb; do run_fw.do`) |
+| `ASIC_Top.v`, `ASIC_Top.sdc` | Top cấp chip bọc `SoC_Top` (Phát, 09/11): bộ đồng bộ reset bật bất đồng bộ, nhả đồng bộ 2 flop từ chân `rst_pad_n`, như `DE2_Top` làm trên FPGA. SDC đi kèm tính giờ `reset_system` bên trong (đã qua bộ đồng bộ). Test: `dv/tb/ASIC_Top_tb.sv` (`set TB ASIC_Top_tb; do run_fw.do`), nằm trong `make test` từ 11/11 |
 | `run_yosys.sh`, `yosys/` | Chạy thử Yosys + NanGate45 cho `SoC_Top` trong docker để lấy số sơ bộ (`make asic-yosys`). Bộ nhớ là black box (`yosys/mem_bb.v`) |
 
 File này chưa có chu kỳ clock và độ trễ I/O, vì chúng phụ thuộc PDK mà Phát chọn. Giá trị đề xuất để bắt đầu (Phát, 09/11): `CLK_PERIOD_NS = 20` (50 MHz như bản FPGA, Yosys cho đường flop sang flop 4,0 ns nên còn dư nhiều) và `IO_DELAY_NS = 4` (khoảng 20% chu kỳ). Hai số này chốt lại khi chạy Genus với GPDK45 trên server trường. Đặt hai biến `CLK_PERIOD_NS` và `IO_DELAY_NS` trước khi `source`, nếu thiếu thì SDC báo lỗi. Cổng lấy từ `rtl/top/SoC_Top.v`. Các đầu vào được coi là bất đồng bộ theo ràng buộc FPGA (`fpga/intel/de2/constraints.sdc`), cần kiểm lại khi có vòng pad của ASIC, nhất là `reset_system` (top FPGA đồng bộ nó trước khi vào `SoC_Top`).

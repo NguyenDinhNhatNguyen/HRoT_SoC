@@ -89,6 +89,9 @@ if command -v riscv64-unknown-elf-gcc > /dev/null && make -s fw            > $LO
     check "SoC: App firmware, good"     $LOG/app.log       "SoC_App_tb RESULT: PASS"
     (cd sim && "$QUESTA" -c -do "set TB SoC_App_tb; set PLUSARGS +TAMPER; do run_fw.do" < /dev/null) > $LOG/app_tamper.log 2>&1
     check "SoC: App firmware, tampered" $LOG/app_tamper.log "SoC_App_tb RESULT: PASS"
+    # ASIC wrapper (N-30): reset synchronizer, then both firmwares through ASIC_Top
+    (cd sim && "$QUESTA" -c -do "set TB ASIC_Top_tb; do run_fw.do" < /dev/null)            > $LOG/asic_top.log 2>&1
+    check "ASIC_Top: reset sync + boot" $LOG/asic_top.log  "ASIC_Top_tb RESULT: PASS"
 else
     skip "SoC: firmware" "no RISC-V toolchain or make fw failed, see $LOG/fw_build.log"
 fi
