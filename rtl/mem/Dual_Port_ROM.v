@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 // 4 KB read-only ROM, used as the Boot ROM and as the App ROM
 // - Port A: instruction fetch (Master Core for the Boot ROM, App Core for the App ROM)
 // - Port B: read-only AXI slave on the Master bus (loads, and hashing the App image).

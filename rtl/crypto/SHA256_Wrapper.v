@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 // SHA-256 core behind an AXI4-Lite slave
 // Registers (offset from 0x5000_0000):
 //   0x00-0x3C : W      (WO) the 16 block words, 0x00 = W0

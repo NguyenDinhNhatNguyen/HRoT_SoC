@@ -44,7 +44,7 @@ Kiểm nhanh sau mỗi lần đo DE2: bộ nhớ phải còn 135.168 bit và `RI
 
 ## SDC bàn giao ASIC
 
-Khung SDC nằm ở `asic/SoC_Top.sdc`. Chu kỳ clock ASIC và độ trễ I/O do Phát (P-20, P-21) đặt theo PDK, file báo lỗi nếu chưa đặt hai biến `CLK_PERIOD_NS` và `IO_DELAY_NS`.
+Khung SDC nằm ở `asic/SoC_Top.sdc`. Chu kỳ clock ASIC và độ trễ I/O do Phát (P-20, P-21) đặt theo PDK, file báo lỗi nếu chưa đặt hai biến `CLK_PERIOD_NS` và `IO_DELAY_NS`. Từ 09/11 có thêm top cấp chip `asic/ASIC_Top.v` (bộ đồng bộ reset) và `asic/ASIC_Top.sdc`, giá trị đề xuất 20 ns và 4 ns ghi ở `asic/README.md`.
 
 ## Chưa làm được
 

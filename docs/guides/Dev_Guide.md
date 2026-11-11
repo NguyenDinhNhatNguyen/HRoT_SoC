@@ -1,6 +1,6 @@
 # Hướng dẫn phát triển — HRoT SoC
 
-> Đọc file này trước khi sửa code. Bộ sơ đồ kiến trúc và lưu đồ (18 trang): `docs/diagrams/`. Mô hình bảo mật và truy vết yêu cầu: `docs/spec/Security_Model.md`. Trạng thái và việc đang chờ: `docs/project/Project_Status.md`. Tiến độ, hạn và giao diện đã chốt (I-xx): [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) — **nguồn chính thức, đọc bản mới nhất trước khi làm**. Bản đồ địa chỉ/thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
+> Đọc file này trước khi sửa code. Bộ sơ đồ kiến trúc và lưu đồ (21 trang): `docs/diagrams/`. Mô hình bảo mật và truy vết yêu cầu: `docs/spec/Security_Model.md`. Trạng thái và việc đang chờ: `docs/project/Project_Status.md`. Tiến độ, hạn và giao diện đã chốt (I-xx): [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit) — **nguồn chính thức, đọc bản mới nhất trước khi làm**. Bản đồ địa chỉ/thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 ## 1. Cấu trúc và phân công
 
@@ -13,7 +13,7 @@
 | `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình tự kiểm tra cho lõi (`core_isa_test`, `core_trap_test`) · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
 | `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), driver Secure DMA (`dma.h`, P-15), driver Mailbox (`mailbox.h`, P-16), driver WDT (`wdt.h`), driver Boot_Verifier (`boot_verifier.h`, I-08), crt0, linker script, Secure Boot (`fw/secure_boot`, P-13), firmware App demo (`fw/app`, P-16), `fw/tools/golden.py`, `fw/tools/rom_image.py` | Phát |
 | `vp/` | Virtual Platform SystemC/TLM-2.0 (chạy HAL thật) | Nguyên |
-| `fpga/` (`intel/de2`, `xilinx/artix7`, `xilinx/kv260`, `reports`) · `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC | Nguyên · Phát |
+| `fpga/` (`intel/de2`, `xilinx/artix7`, `xilinx/kv260`, `reports`) · `asic/`, `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC (`asic/`: SDC, `ASIC_Top`, luồng thử Yosys, xem `asic/README.md`) | Nguyên · Phát |
 
 ## 2. Giao kèo của `RISCV_Core` với bên ngoài
 

@@ -1,9 +1,7 @@
-# ============================================================================
 # sim/run_soc.do -- whole SoC (both cores + bus + peripherals). Run from sim/:
 #   vsim -c -do run_soc.do
 # Needs the test firmware first: python3 ../dv/sw/mkhex.py .   (writes boot.hex, app.hex, labels.vh)
 #   set PLUSARGS +TAMPER   runs the tampered-image case (Boot Guard must lock the App out)
-# ============================================================================
 if {![file exists boot.hex]} {exec python ../dv/sw/mkhex.py .}
 if {![info exists PLUSARGS]} {set PLUSARGS {}}
 

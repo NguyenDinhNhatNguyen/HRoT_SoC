@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `default_nettype none   // every net must be declared: a typo is an error, not a silent 1-bit wire
 
-// ============================================================
 // SoC top: two isolated worlds
 //  - Master (Secure): Master Core + its own boot ROM + its own AXI4-Lite bus
 //      0x0000_0000 : Boot ROM. The core fetches from it, and port B also serves loads (read-only),
@@ -21,7 +20,6 @@
 //      any other address is the App RAM (aliased, as before)
 //  - Bridges between the worlds: App ROM port B (Master reads App), Mailbox (one word each way),
 //    and Boot Guard in SYSCSR (Master locks the App out and clears its RAM)
-// ============================================================
 module SoC_Top #(
     parameter VERIFY_GATE = 1,   // 1 = the App Core runs only after Boot_Verifier says VERIFIED (I-08). Default 1 since 07/11, SoC_Irq_tb sets 0 because its assembly releases the App without a CHECK
     parameter BOOT_HEX = "../fw/build/firmware_imem.hex",   // secure_boot .text (fw/CMakeLists.txt)

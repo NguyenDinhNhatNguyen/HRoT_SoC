@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 // Generic AXI4-Lite slave. It handles the AXI handshakes and exposes a plain register port:
 // reg_wen/reg_waddr/reg_wdata for writes, reg_raddr/reg_rdata (combinational) for reads.
 // RAM, App ROM port B, SHA-256 and the default slave all sit behind one of these.

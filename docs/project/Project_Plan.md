@@ -48,19 +48,21 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 | ID | Hạn | Nội dung | Chủ trì |
 | --- | --- | --- | --- |
-| I-01 | 01/11 | Cổng ngắt của lõi (đã chốt 25/10): `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Dự trữ cho sau P-09: `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | Phát |
+| I-01 | 01/11 | Cổng ngắt của lõi (đã chốt 25/10): `irq_timer`, `irq_ext`: đầu vào mức cao, đồng bộ `clk`, giữ mức tới khi nguồn tự xóa (TIMER0: ghi `mtimecmp`, PLIC: claim/complete), lõi không bắt cạnh → `mip.MTIP` (bit 7) / `mip.MEIP` (bit 11), ưu tiên MEI > MTI. Xong 04/11 (P-24): `data_err` mức cao cùng chu kỳ với `resp_valid` (nối `err_valid` của `AXI4_Lite_Master`) → access fault `mcause` 5 (load) / 7 (store), `mtval` = địa chỉ | Phát |
 | I-02 | 01/11 | Header địa chỉ firmware `fw/hal/soc_map.h` theo `docs/spec/SoC_Memory_Map.md` (việc N-34), đổi map phải báo trước | Nguyên |
 | I-03 | 08/11 | Địa chỉ golden hash trong Boot ROM (cổng đọc dữ liệu) + đổi `linker.ld` đặt `.rodata` vào đó. Xong 27/10: golden ở `0xFE0` | Cả hai |
 | I-04 | 15/11 | Target CMake `app_firmware.hex` + bước sinh golden hash (băm cả 4 KB ROM App). Xong 29/10 (P-16) | Phát |
 | I-05 | — | SHA-256: 66 chu kỳ START→DONE, offset trống OKAY/0, ngoài slave DECERR (đã chốt, RTL khớp từ 25/10) | Nguyên |
 | I-06 | — | UART `BAUD_DIV` mặc định 26 = 115200 baud @ 50 MHz (đã chốt) | Nguyên |
 | I-07 | — | Chỉ commit trên `main`, chạy trong WSL, mô phỏng Questa, `make test` PASS trước khi push (đã chốt). P-22 xong 26/10, `regress.sh` tự cho mọi `vsim` đọc stdin từ `/dev/null` | Cả hai |
+| I-08 | 15/11 | Firmware dùng Boot_Verifier (`0x4000_8000`), MODE 0, `VERIFIED` và phần mềm cũng khớp thì `KEY_LOCK` rồi `APP_CTRL = 1`, `FAIL` thì Boot Guard LOCK. Xong 04/11 (P-18) | Cả hai |
+| I-09 | 22/11 | Bộ nhớ cho ASIC (R8): MEM dùng lại `bus_stall`, IF có cổng `instr_stall`, FPGA nối 0. Chốt 07/11, phía lõi xong 07/11 (`1cf00e6`) | Cả hai |
 
 ## 5. Mốc
 
 | Mốc | Ngày | Nội dung |
 | --- | --- | --- |
-| M1 | 01/11 | Phát chốt cổng ngắt lõi (I-01), TIMER0 + WDT xong. ✅ Xong 25/10 (TIMER0, WDT xong, I-01 đã chốt). P-09 xong 26/10, còn Nguyên nối dây ngắt trong `SoC_Top` |
+| M1 | 01/11 | Phát chốt cổng ngắt lõi (I-01), TIMER0 + WDT xong. ✅ Xong 25/10 (TIMER0, WDT xong, I-01 đã chốt). P-09 xong 26/10, dây ngắt nối trong `SoC_Top` 27/10 (P-14) |
 | M2 | 22/11 | **RTL FREEZE** — toàn SoC biên dịch sạch Questa/Quartus/Vivado, `make test` PASS, 50 MHz |
 | M3 | 29/11 | Demo secure boot trên DE2 (LED + log UART) |
 | M4 | 06/12 | Báo cáo PPA FPGA + functional coverage |
@@ -116,11 +118,11 @@ Cập nhật 26/10/2026, 19 rủi ro, việc sửa R15 là P-23. Cột "Phụ tr
 | R7 | Secure boot mức RTL mới kiểm image đúng, firmware thử chỉ băm "abc" | Trung bình | `SoC_Top_tb` băm cả 4 KB ROM App bằng CPU và bằng DMA, so với golden trong Boot ROM do `mkhex.py` tính bằng `hashlib`, chạy thêm ảnh bị sửa và kiểm App bị khóa, RAM App về 0 (N-35) | Nguyên | Đã xong 26/10 |
 | R8 | Bộ nhớ đọc ở cạnh xuống không hợp với SRAM macro ASIC (Tuần 13–14) | Trung bình | Nguyên thêm tham số chọn bộ nhớ đồng bộ cạnh lên cho bản ASIC, Phát thêm tín hiệu chờ ở IF/MEM để lõi chịu được 1 chu kỳ trễ. Chốt cách làm trước Tuần 12 | Nguyên, Phát | Phía lõi xong 07/11: MEM dùng lại `bus_stall`, IF có cổng `instr_stall` (I-09, đã chốt 07/11). Còn bộ nhớ cạnh lên cho bản ASIC (Nguyên) |
 | R9 | Xuống dòng lẫn LF và CRLF giữa hai máy, diff dễ bị nhiễu | Thấp | Thêm `* text=auto eol=lf` vào `.gitattributes` và `git add --renormalize .` trong một commit riêng, làm lúc cả hai đã push hết | Nguyên | Chờ thời điểm |
-| R10 | WSL của Phát chưa có `make`, `gcc`, toolchain RISC-V | Trung bình | Cài `build-essential`, `python3`, `gcc-riscv64-unknown-elf`, SystemC trước 01/11 | Phát | Đã xong 25/10: `build-essential`, `cmake`, `gcc-riscv64-unknown-elf` 14.2 (có multilib `rv32i/ilp32`), SystemC 2.3.4 build từ mã nguồn ở `/usr/local/systemc-2.3.4`. `make fw`, `make vp`, HAL host test PASS. Còn QuestaSim |
+| R10 | WSL của Phát chưa có `make`, `gcc`, toolchain RISC-V | Trung bình | Cài `build-essential`, `python3`, `gcc-riscv64-unknown-elf`, SystemC trước 01/11 | Phát | Đã xong 25/10: `build-essential`, `cmake`, `gcc-riscv64-unknown-elf` 14.2 (có multilib `rv32i/ilp32`), SystemC 2.3.4 build từ mã nguồn ở `/usr/local/systemc-2.3.4`. `make fw`, `make vp`, HAL host test PASS. QuestaSim 10.2c có từ 05/11 |
 | R11 | Comment trong `fw/linker.ld` còn ghi `0x4000_0000` là Reset Controller và chờ Nguyên xác nhận RAM | Thấp | Nguyên xác nhận: RAM `0x1000_0000` 4 KB đúng với `SoC_Top`, `0x4000_0000` nay là SYSCSR. Phát sửa comment khi đổi `linker.ld` cho I-03 | Phát | Đã sửa 25/10 (comment `linker.ld` ghi SYSCSR, RAM `0x1000_0000` 4 KB đã chốt) |
 | R12 | Bảng chân DE2 đối chiếu theo manual v1.3, Terasic đã có bản 1.6 | Thấp | Xem lại bảng chân trong bản 1.6 trước khi nạp board (Tuần 12) | Nguyên | Đã lên lịch |
 | R13 | Quartus II 13.0sp1 chỉ hỗ trợ một phần SystemVerilog | Thấp | RTL tổng hợp giữ Verilog-2001, SystemVerilog chỉ dùng trong testbench | Cả hai | Đang áp dụng |
-| R14 | Kit Xilinx KV260: nạp board và chân PMOD chưa thử thực tế | Trung bình | Chốt KV260 07/11. `make kv260` ra bitstream: clock PS đúng 50 MHz (IOPLL), WNS +5,52 ns, chân PMOD lấy từ XDC của AMD. Còn thử nạp bằng `xmutil` và đối chiếu chân PMOD vật lý với sơ đồ nguyên lý carrier card | Nguyên | Đang làm (N-29) |
+| R14 | Kit Xilinx KV260: nạp board và chân PMOD chưa thử thực tế | Trung bình | Chốt KV260 07/11. `make kv260` ra bitstream: clock PS đúng 50 MHz (IOPLL), WNS +5,52 ns, chân PMOD lấy từ XDC của AMD. Số chân J2 đã khớp sơ đồ nguyên lý AMD XTP682 (07/11). Còn thử nạp bằng `xmutil` và đo chân PMOD trên board thật | Nguyên | Đang làm (N-29) |
 | R15 | `make de2` lỗi Quartus 10200 ở `IF_ID_Reg.v` và `ID_EX_Reg.v` sau commit `fb0b577` (gộp `rst \|\| flush` vào khối `always @(posedge clk or posedge rst)`), nên luồng Quartus của cả nhóm đang hỏng | Cao | Đổi hai khối sang `always @(posedge clk)` (reset đồng bộ, hợp với `sys_rst` đồng bộ của SoC), mỗi file một dòng. Nguyên đã thử: `make test` PASS, Quartus và Vivado build được | Phát (`rtl/core`) | Đã sửa 26/10 (P-23, commit `9f9e66a`). Nguyên đã thử bản này trên Quartus và Vivado. Phát chạy lại `make de2` 26/10 (Quartus 13.0sp1 ở `D:\altera`, `QUARTUS=/mnt/d/altera/13.0sp1/quartus/bin64/quartus_sh.exe`) trên bản có cả P-09: biên dịch sạch, không còn lỗi 10200, 10.270 LE, Fmax 53,73 MHz |
 | R16 | Dây ngắt hai lõi chưa nối vì lõi chưa có cổng: `timer0_irq`, `plic_irq`, `timer1_irq`, `app_irq_ext`, `master_data_err` | Trung bình | Khi P-09 xong, thêm cổng vào `RISCV_Core` và nối theo comment `TODO(P-09)` trong `SoC_Top.v`, mỗi dây một dòng, rồi viết test ngắt (P-14) | Phát (P-09), Nguyên (nối, test) | Đã nối 27/10 (P-14): `timer0_irq`, `plic_irq`, `app_irq_timer`, `app_irq_ext`. `master_data_err` nối vào lõi Master 04/11 (P-24) |
 | R17 | CPU và DMA cùng dùng SHA-256, ghi chồng lên nhau sẽ cho hash sai | Thấp | DMA giữ SHA-256 khi `BUSY`, firmware chờ `DONE` rồi mới đọc hash hoặc dùng SHA. Đã ghi trong `SoC_Memory_Map.md` và `soc_map.h` | Phát (P-15) | Đã xử lý 29/10: `dma_sha256` kiểm SHA rảnh trước khi chạy, chờ `DONE`, timeout thì không đụng SHA |

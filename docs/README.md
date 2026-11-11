@@ -5,7 +5,7 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | Thư mục | File | Nội dung | Người giữ |
 | --- | --- | --- | --- |
 | `spec/` | [SoC_Memory_Map.md](spec/SoC_Memory_Map.md) | Bản đồ địa chỉ và thanh ghi của hai thế giới (bus, SYSCSR, UART, GPIO, TIMER, WDT, PLIC, Mailbox, Secure DMA, Boot_Verifier, ngắt) | Nguyên |
-| `diagrams/` | [README.md](diagrams/README.md) | Bộ 18 sơ đồ kiến trúc và lưu đồ vận hành (tổng quan, từng khối, Secure Boot, FSM, ngắt, reset), file `.drawio` nhiều trang và PNG cho báo cáo | Nguyên |
+| `diagrams/` | [README.md](diagrams/README.md) | Bộ 21 sơ đồ kiến trúc và lưu đồ vận hành (tổng quan, từng khối, Secure Boot, FSM, ngắt, reset, chân Pmod KV260, VP, testbed FPGA), file `.drawio` nhiều trang và PNG cho báo cáo | Nguyên |
 | `spec/` | [Security_Model.md](spec/Security_Model.md) | Tài sản, kẻ tấn công giả định, yêu cầu bảo mật SR-01..11 kèm truy vết tới RTL và test, giới hạn đã biết | Nguyên |
 | `spec/` | [SHA256_Register_Map.md](spec/SHA256_Register_Map.md) | Thanh ghi và hợp đồng phần cứng–HAL của khối SHA-256 | Phát |
 | `spec/` | [Core_Datapath.md](spec/Core_Datapath.md) | Sơ đồ khối datapath lõi RISC-V 5 tầng, đối chiếu module RTL và tín hiệu stall/flush/forward | Phát |
@@ -13,6 +13,7 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | `guides/` | [Dev_Guide.md](guides/Dev_Guide.md) | Phân công, giao kèo của lõi, cách chạy kiểm tra, quy ước code | Phát |
 | `project/` | [Project_Plan.md](project/Project_Plan.md) | Kế hoạch tổng thể, mốc, lộ trình theo tuần | Phát |
 | `project/` | [Project_Status.md](project/Project_Status.md) | Trạng thái kỹ thuật hiện tại và các điểm cần lưu ý | Phát |
-| `project/` | [FPGA_Results.md](project/FPGA_Results.md) | Số đo DE2 và Artix-7 (LE/LUT, thanh ghi, bộ nhớ, Fmax, slack, đường găng) của mọi lần tổng hợp, để so sánh giữa các phiên bản | Phát |
+| `project/` | [FPGA_Results.md](project/FPGA_Results.md) | Số đo DE2, Artix-7 và KV260 (LE/LUT, thanh ghi, bộ nhớ, Fmax, slack, đường găng) của mọi lần tổng hợp, để so sánh giữa các phiên bản | Phát |
+| `project/` | [PPA_FPGA.md](project/PPA_FPGA.md) | Báo cáo PPA FPGA của ba kit (tốc độ, tài nguyên, công suất ước tính) cho N-30 | Nguyên |
 
 Đổi bản đồ địa chỉ hay giao diện giữa hai người: sửa file trong `spec/`, cập nhật tab "Mốc & Giao diện" trong sheet và báo người còn lại trước.

@@ -47,7 +47,7 @@ Sơ đồ được sinh bằng script trong `gen/`, nên khi RTL đổi có th�
 
 ```text
 cd docs/diagrams/gen
-python export.py            # ghi lại .drawio và 18 ảnh PNG (cần draw.io Desktop)
+python export.py            # ghi lại .drawio và 21 ảnh PNG (cần draw.io Desktop)
 python export.py --no-png   # chỉ ghi .drawio
 ```
 

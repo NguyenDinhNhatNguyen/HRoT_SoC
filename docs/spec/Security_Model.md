@@ -51,7 +51,7 @@ Hai thế giới: **Secure** (lõi Master, bus AXI, ngoại vi APB, Secure DMA, 
 | L3 | Khóa HMAC là hằng trong RTL (tham số `KEY`) | Chỉ để demo, không phải khóa bí mật |
 | L4 | Chỉ so hash hoặc HMAC, không có chữ ký bất đối xứng | Không có chuỗi chứng chỉ và không thu hồi khóa |
 | L5 | `APP_VER` do firmware ghi trước `CHECK` | Firmware gian dối có thể khai phiên bản. Phiên bản nằm trong ảnh được băm nên sửa ảnh sẽ bị bắt, nhưng firmware khai sai số thì không |
-| L6 | `master_data_err` mới nối vào lõi ở một số test (P-24, `SoC_Top.v`) | Mặc định load lỗi `DECERR` trả 0 âm thầm, firmware phải đọc `BUS_ERR` |
+| L6 | `master_data_err` nối cố định vào lõi Master trong `SoC_Top.v` từ 04/11 (P-24), lõi App vẫn nối 0 | Truy cập lỗi của Master gây trap (`mcause` 5/7) và vẫn ghi `BUS_ERR`. Lõi App không nhận access fault vì bus APB của App bỏ qua `PSLVERR` |
 | L7 | Lõi chỉ có chế độ máy (M), không có PMP hay phân quyền | Bảo vệ dựa vào tách bus chứ không phải đặc quyền trong lõi |
 | L8 | Không có cổng debug (JTAG) | Không có lỗ hổng debug, nhưng cũng không có đường debug an toàn |
 | L9 | Không có bộ phát hiện glitch hay so sánh dư thừa | Chỉ chống glitch phần mềm (SR-02), không chống glitch vật lý |

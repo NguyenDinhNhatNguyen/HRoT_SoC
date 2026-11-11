@@ -1,6 +1,6 @@
 # Kết quả tổng hợp FPGA qua các phiên bản
 
-> Lập 26/10/2026 (Phát), đủ số đo tới 27/10 (`9f9e66a` + P-13, P-14). Thư mục `fpga/reports/` chỉ giữ báo cáo của lần đo cuối mà Nguyên commit, mỗi lần đo lại sẽ ghi đè. File này giữ lại số của mọi lần đo để so sánh. Các tài liệu khác (`Project_Plan.md`, `Project_Status.md`, sheet) chỉ ghi số mới nhất và trỏ về đây.
+> Lập 26/10/2026 (Phát), đủ số đo tới 07/11 (`ce29a2e`). Thư mục `fpga/reports/` chỉ giữ báo cáo của lần đo cuối mà Nguyên commit, mỗi lần đo lại sẽ ghi đè. File này giữ lại số của mọi lần đo để so sánh. Các tài liệu khác (`Project_Plan.md`, `Project_Status.md`, sheet) chỉ ghi số mới nhất và trỏ về đây.
 
 ## Thiết bị, công cụ, ràng buộc
 
@@ -69,14 +69,14 @@ Báo cáo ở `fpga/reports/kv260_*.rpt`. Công suất ước tính của cả b
 | 26/10 (`9f9e66a`) | Trong lõi Master: `MEM_WB_Reg.Rd_WB` → forwarding ở ID → `ID_EX_Reg.RD1_EX` (cùng loại đường với lần trước). P-09 không làm đường găng dài thêm | +1,389 ns |
 | 27/10 (`9f9e66a` + P-13, P-14) | Trong lõi Master: `EX_MEM_Reg.Rd_MEM` → forwarding ở ID → `ID_EX_Reg.RD1_EX` (cùng loại đường). Nối dây ngắt không tạo đường găng mới | +1,554 ns |
 
-Ngưỡng theo dõi (R2 trong `Project_Plan.md`): DE2 còn dư khoảng 7% so với 50 MHz. Nếu Fmax xuống dưới 52 MHz thì tách đường forwarding / quyết định nhánh trong lõi. Mỗi khối uncore mới nên giữ slack từ 2 ns trở lên.
+Ngưỡng theo dõi (R2 trong `Project_Plan.md`): DE2 còn dư khoảng 8% so với 50 MHz. Nếu Fmax xuống dưới 52 MHz thì tách đường forwarding / quyết định nhánh trong lõi. Mỗi khối uncore mới nên giữ slack từ 2 ns trở lên.
 
 ## Ghi chú về các lần đo
 
 - Bộ nhớ DE2 (135.168 bit M4K) không đổi qua các lần đo từ 24/10.
 - Lần đo 04/11 bắt được một lỗi mà mô phỏng không thấy: khi Boot ROM có cổng đọc thứ ba cho Boot_Verifier, Quartus không còn ánh xạ ROM vào M4K, ROM thành hằng 0 và toàn bộ lõi Master bị tối ưu mất (LE giả 6.871, bộ nhớ 70.144 bit). Kiểm tra nhanh sau mỗi lần đo: bộ nhớ phải giữ 135.168 bit và `RISCV_Core:master_core` phải còn trong báo cáo map. Cách sửa là cho Boot_Verifier mượn cổng B của ROM.
 - Ở lần `9f9e66a`, Quartus báo `irq_timer`/`irq_ext` của hai lõi chưa nối nên tự nối GND. Từ lần 27/10 dây ngắt đã nối (P-14), logic ngắt trong `CSR_Unit` không còn bị rút gọn nên LE tăng 239, Quartus không còn cảnh báo cổng hở.
-- Báo cáo gốc của lần `9f9e66a` nằm ở `fpga/intel/de2/build/output_files/` trên máy Phát (thư mục build, không commit). Báo cáo trong `fpga/reports/` vẫn là của lần đo 26/10 của Nguyên.
+- Báo cáo gốc của lần `9f9e66a` nằm ở `fpga/intel/de2/build/output_files/` trên máy Phát (thư mục build, không commit). Báo cáo DE2 và Artix-7 trong `fpga/reports/` hiện là của lần đo 04/11 của Nguyên, các file công suất và KV260 là của lần 07/11.
 
 ## Cách thêm một lần đo
 

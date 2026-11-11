@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 module Data_Memory #(
     parameter MEM_SIZE  = 1024, // 4KB
     parameter INIT_FILE = ""    // e.g. firmware_dmem.hex (.rodata/.data), empty = no preload

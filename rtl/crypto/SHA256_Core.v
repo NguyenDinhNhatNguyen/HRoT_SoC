@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 // SHA-256 compression, one round per clock: 64 rounds + 1 cycle to fold into H = 65 cycles per block
 // - start (1-cycle pulse) hashes block_in. init=1 starts from the standard H0-H7 (first block),
 //   init=0 chains from the previous block's hash (multi-block messages)

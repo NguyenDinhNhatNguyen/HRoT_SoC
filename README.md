@@ -19,6 +19,7 @@ và App Core chỉ được nhả reset khi phần cứng báo VERIFIED. Ảnh s
 | `make de2` | Quartus II 13.0sp1 cho DE2 (Cyclone II), kết quả trong `fpga/intel/de2/build` |
 | `make xilinx PART=<part>` | Vivado 2025.2 cho Artix-7 thử, kết quả trong `fpga/xilinx/artix7/build` |
 | `make kv260` | Vivado 2025.2 cho Kria KV260, ra `fpga/xilinx/kv260/build/kv260.bit` |
+| `make asic-yosys` | Số sơ bộ ASIC của `SoC_Top` bằng Yosys + NanGate45 trong docker (xem `asic/README.md`) |
 
 Quy ước: chỉ làm việc trên nhánh `main`, chạy `make test` trước khi push. Mô phỏng chỉ dùng QuestaSim
 (Makefile gọi Questa/Quartus/Vivado trên Windows qua WSL interop, đường dẫn đặt ở đầu Makefile).
@@ -43,6 +44,7 @@ HRoT_SoC/
 ├── vp/             Virtual Platform SystemC/TLM-2.0 (xem vp/README.md)
 ├── sim/            script Questa, regress.sh, run_vp.sh
 ├── fpga/           top bọc chân, constraints, script build và báo cáo FPGA (xem fpga/README.md)
+├── asic/           top cấp chip ASIC_Top, SDC, luồng thử Yosys (xem asic/README.md)
 ├── pd/             luồng ASIC (constraints, scripts, reports)
 └── docs/           tài liệu (xem docs/README.md)
 ```

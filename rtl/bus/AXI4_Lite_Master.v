@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 // AXI4-Lite master: turns one load/store request from the core into a single AXI transaction.
 // One transaction in flight at a time. resp_valid pulses for one cycle when it completes.
 module AXI4_Lite_Master (
