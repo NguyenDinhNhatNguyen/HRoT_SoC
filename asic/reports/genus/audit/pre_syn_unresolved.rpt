@@ -1,0 +1,16 @@
+
+ 	 Check Design Report (c)
+	 ------------------- 
+
+  Unresolved References & Empty Modules
+  ------------------------------------- 
+design 'ASIC_Top' has the following unresolved references
+hinst:ASIC_Top/soc/master_ram
+hinst:ASIC_Top/soc/boot_rom
+hinst:ASIC_Top/soc/app_ram
+hinst:ASIC_Top/soc/app_rom
+Total number of unresolved references in design 'ASIC_Top' : 4
+
+No empty modules in design 'ASIC_Top'
+
+  Done Checking the design.

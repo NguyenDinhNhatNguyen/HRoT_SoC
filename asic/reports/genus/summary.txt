@@ -1,0 +1,1 @@
+top=ASIC_Top period_ns=20.0 cg=1 memories_black_box=4 scan_flops=0 flops=7061 latches=0 icg=213 wns_ps=6976.8
