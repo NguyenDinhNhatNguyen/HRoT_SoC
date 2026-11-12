@@ -45,7 +45,7 @@ HRoT_SoC/
 ├── vp/             Virtual Platform SystemC/TLM-2.0 (xem vp/README.md)
 ├── sim/            script Questa, regress.sh, run_vp.sh
 ├── fpga/           top bọc chân, constraints, script build và báo cáo FPGA (xem fpga/README.md)
-├── asic/           top cấp chip ASIC_Top, SDC, luồng thử Yosys (xem asic/README.md)
+├── asic/           top cấp chip ASIC_Top, SDC, luồng thử Yosys, luồng Genus (xem asic/README.md)
 ├── pd/             luồng ASIC (constraints, scripts, reports)
 └── docs/           tài liệu (xem docs/README.md)
 ```

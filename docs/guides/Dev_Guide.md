@@ -13,7 +13,7 @@
 | `dv/tests/asm/` · `dv/sw/mkhex.py` | Chương trình tự kiểm tra cho lõi (`core_isa_test`, `core_trap_test`) · firmware thử viết tay cho `SoC_Top_tb` | Phát · Nguyên |
 | `fw/` | HAL SHA-256, driver UART/GPIO (`uart.h`, `gpio.h`, P-11), driver Secure DMA (`dma.h`, P-15), driver Mailbox (`mailbox.h`, P-16), driver WDT (`wdt.h`), driver Boot_Verifier (`boot_verifier.h`, I-08), crt0, linker script, Secure Boot (`fw/secure_boot`, P-13), firmware App demo (`fw/app`, P-16), `fw/tools/golden.py`, `fw/tools/rom_image.py` | Phát |
 | `vp/` | Virtual Platform SystemC/TLM-2.0 (chạy HAL thật) | Nguyên |
-| `fpga/` (`intel/de2`, `xilinx/artix7`, `xilinx/kv260`, `reports`) · `asic/`, `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC (`asic/`: SDC, `ASIC_Top`, luồng thử Yosys, xem `asic/README.md`) | Nguyên · Phát |
+| `fpga/` (`intel/de2`, `xilinx/artix7`, `xilinx/kv260`, `reports`) · `asic/`, `pd/` | Tổng hợp FPGA và báo cáo · luồng ASIC (`asic/`: SDC, `ASIC_Top`, luồng thử Yosys, luồng Genus cho server trường, xem `asic/README.md`) | Nguyên · Phát |
 
 ## 2. Giao kèo của `RISCV_Core` với bên ngoài
 

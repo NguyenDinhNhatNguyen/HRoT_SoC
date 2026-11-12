@@ -64,7 +64,7 @@ Chưa biết diện tích, thời gian truy cập và lớp kim loại chắn c�
 
 ## Chạy Genus trên server trường (P-20)
 
-Soạn 12/11/2026 cho riêng HRoT_SoC (top `ASIC_Top`, SDC `ASIC_Top.sdc`, kết quả trong `asic/`). Server `asiclab`, Genus 21.10, PDK ở `~/PDK_GPDK45`. Script mới qua chạy thử khô ở nhà (Tcl với lệnh Genus giả, danh sách RTL elaborate bằng iverilog), chưa chạy Genus thật.
+Soạn 12/11/2026 cho riêng HRoT_SoC (top `ASIC_Top`, SDC `ASIC_Top.sdc`, kết quả trong `asic/`). Server trường, Genus 21.10, PDK ở `~/PDK_GPDK45`. Chạy lần đầu trên server ngày 12/11/2026, kết quả ở mục "Kết quả Genus" bên dưới.
 
 | File | Nội dung |
 | --- | --- |
@@ -124,14 +124,48 @@ Lưu ý về Genus trên server: Genus đọc Verilog-2001 nên không khai báo
 
 Giới hạn: bộ nhớ là black box nên report không có diện tích bộ nhớ và đường đi qua bộ nhớ không được tính giờ, giống lần chạy Yosys. Số đầy đủ cần wrapper macro SRAM (xem mục "Macro SRAM của trường").
 
+## Kết quả Genus (12/11/2026)
+
+Genus 21.10, GPDK45 `slow_vdd1v0` (0,9 V, 125 °C), top `ASIC_Top`, `CG=1`, 4 bộ nhớ là black box. Report bản 20 ns nằm ở `asic/reports/genus/` (`cab84df`).
+
+| Chỉ số (20 ns) | Giá trị |
+| --- | --- |
+| Timing | Đạt, slack +6,977 ns, đường xấu nhất 12,774 ns |
+| Đường xấu nhất | Lõi App: `MEM_WB_Reg/Rd_WB` qua `Forwarding_Unit`, bộ so sánh của ALU, tới `PC[31]` |
+| Diện tích logic | 73.256 µm², 24.791 cell (không gồm bộ nhớ) |
+| Flip-flop | 7.069, trong đó 6.234 (88%) được gate bởi 213 cell clock gating |
+| Scan flop, latch | 8 cell `SMDFFHQX1` (xem ghi chú dưới bảng quét), 0 latch |
+| Design rule | 0 vi phạm max transition, max capacitance, max fanout (cây reset đã được buffer) |
+| Ràng buộc | 0 đầu vào, đầu ra thiếu delay, slew hay tải |
+| Thời gian chạy | Khoảng 10 phút |
+
+Quét chu kỳ cùng ngày (report còn trên server ở `asic/out_sweep/`, chưa vào repo):
+
+| Chu kỳ | Slack (WNS) | F_max ước lượng | Diện tích logic | Design rule |
+| --- | --- | --- | --- | --- |
+| 20 ns | +6,977 ns | 77 MHz | 73.256 µm² | 0 vi phạm |
+| 12 ns | +1,737 ns | 97 MHz | 73.314 µm² | 0 vi phạm |
+| 10 ns | +0,625 ns | 107 MHz | 73.436 µm² | 0 vi phạm |
+| 8 ns | +0,175 ns | 128 MHz | 74.114 µm² | 0 vi phạm |
+
+F_max = 1 / (chu kỳ − WNS), chỉ là ước lượng từ đường xấu nhất, đã gồm 0,15 ns uncertainty. Chưa quét 7 ns và 6 ns nên chưa chốt chu kỳ.
+
+Điểm cần biết khi đọc report:
+
+- `summary.txt` ghi `flops=7061` và `scan_flops=0`, nhưng `clock_gating.rpt` đếm 7.069 flop. 8 flop chênh là cell `SMDFFHQX1` (flop có mux tích hợp, thuộc nhóm cell scan của gsclib045), thấy trong danh sách cell ở cuối `post_syn_design_lint.rpt`. Lần chạy 12/11 chỉ cấm và chỉ đếm tên `SDFF*` nên sót. Genus dùng chúng như flop có mux, không phải chuỗi scan, nên chức năng và timing không sai, nhưng tiêu chí "0 scan flop" chưa đạt. `synth.tcl` đã sửa 13/11 (cấm và đếm cả `SEDFF*`, `SMDFF*`), cần chạy lại trên server để xác nhận.
+- `pre_syn_timing_intent.rpt` báo "multiple drivers" trên `clk`, `app_instr_addr`, `boot_addr`, `reg_raddr`, `reg_wdata`, `reg_wen`, `reg_wstrb`. Đây đều là net nối vào chân của 4 bộ nhớ black box: Genus không biết hướng chân của module chưa phân giải nên coi chúng là nguồn lái. Không phải lỗi RTL.
+- Netlist còn 68 lệnh `assign` (`reg_wstrb` 4, `reg_wdata` 32, `reg_raddr` 32 bit), cùng nguyên nhân trên. Innovus không nhận `assign`, nên cần wrapper macro SRAM trước P-21.
+- `post_syn_design_lint.rpt` báo 502 chân module không có nguồn lái. Tất cả có fanout 0: đó là các bit không dùng (bit địa chỉ cao của slave AXI, chân `stall` hằng của lõi App), vô hại.
+- `gates.rpt` không đưa vào repo vì nó liệt kê từng cell của thư viện kèm diện tích.
+
 ## Việc chỉ làm được trên server trường (Phát, P-20 và P-21)
 
 Ghi 09/11/2026. Những việc dưới cần GPDK45, macro SRAM hoặc công cụ Cadence nên không làm ở nhà được.
 
 | Việc | Cần gì | Ghi chú |
 | --- | --- | --- |
-| Chốt `CLK_PERIOD_NS` và `IO_DELAY_NS` | Genus với GPDK45, thông số pad | Bắt đầu từ 20 ns. Từ 12/11 độ trễ vào ra theo tỉ lệ 24% và 20% chu kỳ của Lab 01, nên chỉ còn chốt chu kỳ. Xong thì báo Nguyên để đóng N-30 |
-| Chạy Genus với `ASIC_Top` làm top, nạp `ASIC_Top.sdc` | GPDK45 | `make asic-genus` (soạn 12/11). Kiểm recovery và removal của reset sau bộ đồng bộ. `set_max_fanout 32` đã có trong SDC (Yosys thấy một flop reset có fanout 893) |
+| Chốt `CLK_PERIOD_NS` và `IO_DELAY_NS` | Genus với GPDK45, thông số pad | Từ 12/11 độ trễ vào ra theo tỉ lệ 24% và 20% chu kỳ của Lab 01, nên chỉ còn chốt chu kỳ. Genus đạt tới 8 ns, chờ quét 7 và 6 ns. Xong thì báo Nguyên để đóng N-30 |
+| Chạy Genus với `ASIC_Top` làm top, nạp `ASIC_Top.sdc` | GPDK45 | Đã chạy 12/11 bằng `make asic-genus`, đạt từ 20 tới 8 ns, cây reset đã được buffer. Còn: quét 7 và 6 ns, bản `CG=0`. Recovery và removal của reset kiểm bằng Tempus |
 | Đọc diện tích, thời gian truy cập của macro `sram_2k` | `.lib`, `.lef` của macro trên server | Cộng diện tích bộ nhớ vào số Yosys và Genus, kiểm trễ `Q` có vừa một chu kỳ không |
 | Kiểm tương đương netlist với RTL | Conformal LEC | Sau Genus |
 | Mô phỏng netlist (GLS) | Mô hình hành vi cell GPDK45 | `RISCV_Core_prog_tb` dùng lại được (bọc phần in thanh ghi bằng `ifndef GLS`) |

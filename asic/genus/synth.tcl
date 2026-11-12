@@ -14,7 +14,9 @@
 # Consequences, the same as in the Yosys run: no memory area, and paths through a memory are
 # not timed. The netlist must hold exactly 4 memory instances, otherwise ERROR.
 #
-# Scan flops are forbidden: every SDFF* cell gets dont_use, and any SDFF* in the netlist is an ERROR.
+# Scan flops are forbidden: every scan cell of gsclib045 (SDFF*, SEDFF*, SMDFF*) gets dont_use, and
+# any of them in the netlist is an ERROR. The 12/11 run only banned SDFF* and Genus picked SMDFFHQX1
+# (a flop with a built-in mux) for 8 flops.
 
 set REPO [file normalize [file dirname [info script]]/../..]
 source $REPO/asic/genus/config.tcl
@@ -46,9 +48,11 @@ file mkdir $OUT $AUDIT $RPT
 set_db init_lib_search_path [list $LIB_DIR]
 read_libs [list $LIB_SLOW]
 
-# Scan flop ban: no SDFF* cell may be picked, and no scan flop replaces a normal flop
-foreach c [get_db lib_cells -if {.base_name == SDFF*}] {
-    set_db $c .dont_use true
+# Scan flop ban: no scan cell may be picked, and no scan flop replaces a normal flop
+foreach pat {SDFF* SEDFF* SMDFF*} {
+    foreach c [get_db lib_cells -if ".base_name == $pat"] {
+        set_db $c .dont_use true
+    }
 }
 try_cmd {set_db use_scan_seqs_for_non_dft false}
 foreach n $DONT_USE_CELLS {
@@ -140,8 +144,9 @@ if {$CG} {
 set fp [open $netlist r]
 set text [read $fp]
 close $fp
-set n_scan  [regexp -all -line {^\s*SDFF\w*\s+\S+\s*\(} $text]
-set n_flop  [regexp -all -line {^\s*S?DFF\w*\s+\S+\s*\(} $text]
+set n_scan  [regexp -all -line {^\s*S[EM]?DFF\w*\s+\S+\s*\(} $text]
+# Every flop of gsclib045: DFF*, EDFF*, MDFF* and the scan cells above
+set n_flop  [regexp -all -line {^\s*[SEM]*DFF\w*\s+\S+\s*\(} $text]
 # Clock gating cells of gsclib045 are TLATNTSCA* or TLATNCA*, so they are not counted as latches
 set n_icg   [regexp -all -line {^\s*(TLATNTSCA|TLATNCA)\w*\s+\S+\s*\(} $text]
 set n_latch [expr {[regexp -all -line {^\s*TLAT\w*\s+\S+\s*\(} $text] - $n_icg}]
@@ -158,7 +163,7 @@ scan_flops=$n_scan flops=$n_flop latches=$n_latch icg=$n_icg wns_ps=$wns"
 close $fp
 
 if {$n_scan > 0} {
-    puts "ERROR: $n_scan scan flops (SDFF*) in $netlist"
+    puts "ERROR: $n_scan scan flops (SDFF*, SEDFF*, SMDFF*) in $netlist"
 } elseif {$n_mem != $N_MEM} {
     puts "ERROR: $n_mem memory instances in $netlist, expected $N_MEM black boxes"
 } else {
