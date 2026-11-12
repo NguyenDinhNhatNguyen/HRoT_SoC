@@ -4,7 +4,7 @@
 # Run in WSL from the repo root:   bash asic/run_yosys.sh      (or: make asic-yosys)
 # Needs the docker container with Yosys and OpenSTA (hpretl/iic-osic-tools) to be running.
 #   YS_CONTAINER   container name (default iic-osic-tools_xvnc_uid_1000)
-#   NG_LIB         NanGate45 liberty, must sit under ~/eda/designs (default: the copy of rv32i_soc)
+#   NG_LIB         NanGate45 liberty, must sit under ~/eda/designs (default: ~/eda/designs/nangate45)
 #   STA_PERIOD     clock period in ns for OpenSTA (default 20)
 #   YS_ABC_D       abc delay target in ps (default 2000)
 # The RTL is copied to ~/eda/designs/hrot_ys (the folder the container mounts as /foss/designs).
@@ -15,13 +15,13 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 ctr=${YS_CONTAINER:-iic-osic-tools_xvnc_uid_1000}
 share=$HOME/eda/designs
 work=$share/hrot_ys
-lib=${NG_LIB:-$share/rv32i-soc/syn/run_yosys/lib/NangateOpenCellLibrary_typical.lib}
-# sha256 of the copy that rv32i_soc downloads with scripts/get_nangate45.sh
+lib=${NG_LIB:-$share/nangate45/NangateOpenCellLibrary_typical.lib}
+# sha256 of the copy used for the 07/11 numbers in asic/README.md
 sum=8d540a4d4cf6d09d27c87ad067857a9c0c2eeb023ab7a56e058cd3113db4e9b1
 
 case "$lib" in "$share"/*) ;; *) echo "ERROR: NG_LIB must be under $share, the container cannot see it" >&2; exit 1 ;; esac
-[ -f "$lib" ] || { echo "ERROR: $lib not found, see rv32i_soc scripts/get_nangate45.sh" >&2; exit 1; }
-echo "$sum  $lib" | sha256sum -c --status || echo "WARNING: the sha256 of $lib differs from the copy rv32i_soc used, numbers may differ" >&2
+[ -f "$lib" ] || { echo "ERROR: $lib not found, put NangateOpenCellLibrary_typical.lib there or set NG_LIB" >&2; exit 1; }
+echo "$sum  $lib" | sha256sum -c --status || echo "WARNING: the sha256 of $lib differs from the copy used before, numbers may differ" >&2
 docker inspect -f '{{.State.Running}}' "$ctr" 2>/dev/null | grep -q true || { echo "ERROR: container $ctr is not running" >&2; exit 1; }
 
 # Copy the RTL without the memory modules, plus the black boxes

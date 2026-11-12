@@ -1,6 +1,6 @@
 # synth_nangate.tcl - trial Yosys synthesis of SoC_Top with the open NanGate45 library (home flow),
 # FOR TRENDS ONLY. Not GPDK45 and not Genus. Official numbers come from Genus on the school server.
-# Adapted from rv32i_soc (syn/yosys/synth_nangate.tcl). The memories are black boxes (mem_bb.v).
+# The memories are black boxes (mem_bb.v).
 # Run through asic/run_yosys.sh, parameters come from environment variables:
 #   YS_TOP     top module (SoC_Top)
 #   YS_SRCS    Verilog file list, mem_bb.v included

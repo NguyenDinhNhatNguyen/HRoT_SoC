@@ -1,5 +1,5 @@
 # sta_nangate.tcl - OpenSTA reads the synth_nangate.tcl netlist (home flow), FOR TRENDS ONLY.
-# Adapted from rv32i_soc (syn/yosys/sta_nangate.tcl). No placement or routing: wire delay from the
+# No placement or routing: wire delay from the
 # default NanGate45 wire load, ideal clock. The memories are black boxes, so paths through them
 # are not timed and F_max is the flop to flop path of the logic only.
 # Run through asic/run_yosys.sh, parameters come from environment variables:

@@ -46,3 +46,24 @@ asic/**/*.captbl
 asic/**/*.db
 asic/**/*_netlist.v
 asic/**/*_pnr.v
+
+# PDK files anywhere in the repo, in case a library folder is copied outside asic/ on the server
+PDK_GPDK45/
+**/PDK_GPDK45/
+*.lib
+*.lef
+*.tf
+*.captbl
+*.capTbl
+*.tch
+*.gds
+*.gds2
+*.oas
+*.spef
+*.sdf
+*.def
+gpdk045*
+gsclib045*
+slow_vdd1v0_*
+fast_vdd1v0_*
+sram_2k_macro*

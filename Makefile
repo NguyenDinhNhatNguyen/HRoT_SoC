@@ -13,6 +13,8 @@
 #   make xilinx      synthesis + P&R for a Xilinx part (Vivado 2025.2), PART=...
 #   make kv260       synthesis + P&R for the Kria KV260 (Vivado 2025.2), clock from the PS
 #   make asic-yosys  trend numbers for SoC_Top with Yosys + NanGate45 in docker (asic/run_yosys.sh)
+#   make asic-genus  Genus synthesis of ASIC_Top with GPDK45, school server only (asic/genus/synth.tcl)
+#   make asic-genus-save  copy the text reports of asic-genus into asic/reports/genus for the repo
 #   make clean       remove build output
 # Windows tools are called through WSL interop by absolute path, so PATH doesn't matter.
 # Simulation uses QuestaSim only, never ModelSim.
@@ -33,7 +35,7 @@ RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys clean
+.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-save clean
 
 test:
 	bash sim/regress.sh
@@ -79,6 +81,24 @@ xilinx: hex
 
 asic-yosys:
 	bash asic/run_yosys.sh
+
+# School server only (Genus + GPDK45). PERIOD=20 CG=1 are the defaults, see asic/genus/synth.tcl.
+# The netlist, SDF and logs stay in asic/out_genus and asic/run_genus, both ignored by git.
+asic-genus:
+	rm -f asic/out_genus/ASIC_Top_netlist.v
+	mkdir -p asic/run_genus
+	cd asic/run_genus && rm -f genus.log* genus.cmd* && genus -batch -files ../genus/synth.tcl -log genus.log
+	@test -f asic/out_genus/ASIC_Top_netlist.v || { echo "ERROR: Genus produced no netlist, see asic/run_genus/genus.log"; exit 1; }
+	@cat asic/out_genus/reports/summary.txt
+
+# Only .rpt and .txt files are copied, never the netlist, SDF or anything built from the PDK
+asic-genus-save:
+	@test -d asic/out_genus/reports || { echo "ERROR: no reports yet, run make asic-genus first"; exit 1; }
+	mkdir -p asic/reports/genus/audit asic/reports/genus/synthesis
+	cp asic/out_genus/reports/summary.txt asic/reports/genus/
+	cp asic/out_genus/reports/audit/*.rpt asic/reports/genus/audit/
+	cp asic/out_genus/reports/synthesis/*.rpt asic/reports/genus/synthesis/
+	@git status --short asic/reports/genus
 
 kv260: hex
 	cd fpga/xilinx/kv260 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build_kv260.tcl -tclargs xck26-sfvc784-2LV-c $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
