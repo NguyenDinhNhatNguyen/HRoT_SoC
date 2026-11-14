@@ -15,6 +15,10 @@
 #   make asic-yosys  trend numbers for SoC_Top with Yosys + NanGate45 in docker (asic/run_yosys.sh)
 #   make asic-genus  Genus synthesis of ASIC_Top with GPDK45, school server only (asic/genus/synth.tcl)
 #   make asic-genus-save  copy the text reports of asic-genus into asic/reports/genus for the repo
+#   make asic-lec    Conformal LEC of ASIC_Top, RTL against the Genus netlist, school server only
+#   make asic-innovus  Innovus on ASIC_Top (floorplan to route) after asic-genus, school server only
+#   make asic-sta    Tempus STA of ASIC_Top, SPEF=<file> NETLIST=<file> SDC=<file> for after route
+#   make asic-lec-save, asic-pnr-save, asic-sta-save  copy only the text reports into asic/reports
 #   make clean       remove build output
 # Windows tools are called through WSL interop by absolute path, so PATH doesn't matter.
 # Simulation uses QuestaSim only, never ModelSim.
@@ -35,7 +39,7 @@ RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-save clean
+.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-save asic-lec asic-lec-save asic-innovus asic-sta asic-pnr-save asic-sta-save clean
 
 test:
 	bash sim/regress.sh
@@ -99,6 +103,45 @@ asic-genus-save:
 	cp asic/out_genus/reports/audit/*.rpt asic/reports/genus/audit/
 	cp asic/out_genus/reports/synthesis/*.rpt asic/reports/genus/synthesis/
 	@git status --short asic/reports/genus
+
+# The next targets are drafts (P-20, P-21): the scripts follow the RV32i-SoC flow that ran on the
+# server, but they have not run on HRoT_SoC yet. Results stay in asic/out_* and asic/run_*, ignored by git.
+asic-lec:
+	bash asic/lec/run_lec.sh
+
+# Innovus needs the SRAM wrappers first: it rejects black boxes and the assign statements they leave
+asic-innovus:
+	@test -f asic/out_genus/ASIC_Top_netlist.v || { echo "ERROR: no netlist yet, run make asic-genus first"; exit 1; }
+	rm -f asic/out_innovus/ASIC_Top_pnr.v
+	mkdir -p asic/run_innovus
+	cd asic/run_innovus && rm -f innovus.log* innovus.cmd* && innovus -batch -files ../pnr/run_all.tcl -log innovus.log
+	@test -f asic/out_innovus/ASIC_Top_pnr.v || { echo "ERROR: Innovus stopped midway, see asic/run_innovus/innovus.log"; exit 1; }
+	@cat asic/out_innovus/reports/pd_checks.rpt asic/out_innovus/reports/slack_summary.txt 2>/dev/null || true
+	@grep -i violations asic/out_innovus/reports/drc.rpt 2>/dev/null || true
+
+# STA stage: pre (Genus netlist) or spef (SPEF=<absolute path>, Tempus runs inside asic/run_sta)
+asic-sta:
+	@command -v tempus > /dev/null || { echo "ERROR: tempus not found, this target runs on the school server"; exit 1; }
+	@stage=$$( [ -n "$(SPEF)" ] && echo spef || echo pre ); \
+	  rm -f asic/out_sta/$$stage/summary.txt; mkdir -p asic/run_sta; \
+	  ( cd asic/run_sta && rm -f tempus.log* tempus.cmd* tempus.out && \
+	    tempus -nowin -files ../sta/sta.tcl -log tempus.log < /dev/null > tempus.out 2>&1 ) || true; \
+	  test -f asic/out_sta/$$stage/summary.txt || { echo "ERROR: Tempus wrote no summary, see asic/run_sta/tempus.log and tempus.out"; exit 1; }; \
+	  cat asic/out_sta/$$stage/summary.txt
+
+# Copy only text reports into asic/reports, never netlists, SPEF, SDF or GDS
+asic-lec-save:
+	bash asic/save_reports.sh asic/out_lec/reports asic/reports/lec
+	cp asic/out_lec/lec.txt asic/reports/lec/
+	@git status --short asic/reports/lec
+
+asic-pnr-save:
+	bash asic/save_reports.sh asic/out_innovus/reports asic/reports/innovus
+	@git status --short asic/reports/innovus | head -20
+
+asic-sta-save:
+	bash asic/save_reports.sh asic/out_sta asic/reports/sta
+	@git status --short asic/reports/sta
 
 kv260: hex
 	cd fpga/xilinx/kv260 && cmd.exe /c "$(VIVADO) -mode batch -nojournal -nolog -source build_kv260.tcl -tclargs xck26-sfvc784-2LV-c $(call winpath,$(BOOT_HEX)) $(call winpath,$(RAM_HEX)) $(call winpath,$(APP_HEX))"
