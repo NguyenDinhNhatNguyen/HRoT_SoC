@@ -15,5 +15,6 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | `project/` | [Project_Status.md](project/Project_Status.md) | Trạng thái kỹ thuật hiện tại và các điểm cần lưu ý | Phát |
 | `project/` | [FPGA_Results.md](project/FPGA_Results.md) | Số đo DE2, Artix-7 và KV260 (LE/LUT, thanh ghi, bộ nhớ, Fmax, slack, đường găng) của mọi lần tổng hợp, để so sánh giữa các phiên bản | Phát |
 | `project/` | [PPA_FPGA.md](project/PPA_FPGA.md) | Báo cáo PPA FPGA của ba kit (tốc độ, tài nguyên, công suất ước tính) cho N-30 | Nguyên |
+| `project/` | [ASIC_Flow.md](project/ASIC_Flow.md) | 11 bước flow ASIC (Genus, LEC, GLS, Innovus, Tempus, Voltus), lệnh và cổng nghiệm thu từng bước, theo tab Flow ASIC của Sheet | Nguyên |
 
 Đổi bản đồ địa chỉ hay giao diện giữa hai người: sửa file trong `spec/`, cập nhật tab "Mốc & Giao diện" trong sheet và báo người còn lại trước.

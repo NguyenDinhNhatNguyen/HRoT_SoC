@@ -4,7 +4,7 @@
 
 ## 1. Tóm tắt
 
-- Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 và 2 đã chạy. Bước 3 tới 9 đã có script nháp, chưa chạy lần nào trên server.
+- Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 và 2 đã chạy. Bước 3 tới 9 đã có script nháp, chưa chạy lần nào trên server. Bước 4 (GLS) có `make asic-gls` từ 16/11 (Phát, `94b25fc`).
 - Tất cả script nháp dựa trên flow đã chạy thật của RV32i-SoC (đồ án CE434, cùng nhóm, cùng server và PDK GPDK45). Chúng chưa được kiểm trên HRoT_SoC.
 - LEC (bước 3) chạy được ngay trên netlist hiện tại, vì bộ nhớ là hộp đen ở cả hai phía.
 - Innovus (bước 5 tới 8) chưa chạy được cho tới khi có wrapper SRAM. Innovus không nhận hộp đen, và netlist còn 68 lệnh `assign` do chúng.
@@ -17,15 +17,15 @@ Công cụ trên server theo `docs/flow_notes.md` của RV32i-SoC: Genus và Inn
 | # | Bước | Lệnh | Đầu vào | Cổng nghiệm thu | Tình trạng |
 | --- | --- | --- | --- | --- | --- |
 | 1 | RTL, mô phỏng | `make test` | `rtl/`, `dv/` | `All checks passed`, 22/22 | Xong (13/11) |
-| 2 | Tổng hợp | `make asic-genus` | `asic/ASIC_Top.v`, `asic/ASIC_Top.sdc` | Slack >= 0, 0 latch, 0 scan flop, 0 vi phạm design rule | Chạy 12/11, còn quét 7 và 6 ns |
+| 2 | Tổng hợp | `make asic-genus` | `asic/ASIC_Top.v`, `asic/ASIC_Top.sdc` | Slack >= 0, 0 latch, 0 scan flop, 0 vi phạm design rule | Chạy 12/11, đạt từ 20 tới 8 ns. Còn 8 cell scan `SMDFFHQX1`, `synth.tcl` đã sửa (`ac43bf1`), chạy lại cùng lượt quét 7 và 6 ns |
 | 3 | LEC | `make asic-lec` | RTL, netlist Genus | 0 non-equivalent, 0 abort, hộp đen chỉ là bộ nhớ | Script nháp |
-| 4 | Mô phỏng netlist | Chưa có script | Netlist, mô hình cell, SDF | Kết quả giống mô phỏng RTL | Chờ wrapper SRAM |
+| 4 | Mô phỏng netlist | `make asic-gls` | Netlist, mô hình cell, 3 file hex của `make fw` | `ASIC_Top_tb RESULT: PASS`, giống mô phỏng RTL | Script có từ 16/11, chưa chạy. Bộ nhớ dùng mô hình RTL nên không cần wrapper SRAM |
 | 5 | Floorplan, nguồn | `make asic-innovus` | Netlist, SDC, LEF | `verifyGeometry` 0 lỗi | Script nháp |
 | 6 | Placement | như trên | như trên | 0 cell chưa đặt, overflow dưới 0,5% | Script nháp |
 | 7 | CTS | như trên | như trên | Skew <= 80 ps, hold >= 0 | Script nháp |
 | 8 | Route, filler, kiểm tra | như trên | như trên | 0 DRC, 0 lỗi kết nối, 0 antenna | Script nháp |
 | 9 | Signoff STA | `make asic-sta SPEF=... NETLIST=... SDC=...` | Netlist sau route, SPEF | Setup, hold, recovery, removal >= 0 | Script nháp |
-| 10 | Công suất | Chưa có script | SPEF, activity | Số mW theo testcase | Chưa xác nhận Voltus chạy được |
+| 10 | Công suất | Chưa có script | SPEF, activity | Số mW theo testcase | Chưa xác nhận Voltus chạy được. Bước kiểm Voltus ở `asic/README.md` (bước 4b) |
 | 11 | Lưu kết quả | `make asic-lec-save`, `asic-pnr-save`, `asic-sta-save` | Report văn bản | Chỉ file văn bản, không file dựng từ PDK | Script nháp |
 
 Nguồn của các cổng nghiệm thu bước 5 tới 8: `docs/flow_notes.md` mục 3 của RV32i-SoC.
@@ -60,7 +60,7 @@ Lưu ý khi đặt tên file wrapper: `.gitignore` chặn `sram_2k_macro*`, `*.l
 - Chưa chạy: Mọi script bước 3 tới 11 chưa chạy trên server. Mỗi lần chạy đầu có thể lộ lỗi tên lệnh, vì tên đổi giữa các bản tool. Các lệnh phụ đều bọc `try_cmd` để chỉ báo cảnh báo.
 - Đã kiểm ở nhà: Cú pháp bash, cân bằng ngoặc Tcl, cây lệnh `make -n`, và dofile LEC sinh ra đúng (46 file RTL, cùng danh sách với `synth.tcl`).
 - Chưa quyết: DFT. RV32i-SoC cũng cấm scan flop và không làm DFT. Đề xuất giữ ngoài phạm vi, ghi vào báo cáo như một giới hạn.
-- Bước 4 và 10 chưa có script. Mô phỏng netlist cần wrapper để nạp bộ nhớ. Voltus chưa xác nhận.
+- Bước 10 chưa có script, Voltus chưa xác nhận. Bước 4 có `make asic-gls` từ 16/11, chạy với mô hình RTL của bộ nhớ (thay hộp đen), chưa chạy trên server.
 
 ## 6. Cách chạy trên server
 

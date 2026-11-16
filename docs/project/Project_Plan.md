@@ -63,7 +63,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 | Mốc | Ngày | Nội dung |
 | --- | --- | --- |
 | M1 | 01/11 | Phát chốt cổng ngắt lõi (I-01), TIMER0 + WDT xong. ✅ Xong 25/10 (TIMER0, WDT xong, I-01 đã chốt). P-09 xong 26/10, dây ngắt nối trong `SoC_Top` 27/10 (P-14) |
-| M2 | 22/11 | **RTL FREEZE** — toàn SoC biên dịch sạch Questa/Quartus/Vivado, `make test` PASS, 50 MHz |
+| M2 | 22/11 | **RTL FREEZE** — toàn SoC biên dịch sạch Questa/Quartus/Vivado, `make test` PASS, 50 MHz. ✅ Xong 13/11 (N-26): `make test` 22/22 tại `ac43bf1`, DE2 54,07 MHz, Artix-7 WNS +3,228 ns, KV260 WNS +5,517 ns. Từ 13/11 không sửa `rtl/` nếu chưa báo |
 | M3 | 29/11 | Demo secure boot trên DE2 (LED + log UART) |
 | M4 | 06/12 | Báo cáo PPA FPGA + functional coverage |
 | M5 | 13/12 | PPA ASIC (Genus/Innovus) + so sánh FPGA–ASIC |
@@ -84,7 +84,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 
 **Còn thiếu hoặc trễ**
 - Ngắt trong lõi (Zicsr, irq): PLIC/TIMER cần để dùng ngắt (vẫn chạy được bằng polling). Lõi đã có cổng `irq_timer`/`irq_ext` (P-09, 26/10), còn nối `timer0_irq`, `plic_irq` trong `SoC_Top`.
-- Phần RTL Nguyên giao đã có đủ. Còn thiếu việc đóng băng RTL (N-26) và nối dây ngắt vào lõi (P-09 đã xong 26/10).
+- Phần RTL Nguyên giao đã có đủ. Đóng băng RTL xong 13/11 (N-26), dây ngắt nối vào lõi 27/10 (P-14).
 - Firmware secure boot thật: đã hoàn thành 27/10 (P-13), chạy trên VP và RTL. Băm bằng Secure DMA từ 29/10 (P-15). Firmware App demo và bước tự sinh golden lúc build xong 29/10 (I-04, P-16).
 - Đổ board (chân DE2 đã đối chiếu xong 25/10, N-18: 52/52 chân khớp DE2 User Manual v1.3).
 
@@ -95,7 +95,7 @@ Chi tiết thanh ghi: `docs/spec/SoC_Memory_Map.md` (Nguyên giữ).
 | **8** (26/10–01/11) — Nền tảng + TIMER/WDT | TIMER0 kiểu CLINT, WDT, cập nhật `SoC_Memory_Map.md`, đối chiếu chân DE2 (N-18): đã hoàn thành 25/10. VP băm cả 4 KB ROM App (N-33), header địa chỉ firmware `soc_map.h` (I-02, N-34): đã hoàn thành 25/10. **Kéo lên từ Tuần 9:** cổng đọc dữ liệu Boot ROM (N-21), Boot Guard + Zeroization (N-20), PLIC-lite (N-19), cả ba đã xong 26/10 | Zicsr + trap máy (`mtvec`, `mepc`, `mcause`, `mstatus.MIE`, `mie`/`mip`, `ecall`/`mret`) + cổng `irq_timer`/`irq_ext` (I-01, **chặn nối ngắt TIMER/PLIC**), UVM sequence ngẫu nhiên cho SHA-256 (P-08, đã hoàn thành 25/10), sửa 2 lỗi script Questa (P-22, đã sửa 25/10, chờ chạy trên Questa), dọn `dv/tb` sang `dv/env`, `dv/agents`, driver UART/GPIO trong `fw/hal` dùng `soc_map.h`, cập nhật `Project_Status.md` (P-12, đã hoàn thành 24/10) |
 | **9** (02–08/11) — Ngắt + Boot Guard | Hoàn tất N-19, N-20, N-21 (nối `irq_ext` khi có I-01), VP thêm mô hình UART0, TIMER0, WDT cho firmware (N-32), `SoC_Top_tb` băm cả image App và thêm kịch bản image bị sửa trên RTL (N-35). **N-19, N-20, N-21, N-32 và N-35 đã xong 26/10, chỉ còn nối `irq_ext` vào lõi (chờ P-09).** Báo lỗi bus AXI qua `SYSCSR.BUS_ERR` (N-36, đã hoàn thành 25/10) | Firmware secure boot thật (HAL + log UART + golden trong Boot ROM + LOCK khi sai), chạy VP rồi RTL, đổi `linker.ld` đặt `.rodata` vào Boot ROM (I-03), test assembly ngắt timer/external |
 | **10** (09–15/11) — DMA, tường lửa, thế giới App | Secure DMA (ROM App → SHA theo block) + bus Secure 2 master (arbiter) + tường lửa AXI ở cổng DMA, bus APB của App (UART1, GPIO1, TIMER1) + Mailbox 2 chiều. **Đã xong 26/10 (N-22…N-25)** | Firmware dùng DMA, firmware App demo (Mailbox, LED, UART) + target CMake `app_firmware.hex` + bước sinh golden hash băm cả 4 KB (I-04), UVM agent APB + scoreboard SHA (golden model DPI từ `sha256_ref.c`) |
-| **11** (16–22/11) — Tích hợp, **RTL FREEZE 22/11** | Regression toàn SoC, đạt 50 MHz trên DE2 và Xilinx, cập nhật VP theo RTL, đóng băng RTL. **Regression, 50 MHz (DE2 53,02 MHz, Artix-7 WNS +3,5 ns) và VP đã xong 26/10, còn đóng băng RTL 22/11. P-09 và P-23 (R15) của Phát xong 26/10, còn nối dây ngắt trong `SoC_Top`** | Test firmware toàn SoC (boot đúng/sai, ngắt, DMA), regression UVM |
+| **11** (16–22/11) — Tích hợp, **RTL FREEZE 22/11** | Regression toàn SoC, đạt 50 MHz trên DE2 và Xilinx, cập nhật VP theo RTL, đóng băng RTL. **Regression, 50 MHz và VP đã xong 26/10. Đóng băng RTL xong 13/11 (N-26, `make test` 22/22, DE2 54,07 MHz, Artix-7 WNS +3,228 ns). P-09 và P-23 (R15) của Phát xong 26/10, dây ngắt nối trong `SoC_Top` 27/10 (P-14)** | Test firmware toàn SoC (boot đúng/sai, ngắt, DMA), regression UVM |
 | **12** (23–29/11) — Đổ board | Nạp DE2 qua USB-Blaster, demo secure boot bằng LED + log UART, chốt kit Xilinx, gán chân, nạp | Covergroup + thu coverage, sửa lỗi phát sinh khi chạy board |
 | **13** (30/11–06/12) — PPA FPGA + coverage | Báo cáo PPA (Fmax, LE/LUT, FF, M4K/BRAM, công suất) cho Quartus và Vivado, SDC bàn giao ASIC | Báo cáo functional coverage, Synthesis mức cổng (Genus) |
 | **14** (07–13/12) — ASIC + sơ đồ | Sơ đồ khối hệ thống, VP, testbed FPGA, tài liệu chạy VP/FPGA | Innovus, so sánh PPA FPGA–ASIC |

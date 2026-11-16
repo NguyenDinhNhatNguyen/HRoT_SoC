@@ -1,4 +1,4 @@
-# HANDOFF (cập nhật 07/11/2026)
+# HANDOFF (cập nhật 16/11/2026)
 
 Đọc file này khi Nguyên nói "tiếp tục".
 
@@ -10,9 +10,12 @@
 | `fpga/` chia `intel/de2`, `xilinx/artix7`, `xilinx/kv260` | Xong |
 | `make test` 07/11: All checks passed. `make de2`: 10.982 LE, 135.168 bit, Fmax 54,07 MHz | Xong |
 | Sheet: tab "Hướng dẫn & Kiểm thử" và "Mua sắm & Mượn" | Xong |
+| N-26 RTL freeze 13/11: `make test` 22/22 tại `ac43bf1`, `make de2`, `make xilinx`, `make kv260` chạy lại vẫn đạt | Xong |
+| F-04: `fpga/reports/artix7_timing_summary.rpt` bản 07/11 (`098d2a2`) | Xong |
+| Script nháp LEC, Innovus, Tempus và `docs/project/ASIC_Flow.md`, tab Flow ASIC (`3b25173`, 15/11) | Xong |
 
 ## Commit chưa push
-Không còn. `c12b74d`, `98df2fa`, `d862477` đã lên GitHub (07/11, tới `ce29a2e`).
+Không còn. Repo trên GitHub tới `04cf74a` (16/11).
 
 ## Việc chờ kiểm (cần board hoặc cần người)
 | Mục | Việc | Ở đâu |
@@ -28,7 +31,7 @@ Không còn. `c12b74d`, `98df2fa`, `d862477` đã lên GitHub (07/11, tới `ce2
 ## Việc chờ người khác (không cần board)
 | Việc | Chờ ai | Ghi chú |
 | --- | --- | --- |
-| N-30 SDC ASIC | Phát (P-20, P-21) | `asic/SoC_Top.sdc` là khung. Phát đề xuất 09/11 `CLK_PERIOD_NS = 20`, `IO_DELAY_NS = 4`, chốt khi chạy Genus trên server trường. Đầu vào bất đồng bộ đã kiểm 09/11, `reset_system` có bộ đồng bộ ở `asic/ASIC_Top.v` kèm `ASIC_Top.sdc` (`3a3a6e0`) |
+| N-30 SDC ASIC | Phát (P-20, P-21) | `asic/SoC_Top.sdc` là khung. Từ 12/11 `asic/ASIC_Top.sdc` chỉ cần `CLK_PERIOD_NS`, độ trễ vào ra lấy 24% và 20% chu kỳ. Genus 12/11 đạt từ 20 tới 8 ns, chu kỳ chốt sau khi quét 7 và 6 ns. Đầu vào bất đồng bộ đã kiểm 09/11, `reset_system` có bộ đồng bộ ở `asic/ASIC_Top.v` kèm `ASIC_Top.sdc` (`3a3a6e0`) |
 | N-30 số sơ bộ ASIC | không cần chờ | `make asic-yosys` (WSL, docker `iic-osic-tools` phải chạy): 72.012 µm² logic, 7.004 flop, F_max 249 MHz với NanGate45, bộ nhớ là black box. Chỉ là xu hướng. Số chính thức chạy Genus trên server trường với GPDK45, không commit file PDK |
 | N-31 khớp chương báo cáo | Dàn ý chương báo cáo | Sơ đồ và README đã xong, 21 trang sơ đồ |
 
