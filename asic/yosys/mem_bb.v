@@ -1,4 +1,5 @@
-// Black boxes for the four 4 KB memories of SoC_Top, used only by the home Yosys flow (run_yosys.sh).
+// Black boxes for the four 4 KB memories of SoC_Top, for the home Yosys flow (run_yosys.sh) and for
+// the MEM_BB=stub trial of the Genus flow (asic/genus/synth.tcl).
 // The real RTL (rtl/mem/) would map to about 131,000 flip-flops, which says nothing about the ASIC:
 // Genus uses SRAM macros there. Ports and parameters follow rtl/mem/Dual_Port_ROM.v and Data_Memory.v.
 // Not read together with rtl/mem/*.v. Data_Memory also gates read_data with MemRead (32 AND gates),

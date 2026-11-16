@@ -14,8 +14,11 @@
 #   make kv260       synthesis + P&R for the Kria KV260 (Vivado 2025.2), clock from the PS
 #   make asic-yosys  trend numbers for SoC_Top with Yosys + NanGate45 in docker (asic/run_yosys.sh)
 #   make asic-genus  Genus synthesis of ASIC_Top with GPDK45, school server only (asic/genus/synth.tcl)
-#   make asic-genus-save  copy the text reports of asic-genus into asic/reports/genus for the repo
+#   make asic-genus-sweep  period sweep 20 12 10 8 7 6 ns plus a run without clock gating (asic/genus/sweep.sh)
+#   make asic-genus-save  copy the text reports of asic-genus, the sweep and asic-gls into asic/reports
 #   make asic-lec    Conformal LEC of ASIC_Top, RTL against the Genus netlist, school server only
+#   make asic-gls    Xcelium gate-level simulation of the netlist with ASIC_Top_tb, school server only
+#   make asic-macro-info  size, pins and area of the school SRAM macro (asic/macro_info.sh)
 #   make asic-innovus  Innovus on ASIC_Top (floorplan to route) after asic-genus, school server only
 #   make asic-sta    Tempus STA of ASIC_Top, SPEF=<file> NETLIST=<file> SDC=<file> for after route
 #   make asic-lec-save, asic-pnr-save, asic-sta-save  copy only the text reports into asic/reports
@@ -39,7 +42,7 @@ RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-save asic-lec asic-lec-save asic-innovus asic-sta asic-pnr-save asic-sta-save clean
+.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-sweep asic-genus-save asic-lec asic-lec-save asic-gls asic-macro-info asic-innovus asic-sta asic-pnr-save asic-sta-save clean
 
 test:
 	bash sim/regress.sh
@@ -95,14 +98,19 @@ asic-genus:
 	@test -f asic/out_genus/ASIC_Top_netlist.v || { echo "ERROR: Genus produced no netlist, see asic/run_genus/genus.log"; exit 1; }
 	@cat asic/out_genus/reports/summary.txt
 
-# Only .rpt and .txt files are copied, never the netlist, SDF or anything built from the PDK
+# One Genus run per period, results in asic/out_sweep (ignored by git). PERIODS="10 9 8" changes the list
+asic-genus-sweep:
+	bash asic/genus/sweep.sh
+
+asic-gls:
+	bash asic/gls/run.sh
+
+asic-macro-info:
+	bash asic/macro_info.sh
+
+# Only .rpt, .txt and .md reports are copied, never the netlist, SDF or anything built from the PDK
 asic-genus-save:
-	@test -d asic/out_genus/reports || { echo "ERROR: no reports yet, run make asic-genus first"; exit 1; }
-	mkdir -p asic/reports/genus/audit asic/reports/genus/synthesis
-	cp asic/out_genus/reports/summary.txt asic/reports/genus/
-	cp asic/out_genus/reports/audit/*.rpt asic/reports/genus/audit/
-	cp asic/out_genus/reports/synthesis/*.rpt asic/reports/genus/synthesis/
-	@git status --short asic/reports/genus
+	bash asic/genus/save.sh
 
 # The next targets are drafts (P-20, P-21): the scripts follow the RV32i-SoC flow that ran on the
 # server, but they have not run on HRoT_SoC yet. Results stay in asic/out_* and asic/run_*, ignored by git.

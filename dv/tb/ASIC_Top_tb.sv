@@ -20,8 +20,14 @@ module ASIC_Top_tb;
     wire [7:0] led0;
     wire       app_running;
 
+    // Gate-level simulation (make asic-gls, +define+GLS): the netlist of ASIC_Top has no parameters,
+    // its memories load firmware_imem.hex, firmware_dmem.hex and app_firmware.hex from the run folder
+`ifdef GLS
+    ASIC_Top dut (
+`else
     ASIC_Top #(.BOOT_HEX("../fw/build/firmware_imem.hex"), .RAM_HEX("../fw/build/firmware_dmem.hex"),
                .APP_HEX("../fw/build/app_firmware.hex")) dut (
+`endif
         .clk(clk), .rst_pad_n(rst_n), .app_running(app_running),
         .uart0_tx(), .uart0_rx(1'b1), .gpio0_o(led0), .gpio0_i(8'h00), .boot_strap(4'h0),
         .uart1_tx(), .uart1_rx(1'b1), .gpio1_o(), .gpio1_i(8'h00));

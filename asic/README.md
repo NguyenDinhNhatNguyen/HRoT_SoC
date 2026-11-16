@@ -7,7 +7,8 @@
 | `SoC_Top.sdc` | Khung SDC cho `SoC_Top`: một clock `clk`, false path cho các đầu vào bất đồng bộ, `set_output_delay` cho đầu ra |
 | `ASIC_Top.v`, `ASIC_Top.sdc` | Top cấp chip bọc `SoC_Top` (Phát, 09/11): bộ đồng bộ reset bật bất đồng bộ, nhả đồng bộ 2 flop từ chân `rst_pad_n`, như `DE2_Top` làm trên FPGA. SDC đi kèm tính giờ `reset_system` bên trong (đã qua bộ đồng bộ), từ 12/11 theo tỉ lệ của Lab 01 và chỉ cần biến `CLK_PERIOD_NS`. Test: `dv/tb/ASIC_Top_tb.sv` (`set TB ASIC_Top_tb; do run_fw.do`), nằm trong `make test` từ 11/11 |
 | `run_yosys.sh`, `yosys/` | Chạy thử Yosys + NanGate45 cho `SoC_Top` trong docker để lấy số sơ bộ (`make asic-yosys`). Bộ nhớ là black box (`yosys/mem_bb.v`) |
-| `genus/` | Luồng Genus cho `ASIC_Top` với GPDK45, chỉ chạy trên server trường (`make asic-genus`, Phát, 12/11). Xem mục "Chạy Genus trên server trường" |
+| `genus/` | Luồng Genus cho `ASIC_Top` với GPDK45, chỉ chạy trên server trường (`make asic-genus`, Phát, 12/11). `sweep.sh` quét chu kỳ, `save.sh` chép report của Genus, lượt quét và GLS. Xem mục "Chạy Genus trên server trường" |
+| `gls/`, `macro_info.sh` | Mô phỏng mức cổng bằng Xcelium (`make asic-gls`), đọc thông số macro SRAM (`make asic-macro-info`) (Phát, 13/11, chưa chạy trên server) |
 | `lec/`, `pnr/`, `sta/`, `save_reports.sh` | Script nháp cho LEC (Conformal), Innovus và Tempus (Nguyên, 15/11), dựa trên flow đã chạy của RV32i-SoC, chưa chạy lần nào trên HRoT_SoC. Các bước, cổng nghiệm thu và việc còn lại ở `docs/project/ASIC_Flow.md` |
 
 File này chưa có chu kỳ clock và độ trễ I/O, vì chúng phụ thuộc PDK mà Phát chọn. Giá trị đề xuất để bắt đầu (Phát, 09/11): `CLK_PERIOD_NS = 20` (50 MHz như bản FPGA, Yosys cho đường flop sang flop 4,0 ns nên còn dư nhiều) và `IO_DELAY_NS = 4` (khoảng 20% chu kỳ). Hai số này chốt lại khi chạy Genus với GPDK45 trên server trường. Đặt hai biến `CLK_PERIOD_NS` và `IO_DELAY_NS` trước khi `source`, nếu thiếu thì SDC báo lỗi. Cổng lấy từ `rtl/top/SoC_Top.v`. Từ 12/11 `ASIC_Top.sdc` không dùng `IO_DELAY_NS` nữa: độ trễ vào ra theo tỉ lệ chu kỳ của Lab 01 (xem mục "Chạy Genus trên server trường"). Các đầu vào được coi là bất đồng bộ theo ràng buộc FPGA (`fpga/intel/de2/constraints.sdc`), cần kiểm lại khi có vòng pad của ASIC, nhất là `reset_system` (top FPGA đồng bộ nó trước khi vào `SoC_Top`).
@@ -70,7 +71,7 @@ Soạn 12/11/2026 cho riêng HRoT_SoC (top `ASIC_Top`, SDC `ASIC_Top.sdc`, kết
 | File | Nội dung |
 | --- | --- |
 | `genus/config.tcl` | Đường dẫn PDK. Mặc định `~/PDK_GPDK45`, đổi bằng biến môi trường `PDK_DIR`. Cấm `BUFX2`, `CLKBUFX2` (cell cao gấp đôi) |
-| `genus/synth.tcl` | Tổng hợp `ASIC_Top`: kiểm trước tổng hợp, `syn_generic`, `syn_map`, `syn_opt` (effort medium), report. Cấm scan flop, giữ mọi flop để LEC khớp 1:1, `ideal_seq_async_pins false` để buffer cây reset |
+| `genus/synth.tcl` | Tổng hợp `ASIC_Top`: kiểm trước tổng hợp, `syn_generic`, `syn_map`, `syn_opt` (effort medium), report. Cấm scan flop (`SDFF*`, `SEDFF*`, `SMDFF*`), giữ mọi flop để LEC khớp 1:1, `ideal_seq_async_pins false` để buffer cây reset |
 | `ASIC_Top.sdc` | Ràng buộc dùng chung cho Genus, Innovus, Tempus |
 
 Điều kiện (tỉ lệ theo Lab 01):
@@ -102,8 +103,13 @@ grep -E 'Genus done|ERROR|WARNING' genus_run.txt                            # xe
 | --- | --- | --- |
 | `make asic-genus` | Genus, có clock gating, 20 ns | `asic/out_genus/` (netlist, SDC, SDF, `reports/`), log ở `asic/run_genus/genus.log` |
 | `make asic-genus PERIOD=10` | Đổi chu kỳ, độ trễ vào ra đổi theo | Như trên, ghi đè |
-| `make asic-genus CG=0` | Không clock gating, để so công suất | Đổi tên `asic/out_genus` thành `asic/out_genus_cg0` trước khi chạy bản `CG=1` |
-| `make asic-genus-save` | Chép riêng `.rpt` và `summary.txt` vào `asic/reports/genus/` | Commit thư mục này. Netlist, SDF ở lại `asic/out_genus/` (bị `.gitignore`) |
+| `make asic-genus CG=0` | Không clock gating, để so công suất | Như trên, ghi đè. Bản so sánh có sẵn trong lượt quét |
+| `make asic-genus MEM_BB=stub` | Thử khai hướng chân cho 4 bộ nhớ bằng `yosys/mem_bb.v` | Chỉ nhận nếu `summary.txt` vẫn ra `flops=7069` và `assigns=0`. Chưa chạy thật |
+| `make asic-genus-sweep` | Quét 20, 12, 10, 8, 7, 6 ns rồi một lần `CG=0` ở 20 ns, lần lượt từng lần (khoảng 70 phút). Đổi danh sách: `PERIODS="10 9 8"` | `asic/out_sweep/<lần chạy>/`, bảng ở `asic/out_sweep/summary.md` |
+| `make asic-lec` | Conformal so RTL với netlist (`lec/run_lec.sh` của Nguyên), bộ nhớ là black box ở cả hai phía. `DRY_RUN=1` chỉ sinh dofile | `asic/out_lec/lec.txt`, report ở `asic/out_lec/reports/`. Lưu bằng `make asic-lec-save` |
+| `make asic-gls` | Xcelium chạy `ASIC_Top_tb` trên netlist (`gls/run.sh`), không SDF. Bộ nhớ dùng mô hình RTL. Cần 3 file hex của `make fw` trong `fw/build/` (build ở nhà, chép lên bằng SFTP) | `asic/out_gls/xrun.log`, tóm tắt ở `gls_summary.txt` |
+| `make asic-macro-info` | In kích thước, chân, diện tích của macro `sram_2k_macro` | `asic/reports/sram_macro_info.txt`, thời gian truy cập chỉ in ra màn hình |
+| `make asic-genus-save` | Chép report văn bản của Genus, lượt quét, GLS vào `asic/reports/` (`genus/`, `genus_sweep/`). Bỏ `gates.rpt`, đổi tên máy thành `server` | Commit thư mục này. Netlist, SDF ở lại `asic/out_*` (bị `.gitignore`) |
 
 PDK ở chỗ khác thì `export PDK_DIR=<đường dẫn>` trước khi chạy.
 
@@ -124,6 +130,29 @@ Tiêu chí nghiệm thu, report trong `asic/out_genus/reports/`:
 Lưu ý về Genus trên server: Genus đọc Verilog-2001 nên không khai báo `localparam` trong `generate` (RTL hiện tại không có). Genus không ghi đè log mà tạo `genus.log1`, `genus.log2` (`make` đã xoá log cũ). Không dùng `git add -f`.
 
 Giới hạn: bộ nhớ là black box nên report không có diện tích bộ nhớ và đường đi qua bộ nhớ không được tính giờ, giống lần chạy Yosys. Số đầy đủ cần wrapper macro SRAM (xem mục "Macro SRAM của trường").
+
+## Thứ tự chạy cho buổi tới trên server
+
+Soạn 13/11/2026. Các script mới qua chạy thử khô ở nhà (Genus giả, `ASIC_Top_tb` ở chế độ GLS chạy PASS trên RTL bằng iverilog và Questa), chưa chạy với công cụ Cadence.
+
+| Bước | Lệnh | Thời gian | Đạt khi |
+| --- | --- | --- | --- |
+| 1 | `git pull`, chép 3 file hex vào `fw/build/` | 2 phút | Đúng commit mới nhất |
+| 2 | `make asic-genus` | 10 phút | `scan_flops=0`, `flops=7069`, `memories_black_box=4`, slack dương. Phải đạt mới chạy bước 3 |
+| 3 | `make asic-genus-sweep > sweep.txt 2>&1 &` | 70 phút | Thấy chu kỳ đầu tiên có slack âm |
+| 4 | `make asic-macro-info` (trong lúc chờ bước 3) | 2 phút | Có kích thước và diện tích macro |
+| 5 | `make asic-lec` (sau khi bước 3 xong) | 15 tới 30 phút | 0 điểm không tương đương |
+| 6 | `make asic-gls` | 15 tới 30 phút | `ASIC_Top_tb RESULT: PASS` |
+| 7 | `make asic-genus MEM_BB=stub` | 10 phút | `flops=7069`, `assigns=0`. Nếu số flop giảm thì Genus đã cắt logic sau bộ nhớ, bỏ cách này |
+| 8 | `make asic-genus-save asic-lec-save`, kiểm danh sách file (`lec.txt` có thể chứa tên người dùng), xuất patch | 10 phút | Chỉ có `.rpt`, `.txt`, `.md` |
+
+Bước 7 ghi đè `asic/out_genus/`, nên chạy sau LEC và GLS, và chạy lại `make asic-genus` trước bước 8 nếu cách stub không đạt. Không chạy hai Genus cùng lúc.
+
+Điểm chưa chắc, phải xem ở lần chạy đầu:
+
+- LEC: Conformal có ghép được 4 black box khi Genus ghi tên module bộ nhớ khác với RTL không. Phần "Black boxes" cuối lệnh phải chỉ liệt kê 4 bộ nhớ.
+- GLS: flop không có reset khởi động ở X. Mô phỏng RTL boot được với X trong file thanh ghi, nhưng mức cổng lan X bi quan hơn. Nếu LED không bao giờ ra 0x01 thì xem `xrun.log` để tìm tín hiệu X đầu tiên.
+- GLS: tên `dut.soc.reset_system` trong testbench phải còn trong netlist (Genus giữ phân cấp `soc`).
 
 ## Kết quả Genus (12/11/2026)
 

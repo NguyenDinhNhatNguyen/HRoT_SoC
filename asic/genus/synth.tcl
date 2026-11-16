@@ -5,6 +5,11 @@
 # Environment:
 #   PERIOD=<ns>    clock period, becomes CLK_PERIOD_NS of asic/ASIC_Top.sdc (default 20)
 #   CG=0|1         clock gating (default 1, CG=0 for the baseline without it)
+#   MEM_BB=unresolved|stub  how the four memories become black boxes (default unresolved):
+#                  unresolved leaves them out, as in the 12/11 run. Genus then does not know the pin
+#                  directions, reports multiple drivers on their nets and keeps 68 assign statements.
+#                  stub reads asic/yosys/mem_bb.v (empty modules with port directions). It is a
+#                  trial: accept it only if the flop count stays the same and the assigns are gone
 #   SYN_OUT=<dir>  output folder (default asic/out_genus, ignored by git)
 #   PDK_DIR=<dir>  Lab PDK folder (default ~/PDK_GPDK45, see config.tcl)
 #
@@ -38,6 +43,7 @@ proc try_cmd {cmd} {
 set TOP      ASIC_Top
 set PERIOD   [env_or PERIOD 20.0]
 set CG       [env_or CG 1]
+set MEM_BB   [env_or MEM_BB unresolved]
 set OUT      [file normalize [env_or SYN_OUT $REPO/asic/out_genus]]
 set AUDIT    $OUT/reports/audit
 set RPT      $OUT/reports/synthesis
@@ -72,6 +78,12 @@ foreach d {core bus periph crypto top} {
     set RTL [concat $RTL [lsort [glob -directory $REPO/rtl/$d *.v]]]
 }
 lappend RTL $REPO/asic/ASIC_Top.v
+if {$MEM_BB eq "stub"} {
+    lappend RTL $REPO/asic/yosys/mem_bb.v
+    # Keep the undriven outputs of the empty modules as they are, never tie them to a constant
+    try_cmd {set_db hdl_undriven_output_port_value none}
+    try_cmd {set_db hdl_undriven_signal_value none}
+}
 read_hdl -language v2001 $RTL
 elaborate $TOP
 
@@ -83,6 +95,13 @@ if {$CG && [catch {set_db [get_db designs] .lp_clock_gating_min_flops 4} msg]} {
 # reset net. Turn that off so the reset tree is buffered like any other high fanout net
 if {[catch {set_db [get_db designs] .ideal_seq_async_pins false} msg]} {
     puts "WARNING: could not set ideal_seq_async_pins ($msg), the reset net may stay unbuffered"
+}
+
+if {$MEM_BB eq "stub"} {
+    # No optimization may cross or remove the empty memory modules
+    foreach m [get_db modules -if {.name == *Data_Memory* || .name == *Dual_Port_ROM*}] {
+        try_cmd {set_db $m .preserve true}
+    }
 }
 
 # Pre-synthesis checks. Expected: exactly the 4 memory instances unresolved, 0 latch, 0 loop
@@ -150,6 +169,7 @@ set n_flop  [regexp -all -line {^\s*[SEM]*DFF\w*\s+\S+\s*\(} $text]
 # Clock gating cells of gsclib045 are TLATNTSCA* or TLATNCA*, so they are not counted as latches
 set n_icg   [regexp -all -line {^\s*(TLATNTSCA|TLATNCA)\w*\s+\S+\s*\(} $text]
 set n_latch [expr {[regexp -all -line {^\s*TLAT\w*\s+\S+\s*\(} $text] - $n_icg}]
+set n_assign [regexp -all -line {^\s*assign\s} $text]
 set n_mem   [regexp -all -line {^\s*(Data_Memory|Dual_Port_ROM)\w*\s+\S+\s*\(} $text]
 set wns ""
 catch {set wns [get_db [get_db designs] .slack]}
@@ -158,7 +178,7 @@ if {$wns eq ""} {
 }
 
 set fp [open $OUT/reports/summary.txt w]
-puts $fp "top=$TOP period_ns=$PERIOD cg=$CG memories_black_box=$n_mem\
+puts $fp "top=$TOP period_ns=$PERIOD cg=$CG mem_bb=$MEM_BB memories_black_box=$n_mem assigns=$n_assign\
 scan_flops=$n_scan flops=$n_flop latches=$n_latch icg=$n_icg wns_ps=$wns"
 close $fp
 
