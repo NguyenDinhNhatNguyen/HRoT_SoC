@@ -4,6 +4,8 @@
 # Copied: summary and .rpt files of asic/out_genus, of every sweep run in asic/out_sweep, and the
 # GLS summary when it exists. LEC reports are saved by make asic-lec-save. Never copied: netlists, SDF, SDC written by the tool, logs,
 # and gates.rpt (it lists every library cell with its area). The server host name is replaced.
+# A run with SRAM=1 or ROM=1 (fewer than 4 memory black boxes in summary.txt) goes to
+# asic/reports/genus_macro, so it does not replace the reports of the black-box run in asic/reports/genus.
 set -u
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -19,14 +21,18 @@ put() {     # put <source file> <destination folder>
     n=$((n + 1))
 }
 
+g=genus
+if [ -f asic/out_genus/reports/summary.txt ] && ! grep -q 'memories_black_box=4' asic/out_genus/reports/summary.txt; then
+    g=genus_macro
+fi
 if [ -d asic/out_genus/reports ]; then
-    put asic/out_genus/reports/summary.txt "$dst/genus"
-    for f in asic/out_genus/reports/audit/*.rpt; do put "$f" "$dst/genus/audit"; done
-    for f in asic/out_genus/reports/synthesis/*.rpt; do put "$f" "$dst/genus/synthesis"; done
+    put asic/out_genus/reports/summary.txt "$dst/$g"
+    for f in asic/out_genus/reports/audit/*.rpt; do put "$f" "$dst/$g/audit"; done
+    for f in asic/out_genus/reports/synthesis/*.rpt; do put "$f" "$dst/$g/synthesis"; done
 fi
 # Sweep runs: the summary and the synthesis reports only, the two lint reports are 1 MB each
 if [ -d asic/out_sweep ]; then
-    put asic/out_sweep/summary.md "$dst/genus_sweep"
+    for f in asic/out_sweep/summary*.md; do put "$f" "$dst/genus_sweep"; done
     for d in asic/out_sweep/*/; do
         l=$(basename "$d")
         put "$d/reports/summary.txt" "$dst/genus_sweep/$l"
@@ -35,7 +41,12 @@ if [ -d asic/out_sweep ]; then
         done
     done
 fi
-put asic/out_gls/gls_summary.txt "$dst/genus"
+# The GLS summary follows the netlist it ran on (its first line says how many black boxes it had)
+if [ -f asic/out_gls/gls_summary.txt ] && ! grep -q '^netlist: 4 memory black boxes' asic/out_gls/gls_summary.txt; then
+    put asic/out_gls/gls_summary.txt "$dst/genus_macro"
+else
+    put asic/out_gls/gls_summary.txt "$dst/genus"
+fi
 
 echo "Copied $n files to $dst."
 # Last check before a commit: nothing with the user name, the home path or a PDK file type

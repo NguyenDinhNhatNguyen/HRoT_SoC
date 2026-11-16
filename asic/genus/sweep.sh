@@ -3,6 +3,8 @@
 # Run from the repo root: make asic-genus-sweep      (or: bash asic/genus/sweep.sh)
 #   PERIODS   clock periods in ns (default "20 12 10 8 7 6")
 #   CG0       1 adds a run without clock gating at the first period, for the power comparison (default 1)
+#   SRAM, ROM read by synth.tcl. With SRAM=1 or ROM=1 the labels end in _sram, _rom and the table goes
+#             to summary_sram_rom.md, so the sweep of the black-box netlist is kept next to it
 # Each run writes to asic/out_sweep/<label>/ and logs to asic/run_sweep/<label>/ (both ignored by git).
 # A table goes to asic/out_sweep/summary.md. One run takes about 10 minutes, the runs are sequential
 # so only one Genus runs at a time.
@@ -14,6 +16,9 @@ periods=${PERIODS:-"20 12 10 8 7 6"}
 cg0=${CG0:-1}
 out=asic/out_sweep
 run=asic/run_sweep
+sfx=""
+[ "${SRAM:-0}" = 1 ] && sfx="${sfx}_sram"
+[ "${ROM:-0}" = 1 ] && sfx="${sfx}_rom"
 
 command -v genus > /dev/null || { echo "ERROR: genus not found, the sweep runs on the school server"; exit 1; }
 mkdir -p "$out" "$run"
@@ -36,31 +41,32 @@ one() {     # one <label> <period> <cg>
 
 labels=""
 for p in $periods; do
-    one "p$p" "$p" 1
-    labels="$labels p$p"
+    one "p$p$sfx" "$p" 1
+    labels="$labels p$p$sfx"
 done
 if [ "$cg0" = 1 ]; then
     first=${periods%% *}
-    one "p${first}_cg0" "$first" 0
-    labels="$labels p${first}_cg0"
+    one "p${first}${sfx}_cg0" "$first" 0
+    labels="$labels p${first}${sfx}_cg0"
 fi
 
 # Table: slack and counts from summary.txt, area from qor.rpt, total power from power.rpt.
 # F_max = 1 / (period - WNS), an estimate from the worst path only
 {
-    echo "| Run | Period (ns) | CG | WNS (ns) | F_max (MHz) | Cell area (um2) | Flops | Scan flops | Power (W) |"
-    echo "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    echo "| Run | Period (ns) | CG | WNS (ns) | F_max (MHz) | Cell area (um2) | Flops | Scan flops | Power (W) | Black boxes | Assigns |"
+    echo "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
     for l in $labels; do
         s=$out/$l/reports/summary.txt
-        [ -f "$s" ] || { echo "| $l | no result | | | | | | | |"; continue; }
+        [ -f "$s" ] || { echo "| $l | no result | | | | | | | | | |"; continue; }
         get() { tr ' ' '\n' < "$s" | awk -F= -v k="$1" '$1 == k {print $2}'; }
         area=$(awk '$1 == "Cell" && $2 == "Area" {print $3; exit}' "$out/$l/reports/synthesis/qor.rpt" 2>/dev/null)
         power=$(awk '$1 == "Subtotal" {print $5; exit}' "$out/$l/reports/synthesis/power.rpt" 2>/dev/null)
         awk -v l="$l" -v p="$(get period_ns)" -v cg="$(get cg)" -v w="$(get wns_ps)" -v a="${area:-n/a}" \
-            -v f="$(get flops)" -v sc="$(get scan_flops)" -v pw="${power:-n/a}" 'BEGIN {
+            -v f="$(get flops)" -v sc="$(get scan_flops)" -v pw="${power:-n/a}" \
+            -v bb="$(get memories_black_box)" -v as="$(get assigns)" 'BEGIN {
                 if (w ~ /^-?[0-9.]+$/) { wns = sprintf("%.3f", w / 1000); fmax = sprintf("%.1f", 1000 / (p - w / 1000)) }
                 else { wns = "n/a"; fmax = "n/a" }
-                printf "| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", l, p, cg, wns, fmax, a, f, sc, pw }'
+                printf "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", l, p, cg, wns, fmax, a, f, sc, pw, bb, as }'
     done
-} | tee "$out/summary.md"
-echo "Table written to $out/summary.md. Save the text reports with: make asic-genus-save"
+} | tee "$out/summary$sfx.md"
+echo "Table written to $out/summary$sfx.md. Save the text reports with: make asic-genus-save"

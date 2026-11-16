@@ -212,7 +212,7 @@ if {$wns eq ""} {
 }
 
 set fp [open $OUT/reports/summary.txt w]
-puts $fp "top=$TOP period_ns=$PERIOD cg=$CG mem_bb=$MEM_BB sram=$SRAM macros=$n_macro memories_black_box=$n_mem assigns=$n_assign\
+puts $fp "top=$TOP period_ns=$PERIOD cg=$CG mem_bb=$MEM_BB sram=$SRAM rom=$ROM macros=$n_macro memories_black_box=$n_mem assigns=$n_assign\
 scan_flops=$n_scan flops=$n_flop latches=$n_latch icg=$n_icg wns_ps=$wns"
 close $fp
 

@@ -8,7 +8,11 @@
 #   HEX_DIR   firmware images from make fw (default fw/build): firmware_imem.hex, firmware_dmem.hex,
 #             app_firmware.hex. The server has no RISC-V toolchain, so build them at home and copy
 #             the three files into fw/build on the server (MobaXterm SFTP)
-# The four memories are black boxes in the netlist. Here they are the RTL models of rtl/mem.
+#   GLS_MACRO Verilog model of the SRAM macro, used only when the netlist holds sram_2k_macro
+#             (default ~/PDK_GPDK45/lib/sram_2k_macro.v, else the home model dv/models/sram_macro_model.v)
+# The memories that are black boxes in the netlist are the RTL models of rtl/mem here.
+# A netlist of make asic-genus SRAM=1 ROM=1 has no black box: the two RAMs are sram_2k_macro
+# instances and the two ROMs are gates, so only the macro model is added.
 # Genus may write them under a longer module name (parameters in the name), so this script writes
 # one small wrapper per memory module name it finds in the netlist (asic/out_gls/mem_shim.v). If the
 # netlist keeps the plain names without parameters, the image names are set with defparam instead.
@@ -25,14 +29,33 @@ xrun=${XRUN:-xrun}
 command -v "$xrun" > /dev/null || { echo "ERROR: $xrun not found, asic-gls runs on the school server"; exit 1; }
 [ -f "$netlist" ] || { echo "ERROR: no netlist $netlist, run make asic-genus first"; exit 1; }
 [ -f "$lib" ] || { echo "ERROR: cannot find the cell model $lib (set GLS_LIB or PDK_DIR)"; exit 1; }
-for f in firmware_imem.hex firmware_dmem.hex app_firmware.hex; do
-    [ -f "$hex/$f" ] || { echo "ERROR: $hex/$f not found, run make fw at home and copy the three hex files to $hex"; exit 1; }
-done
+# What the netlist holds: memory black boxes (Data_Memory, Dual_Port_ROM) and SRAM macro instances
+n_bb=$(grep -cE '^\s*(Data_Memory|Dual_Port_ROM)\w*\s' "$netlist")
+n_macro=$(grep -cE '^\s*sram_2k_macro\w*\s+\S+\s*\(' "$netlist")
+macro=""
+macro_note=""
+if [ "$n_macro" -gt 0 ]; then
+    macro=${GLS_MACRO:-${PDK_DIR:-$HOME/PDK_GPDK45}/lib/sram_2k_macro.v}
+    macro_note="macro model: the school model"
+    if [ ! -f "$macro" ]; then
+        macro=$root/dv/models/sram_macro_model.v
+        macro_note="macro model: the home model dv/models/sram_macro_model.v (the school model was not found)"
+    fi
+fi
+if [ "$n_bb" -gt 0 ]; then
+    for f in firmware_imem.hex firmware_dmem.hex app_firmware.hex; do
+        [ -f "$hex/$f" ] || { echo "ERROR: $hex/$f not found, run make fw at home and copy the three hex files to $hex"; exit 1; }
+    done
+fi
 
+case "$netlist" in
+    /*) netlist_abs=$netlist ;;
+    *)  netlist_abs=$root/$netlist ;;
+esac
 mkdir -p "$out"
 # The netlist of ASIC_Top has no parameters left, the memories load these names from the run folder
 for f in firmware_imem.hex firmware_dmem.hex app_firmware.hex; do
-    cp "$hex/$f" "$out/$f"
+    [ -f "$hex/$f" ] && cp "$hex/$f" "$out/$f"
 done
 
 # Memory instances in the netlist: "<module name> <instance name> (" with or without "#(...)"
@@ -74,17 +97,25 @@ shim.append("module gls_mem_params;")
 shim.extend(params)
 shim.append("endmodule")
 open(sys.argv[2], "w").write("\n".join(shim) + "\n")
-print("memory instances in the netlist: %d, wrappers written: %d, image names set from outside: %d"
-      % (len(found), len(seen), len(params)))
-if len(found) != 4:
-    sys.exit("expected 4 memory instances")
+n_macro = len(re.findall(r"^\s*sram_2k_macro\w*\s+\S+\s*\(", text, re.M))
+insts = set(i.lstrip("\\") for _, _, i in found)
+print("memory black boxes in the netlist: %d, SRAM macros: %d, wrappers written: %d, image names set from outside: %d"
+      % (len(found), n_macro, len(seen), len(params)))
+# Each RAM is a black box or a macro, never both. The ROMs are both black boxes or both logic
+rams = len(insts & {"master_ram", "app_ram"})
+roms = len(insts & {"boot_rom", "app_rom"})
+if (rams, n_macro) not in ((2, 0), (0, 2)) or roms not in (0, 2) or len(found) != rams + roms:
+    sys.exit("unexpected memories: %d RAM black boxes, %d ROM black boxes, %d SRAM macros" % (rams, roms, n_macro))
 PY
 
 (cd "$out" && rm -rf xcelium.d xrun.log &&
     "$xrun" -64bit -sv -define GLS -timescale 1ns/1ps -nospecify -notimingchecks \
-        "$root/dv/tb/ASIC_Top_tb.sv" "$root/$netlist" mem_shim.v \
-        "$root/rtl/mem/Data_Memory.v" "$root/rtl/mem/Dual_Port_ROM.v" "$lib" \
+        "$root/dv/tb/ASIC_Top_tb.sv" "$netlist_abs" mem_shim.v \
+        "$root/rtl/mem/Data_Memory.v" "$root/rtl/mem/Dual_Port_ROM.v" $macro "$lib" \
         -top ASIC_Top_tb -top gls_mem_params -l xrun.log > /dev/null 2>&1)
 
-grep -E '^(ok  :|FAIL:|Boot after|ASIC_Top_tb RESULT)|\*E,|\*F,' "$out/xrun.log" | head -n 30 | tee "$out/gls_summary.txt"
+{
+    echo "netlist: $n_bb memory black boxes (RTL models), $n_macro SRAM macros${macro_note:+, $macro_note}"
+    grep -E '^(ok  :|FAIL:|MACRO ERROR|Boot after|ASIC_Top_tb RESULT)|\*E,|\*F,' "$out/xrun.log" | head -n 30
+} | tee "$out/gls_summary.txt"
 grep -q 'ASIC_Top_tb RESULT: PASS' "$out/xrun.log" || { echo "GLS did not pass, see $out/xrun.log"; exit 1; }
