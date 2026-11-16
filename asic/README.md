@@ -141,10 +141,13 @@ Soạn 13/11/2026. Các script mới qua chạy thử khô ở nhà (Genus giả
 | 2 | `make asic-genus` | 10 phút | `scan_flops=0`, `flops=7069`, `memories_black_box=4`, slack dương. Phải đạt mới chạy bước 3 |
 | 3 | `make asic-genus-sweep > sweep.txt 2>&1 &` | 70 phút | Thấy chu kỳ đầu tiên có slack âm |
 | 4 | `make asic-macro-info` (trong lúc chờ bước 3) | 2 phút | Có kích thước và diện tích macro |
+| 4b | Kiểm Voltus (trong lúc chờ bước 3): `which voltus`, rồi `voltus -no_gui -log voltus_check.log`, tới dấu nhắc gõ `exit` | 3 phút | Voltus mở được tới dấu nhắc, không báo lỗi license. Ghi bản Voltus và kết quả vào tab Flow ASIC bước 10 |
 | 5 | `make asic-lec` (sau khi bước 3 xong) | 15 tới 30 phút | 0 điểm không tương đương |
 | 6 | `make asic-gls` | 15 tới 30 phút | `ASIC_Top_tb RESULT: PASS` |
 | 7 | `make asic-genus MEM_BB=stub` | 10 phút | `flops=7069`, `assigns=0`. Nếu số flop giảm thì Genus đã cắt logic sau bộ nhớ, bỏ cách này |
-| 8 | `make asic-genus-save asic-lec-save`, kiểm danh sách file (`lec.txt` có thể chứa tên người dùng), xuất patch | 10 phút | Chỉ có `.rpt`, `.txt`, `.md` |
+| 8 | `make asic-genus-save asic-lec-save`, rồi bỏ tên người dùng và tên máy khỏi report LEC: `sed -i "s|$HOME|~|g; s/$(id -un)/user/g; s/$(hostname -s)/server/g" asic/reports/lec/*`. Kiểm `git status --short asic/reports`, không dùng `git add -f`, xuất patch | 10 phút | Chỉ có `.rpt`, `.txt`, `.md`, không còn tên người dùng |
+
+Chốt chu kỳ clock sau bước 3 (đề xuất 16/11, Phát quyết): lấy chu kỳ nhỏ nhất mà WNS còn dương ít nhất 10% chu kỳ, làm tròn lên số nguyên ns. Lý do: đường qua bộ nhớ chưa được tính giờ (bộ nhớ là hộp đen) và chưa có dây thật, nên không chốt sát giới hạn. Theo số 12/11, mức này nằm quanh 10 ns (WNS +0,63 ns, khoảng 6%) tới 12 ns (+1,74 ns, khoảng 14%). Chốt xong thì báo Nguyên đóng N-30 và đặt `PERIOD` đó làm mặc định cho `synth.tcl`.
 
 Bước 7 ghi đè `asic/out_genus/`, nên chạy sau LEC và GLS, và chạy lại `make asic-genus` trước bước 8 nếu cách stub không đạt. Không chạy hai Genus cùng lúc.
 
