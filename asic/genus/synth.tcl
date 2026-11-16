@@ -10,12 +10,15 @@
 #                  directions, reports multiple drivers on their nets and keeps 68 assign statements.
 #                  stub reads asic/yosys/mem_bb.v (empty modules with port directions). It is a
 #                  trial: accept it only if the flop count stays the same and the assigns are gone
+#   SRAM=0|1       1 = the two RAMs are SRAM macro wrappers (rtl/mem/RAM_Macro_*.v, P-21) instead of
+#                  black boxes. The macro sram_2k_macro stays a library cell (its .lib is read), the two
+#                  ROMs stay black boxes. Not run on the server yet. Default 0 keeps the 12/11 flow
 #   SYN_OUT=<dir>  output folder (default asic/out_genus, ignored by git)
 #   PDK_DIR=<dir>  Lab PDK folder (default ~/PDK_GPDK45, see config.tcl)
 #
 # The four 4 KB memories (2 Data_Memory, 2 Dual_Port_ROM) are black boxes: rtl/mem is not read,
 # so Genus leaves the four instances unresolved. Their RTL would map to about 131,000 flip-flops,
-# which says nothing about the chip, and the SRAM macro wrappers do not exist yet.
+# which says nothing about the chip. The SRAM macro wrappers of the two RAMs exist since 16/11 (SRAM=1).
 # Consequences, the same as in the Yosys run: no memory area, and paths through a memory are
 # not timed. The netlist must hold exactly 4 memory instances, otherwise ERROR.
 #
@@ -47,12 +50,16 @@ set MEM_BB   [env_or MEM_BB unresolved]
 set OUT      [file normalize [env_or SYN_OUT $REPO/asic/out_genus]]
 set AUDIT    $OUT/reports/audit
 set RPT      $OUT/reports/synthesis
-set N_MEM    4
+set SRAM     [env_or SRAM 0]
+set N_MEM    [expr {$SRAM ? 2 : 4}]      ;# black boxes left: 2 ROMs with SRAM=1, else 2 RAMs and 2 ROMs
+set N_MACRO  [expr {$SRAM ? 2 : 0}]      ;# sram_2k_macro instances expected
 file mkdir $OUT $AUDIT $RPT
 
 # Library: standard cells, slow corner
 set_db init_lib_search_path [list $LIB_DIR]
-read_libs [list $LIB_SLOW]
+set LIBS [list $LIB_SLOW]
+if {$SRAM} { lappend LIBS $SRAM_LIB }
+read_libs $LIBS
 
 # Scan flop ban: no scan cell may be picked, and no scan flop replaces a normal flop
 foreach pat {SDFF* SEDFF* SMDFF*} {
@@ -78,6 +85,14 @@ foreach d {core bus periph crypto top} {
     set RTL [concat $RTL [lsort [glob -directory $REPO/rtl/$d *.v]]]
 }
 lappend RTL $REPO/asic/ASIC_Top.v
+if {$SRAM} {
+    # SoC_Top picks the macro wrappers with `ifdef SRAM_MACRO. A first file that holds the define
+    # keeps it for the files read after it (not run on the server yet)
+    set fp [open $OUT/sram_define.v w]
+    puts $fp "`define SRAM_MACRO"
+    close $fp
+    set RTL [concat [list $OUT/sram_define.v] $RTL [lsort [glob -directory $REPO/rtl/mem RAM_Macro_*.v]]]
+}
 if {$MEM_BB eq "stub"} {
     lappend RTL $REPO/asic/yosys/mem_bb.v
     # Keep the undriven outputs of the empty modules as they are, never tie them to a constant
@@ -171,6 +186,7 @@ set n_icg   [regexp -all -line {^\s*(TLATNTSCA|TLATNCA)\w*\s+\S+\s*\(} $text]
 set n_latch [expr {[regexp -all -line {^\s*TLAT\w*\s+\S+\s*\(} $text] - $n_icg}]
 set n_assign [regexp -all -line {^\s*assign\s} $text]
 set n_mem   [regexp -all -line {^\s*(Data_Memory|Dual_Port_ROM)\w*\s+\S+\s*\(} $text]
+set n_macro [regexp -all -line {^\s*sram_2k_macro\w*\s+\S+\s*\(} $text]
 set wns ""
 catch {set wns [get_db [get_db designs] .slack]}
 if {$wns eq ""} {
@@ -178,7 +194,7 @@ if {$wns eq ""} {
 }
 
 set fp [open $OUT/reports/summary.txt w]
-puts $fp "top=$TOP period_ns=$PERIOD cg=$CG mem_bb=$MEM_BB memories_black_box=$n_mem assigns=$n_assign\
+puts $fp "top=$TOP period_ns=$PERIOD cg=$CG mem_bb=$MEM_BB sram=$SRAM macros=$n_macro memories_black_box=$n_mem assigns=$n_assign\
 scan_flops=$n_scan flops=$n_flop latches=$n_latch icg=$n_icg wns_ps=$wns"
 close $fp
 
@@ -186,6 +202,8 @@ if {$n_scan > 0} {
     puts "ERROR: $n_scan scan flops (SDFF*, SEDFF*, SMDFF*) in $netlist"
 } elseif {$n_mem != $N_MEM} {
     puts "ERROR: $n_mem memory instances in $netlist, expected $N_MEM black boxes"
+} elseif {$n_macro != $N_MACRO} {
+    puts "ERROR: $n_macro sram_2k_macro instances in $netlist, expected $N_MACRO"
 } else {
     puts "Genus done: $netlist (PERIOD=$PERIOD, CG=$CG, $n_mem memory\
 black boxes, 0 scan flops, $n_flop flops, $n_latch latches, WNS $wns ps)"

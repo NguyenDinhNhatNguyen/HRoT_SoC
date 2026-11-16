@@ -67,6 +67,9 @@ else
 fi
 (cd sim && "$QUESTA" -c -do run_ip.do < /dev/null)                                  > $LOG/ip.log 2>&1
 check "APB peripherals"             $LOG/ip.log        "RESULT: PASS"
+# SRAM macro wrappers of the ASIC build (P-21) against a reference array, with the home macro model
+(cd sim && "$QUESTA" -c -do run_ram.do < /dev/null)                                 > $LOG/ram.log 2>&1
+check "SRAM macro wrappers"         $LOG/ram.log       "RAM_Macro_tb RESULT: PASS"
 (cd sim && "$QUESTA" -c -do run_bv.do < /dev/null)                                  > $LOG/bv.log 2>&1
 check "Boot_Verifier and release gate" $LOG/bv.log      "RESULT: PASS"
 python3 dv/sw/mkhex.py sim > /dev/null
@@ -74,6 +77,11 @@ python3 dv/sw/mkhex.py sim > /dev/null
 check "SoC: secure boot, good image" $LOG/soc.log      "RESULT: PASS"
 (cd sim && "$QUESTA" -c -do "set PLUSARGS +TAMPER; do run_soc.do" < /dev/null)      > $LOG/soc_tamper.log 2>&1
 check "SoC: tampered image locked"  $LOG/soc_tamper.log "RESULT: PASS"
+# Same SoC test with both RAMs on the SRAM macro wrappers (P-21): App RAM zeroization, Master RAM byte writes
+(cd sim && "$QUESTA" -c -do "set DEFS +define+SRAM_MACRO; do run_soc.do" < /dev/null)                   > $LOG/soc_macro.log 2>&1
+check "SoC macro RAM: good image"   $LOG/soc_macro.log "RESULT: PASS"
+(cd sim && "$QUESTA" -c -do "set DEFS +define+SRAM_MACRO; set PLUSARGS +TAMPER; do run_soc.do" < /dev/null) > $LOG/soc_macro_tamper.log 2>&1
+check "SoC macro RAM: tampered"     $LOG/soc_macro_tamper.log "RESULT: PASS"
 # Real Secure Boot firmware on the SoC (P-13): needs the RISC-V toolchain for make fw
 if command -v riscv64-unknown-elf-gcc > /dev/null && make -s fw            > $LOG/fw_build.log 2>&1; then
     python3 fw/tools/golden.py sim/app.hex sim/fw_golden.hex > /dev/null
@@ -92,6 +100,15 @@ if command -v riscv64-unknown-elf-gcc > /dev/null && make -s fw            > $LO
     # ASIC wrapper (N-30): reset synchronizer, then both firmwares through ASIC_Top
     (cd sim && "$QUESTA" -c -do "set TB ASIC_Top_tb; do run_fw.do" < /dev/null)            > $LOG/asic_top.log 2>&1
     check "ASIC_Top: reset sync + boot" $LOG/asic_top.log  "ASIC_Top_tb RESULT: PASS"
+    # Real firmware with both RAMs on the SRAM macro wrappers (P-21)
+    (cd sim && "$QUESTA" -c -do "set TB ASIC_Top_tb; set DEFS +define+SRAM_MACRO; do run_fw.do" < /dev/null) > $LOG/asic_top_macro.log 2>&1
+    check "ASIC_Top macro RAM: boot"    $LOG/asic_top_macro.log "ASIC_Top_tb RESULT: PASS"
+    (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set DEFS +define+SRAM_MACRO; do run_fw.do" < /dev/null) > $LOG/fw_macro.log 2>&1
+    check "FW macro RAM: good image"    $LOG/fw_macro.log  "SoC_Fw_tb RESULT: PASS"
+    (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set DEFS +define+SRAM_MACRO; set PLUSARGS +TAMPER; do run_fw.do" < /dev/null) > $LOG/fw_macro_tamper.log 2>&1
+    check "FW macro RAM: tampered"      $LOG/fw_macro_tamper.log "SoC_Fw_tb RESULT: PASS"
+    (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set DEFS +define+SRAM_MACRO; set PLUSARGS +FAULT; do run_fw.do" < /dev/null) > $LOG/fw_macro_fault.log 2>&1
+    check "FW macro RAM: access fault"  $LOG/fw_macro_fault.log "SoC_Fw_tb RESULT: PASS"
 else
     skip "SoC: firmware" "no RISC-V toolchain or make fw failed, see $LOG/fw_build.log"
 fi

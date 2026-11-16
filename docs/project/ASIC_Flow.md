@@ -7,7 +7,8 @@
 - Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 và 2 đã chạy. Bước 3 tới 9 đã có script nháp, chưa chạy lần nào trên server. Bước 4 (GLS) có `make asic-gls` từ 16/11 (Phát, `94b25fc`).
 - Tất cả script nháp dựa trên flow đã chạy thật của RV32i-SoC (đồ án CE434, cùng nhóm, cùng server và PDK GPDK45). Chúng chưa được kiểm trên HRoT_SoC.
 - LEC (bước 3) chạy được ngay trên netlist hiện tại, vì bộ nhớ là hộp đen ở cả hai phía.
-- Innovus (bước 5 tới 8) chưa chạy được cho tới khi có wrapper SRAM. Innovus không nhận hộp đen, và netlist còn 68 lệnh `assign` do chúng.
+- Hai RAM 4 KB có wrapper SRAM từ 16/11 (phase 1, `make asic-genus SRAM=1`, `asic/README.md`). Đã mô phỏng với mô hình macro ở nhà, chưa chạy Genus với macro thật.
+- Innovus (bước 5 tới 8) vẫn chưa chạy được: Hai ROM 4 KB còn là hộp đen (phase 2), mà Innovus không nhận hộp đen và netlist còn 68 lệnh `assign` do chúng.
 - Rủi ro chính: Số liệu ASIC hiện chưa có diện tích bộ nhớ, và `.gitignore` chặn mọi file tên bắt đầu bằng `sram_2k_macro` nên wrapper không được đặt tên như vậy.
 
 ## 2. Các bước
@@ -34,9 +35,10 @@ Nguồn của các cổng nghiệm thu bước 5 tới 8: `docs/flow_notes.md` m
 
 | Việc | Người | Ghi chú |
 | --- | --- | --- |
-| Viết wrapper SRAM cho `Data_Memory` và `Dual_Port_ROM` | Nguyên | Macro `sram_2k_macro` có 1 cổng đọc ghi và không có ghi theo byte, nên `SB` và `SH` phải đọc, sửa, ghi. `Q` ra ở chu kỳ sau, bit chọn macro phải chốt từ chu kỳ trước |
-| Đọc wrapper và `.lib` của macro trong `asic/genus/synth.tcl`, đổi số bộ nhớ cần kiểm | Nguyên, Phát chạy | Hiện `N_MEM = 4` và `rtl/mem` không được đọc |
-| Thêm file wrapper vào `MEM_RTL` của `asic/lec/run_lec.sh` | Nguyên | Chạy lại LEC |
+| Wrapper SRAM cho hai RAM (`master_ram`, `app_ram`) | Nguyên | Xong 16/11, phase 1. `rtl/mem/RAM_Macro_Axi.v` (sau AXI, không cần chờ) và `RAM_Macro_Core.v` (lõi App chờ bằng `bus_stall`, I-09). Chọn bằng `` `define SRAM_MACRO ``, mặc định tắt. Macro `sram_2k_macro` có 1 cổng đọc ghi, không ghi theo byte nên `SB`, `SH` đọc rồi ghi lại, `Q` ra sau 1 chu kỳ |
+| Genus đọc wrapper và `.lib` của macro | Nguyên viết, Phát chạy | `make asic-genus SRAM=1`: `N_MEM` còn 2 (hai ROM), kiểm đúng 2 instance `sram_2k_macro`. Chưa chạy trên server. Cách đặt `` `define `` bằng file đầu tiên trong danh sách cũng chưa kiểm với Genus |
+| LEC với wrapper | Nguyên viết, Phát chạy | `make asic-lec SRAM=1`, macro là hộp đen ở cả hai phía |
+| Hai ROM 4 KB (`boot_rom`, `app_rom`) | Nguyên, nhóm quyết | Phase 2. SRAM macro không có nội dung firmware, nên đề xuất sinh ROM bằng logic từ file hex (như `boot_rom.v` của RV32i-SoC). Cần đo diện tích trước |
 | Chốt chu kỳ clock | Phát | Chờ quét 7 và 6 ns (P-20) |
 | Chốt kích thước lõi | Phát | Đặt `CORE_W` và `CORE_H`, hoặc để `UTIL` mặc định 0,60 trong `asic/pnr/floorplan.tcl` |
 
@@ -60,6 +62,7 @@ Lưu ý khi đặt tên file wrapper: `.gitignore` chặn `sram_2k_macro*`, `*.l
 - Chưa chạy: Mọi script bước 3 tới 11 chưa chạy trên server. Mỗi lần chạy đầu có thể lộ lỗi tên lệnh, vì tên đổi giữa các bản tool. Các lệnh phụ đều bọc `try_cmd` để chỉ báo cảnh báo.
 - Đã kiểm ở nhà: Cú pháp bash, cân bằng ngoặc Tcl, cây lệnh `make -n`, và dofile LEC sinh ra đúng (46 file RTL, cùng danh sách với `synth.tcl`).
 - Chưa quyết: DFT. RV32i-SoC cũng cấm scan flop và không làm DFT. Đề xuất giữ ngoài phạm vi, ghi vào báo cáo như một giới hạn.
+- Wrapper SRAM (16/11): `make sim-ram` kiểm hai wrapper với mảng tham chiếu (khoảng 15.600 phép kiểm, 0 lỗi, phá thử 5 kiểu lỗi trong wrapper đều bị bắt). `make test` chạy thêm `SoC_Top_tb` và `SoC_Fw_tb` (ảnh đúng, ảnh sửa, access fault) và `ASIC_Top_tb` với RAM là macro. Mô hình macro là của nhóm (`dv/models/sram_macro_model.v`), hành vi macro thật (thời gian truy cập, `Q` khi ghi) chưa biết, `make asic-macro-info` sẽ cho. Phá `stall` của `RAM_Macro_Core` thành 0 thì các test SoC vẫn PASS: chưa có test nào của lõi App đọc RAM qua macro trong firmware thật (phá ghi một phần của RAM Master và bỏ ghi đủ 4 byte khi xóa RAM thì bị bắt), `RISCV_Core_prog_tb` chỉ kiểm lõi với `bus_stall` ngẫu nhiên.
 - Bước 10 chưa có script, Voltus chưa xác nhận. Bước 4 có `make asic-gls` từ 16/11, chạy với mô hình RTL của bộ nhớ (thay hộp đen), chưa chạy trên server.
 
 ## 6. Cách chạy trên server
@@ -68,7 +71,8 @@ Lưu ý khi đặt tên file wrapper: `.gitignore` chặn `sram_2k_macro*`, `*.l
 cd ~/HRoT_SoC && git pull
 make asic-genus          # bước 2, đã chạy được
 make asic-lec            # bước 3, chạy được trên netlist hiện tại
-# sau khi có wrapper SRAM:
+# hai RAM trên macro (phase 1): make asic-genus SRAM=1, rồi make asic-lec SRAM=1
+# sau khi hai ROM cũng hết là hộp đen (phase 2):
 make asic-innovus        # bước 5 tới 8
 make asic-sta            # bước 9 trước layout. Sau route: thêm SPEF=$PWD/asic/out_innovus/ASIC_Top.spef
 make asic-lec-save asic-pnr-save asic-sta-save   # bước 11, rồi commit asic/reports
@@ -80,7 +84,7 @@ Trước khi commit, mở `asic/reports/lec/lec.txt` và kiểm đường dẫn:
 
 | Mục | Ai quyết |
 | --- | --- |
-| Số macro (RAM 4 KB x 2, ROM hai cổng x 2: 4 tới 6 macro) | Nguyên, khi viết wrapper |
+| Cách làm hai ROM (phase 2): logic sinh từ hex, hay macro, và số macro (RAM 2 macro, ROM hai cổng thêm 2 tới 4) | Nguyên, nhóm |
 | Chu kỳ clock chính thức | Phát |
 | Kích thước lõi | Phát |
 | Voltus chạy được trên server không | Phát |
@@ -91,3 +95,4 @@ Trước khi commit, mở `asic/reports/lec/lec.txt` và kiểm đường dẫn:
 | Ngày | Người | Thay đổi |
 | --- | --- | --- |
 | 15/11/2026 | Nguyên | Bản nháp đầu |
+| 16/11/2026 | Nguyên | Wrapper SRAM cho hai RAM (phase 1), `SRAM=1` cho Genus và LEC |

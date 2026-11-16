@@ -6,12 +6,14 @@
 #   vsim -c -do "set TB SoC_App_tb; do run_fw.do"                        firmware of both cores (P-16), add
 #                                                                        "set PLUSARGS +TAMPER" for a tampered App ROM
 #   vsim -c -do "set TB ASIC_Top_tb; do run_fw.do"                       ASIC wrapper: reset synchronizer, then both firmwares
+#   vsim -c -do "set TB ASIC_Top_tb; set DEFS +define+SRAM_MACRO; do run_fw.do"   same, RAMs on the SRAM macro model (P-21)
 # SoC_Fw_tb and SoC_App_tb need the firmware first: make fw (fw/build/firmware_imem.hex, firmware_dmem.hex,
 # app_firmware.hex). SoC_App_tb takes the golden hash from firmware_imem.hex, as built.
 # app.hex comes from dv/sw/mkhex.py, fw_golden.hex from fw/tools/golden.py app.hex,
 # SoC_Irq_tb's own programs from dv/tests/asm/soc_irq_*.hex.
 if {![info exists TB]} {set TB SoC_Fw_tb}
 if {![info exists PLUSARGS]} {set PLUSARGS {}}
+if {![info exists DEFS]} {set DEFS {}}           ;# e.g. set DEFS +define+SRAM_MACRO: RAMs on the SRAM macro wrappers (P-21)
 if {![file exists app.hex]} {exec python ../dv/sw/mkhex.py .}
 exec python ../fw/tools/golden.py app.hex fw_golden.hex
 
@@ -20,9 +22,10 @@ vlib work
 
 vlog -sv ../rtl/core/*.v
 vlog -sv ../rtl/bus/*.v ../rtl/periph/*.v ../rtl/mem/*.v ../rtl/crypto/*.v
-vlog -sv ../rtl/top/RISCV_Core.v ../rtl/top/SoC_Top.v ../asic/ASIC_Top.v
+vlog -sv ../dv/models/sram_macro_model.v         ;# home model of the SRAM macro, used only with SRAM_MACRO
+vlog -sv {*}$DEFS ../rtl/top/RISCV_Core.v ../rtl/top/SoC_Top.v ../asic/ASIC_Top.v
 vlog -sv ../dv/tb/RISCV_Core_sva.sv              ;# assertions on both cores (P-19)
-vlog -sv ../dv/tb/$TB.sv
+vlog -sv {*}$DEFS ../dv/tb/$TB.sv
 
 vsim -voptargs="+acc" work.$TB work.RISCV_Core_sva_bind {*}$PLUSARGS
 if {[batch_mode]} {log -r /*} else {add wave -position insertpoint sim:/$TB/dut/*}

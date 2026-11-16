@@ -265,7 +265,20 @@ module SoC_Top #(
         end
     endgenerate
 
-    // Slave 0: Master RAM
+    // Slave 0: Master RAM. `define SRAM_MACRO (ASIC build, P-21) swaps it for the SRAM macro wrapper.
+    // The macro has no firmware preload (RAM_HEX): the Master firmware loads its data at boot
+`ifdef SRAM_MACRO
+    RAM_Macro_Axi master_ram (
+        .clk(clk),
+        .rst(reset_system),
+        .reg_wen(reg_wen[0]),
+        .reg_waddr(reg_waddr[0]),
+        .reg_wdata(reg_wdata[0]),
+        .reg_wstrb(reg_wstrb[0]),
+        .reg_raddr(reg_raddr[0]),
+        .reg_rdata(reg_rdata[0])
+    );
+`else
     Data_Memory #(.INIT_FILE(RAM_HEX)) master_ram (
         .clk(clk),
         .MemWrite(reg_wen[0]),
@@ -275,6 +288,7 @@ module SoC_Top #(
         .wstrb(reg_wstrb[0]),
         .read_data(reg_rdata[0])
     );
+`endif
 
     wire [11:0] bv_rom_addr;
     wire        bv_busy;
@@ -374,6 +388,8 @@ module SoC_Top #(
     wire        app_data_we, app_data_re;
     wire [3:0]  app_data_wstrb;
 
+    wire        app_ram_stall;       // RAM wait for the App Core (SRAM_MACRO only, otherwise tied 0 below)
+
     // Interrupts for the App Core (I-01, core ports since P-09): TIMER1 -> irq_timer, UART1 | GPIO1 | Mailbox -> irq_ext
     wire timer1_irq, uart1_irq, gpio1_irq, mbox_irq_a;
     wire app_irq_timer = timer1_irq;
@@ -382,7 +398,7 @@ module SoC_Top #(
     RISCV_Core app_core (
         .clk(clk),
         .rst(~app_core_reset_n),
-        .bus_stall(1'b0),
+        .bus_stall(app_ram_stall),      // 0 unless SRAM_MACRO: the macro RAM reads one cycle late (I-09)
         .irq_timer(app_irq_timer),
         .irq_ext(app_irq_ext),
         .data_err(1'b0),                // the App APB bus ignores PSLVERR for now (P-24)
@@ -405,7 +421,23 @@ module SoC_Top #(
     wire        app_apb_hit = (app_data_addr[31:28] == 4'h4);
     wire [31:0] app_ram_rdata;
 
-    // Boot Guard zeroization borrows the RAM write port while the App Core is held in reset
+    // Boot Guard zeroization borrows the RAM write port while the App Core is held in reset.
+    // `define SRAM_MACRO (ASIC build, P-21) swaps the RAM for the SRAM macro wrapper, which waits the
+    // core through app_ram_stall. The instance keeps its name so paths and netlist names do not change.
+`ifdef SRAM_MACRO
+    RAM_Macro_Core app_ram (
+        .clk(clk),
+        .rst(reset_system),
+        .MemWrite(zero_en | (app_data_we & ~app_apb_hit)),
+        .MemRead(app_data_re & ~app_apb_hit),
+        .addr(zero_en ? {20'b0, zero_addr, 2'b00} : app_data_addr),
+        .write_data(zero_en ? 32'b0 : app_data_wdata),
+        .wstrb(zero_en ? 4'hF : app_data_wstrb),
+        .read_data(app_ram_rdata),
+        .stall(app_ram_stall)
+    );
+`else
+    assign app_ram_stall = 1'b0;
     Data_Memory app_ram (
         .clk(clk),
         .MemWrite(zero_en | (app_data_we & ~app_apb_hit)),
@@ -415,6 +447,7 @@ module SoC_Top #(
         .wstrb(zero_en ? 4'hF : app_data_wstrb),
         .read_data(app_ram_rdata)
     );
+`endif
 
     wire        app_psel = app_apb_hit & (app_data_we | app_data_re);
     wire [3:0]  app_pstrb = app_data_we ? app_data_wstrb : 4'b0;

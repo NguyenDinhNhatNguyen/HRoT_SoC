@@ -14,6 +14,11 @@
 //  - +FAULT      : good image, but the CPU's load of APP_VER (0x6000_0FFC) gets an access fault: data_err is
 //    forced for that response (the real bus answers OKAY there), the trap handler must lock the App out
 // Run from sim/ (sim/run_fw.do). Ends with "SoC_Fw_tb RESULT: PASS|FAIL".
+`ifdef SRAM_MACRO
+`define APP_RAM dut.app_ram.u_macro.mem   // the App RAM is the SRAM macro model (P-21)
+`else
+`define APP_RAM dut.app_ram.ram
+`endif
 module SoC_Fw_tb;
 
     localparam MAXC      = 2000000;     // cycle limit: about 110 log characters at 115200 baud dominate
@@ -166,13 +171,13 @@ module SoC_Fw_tb;
         repeat (2000) @(posedge clk);        // UART drains, the App gets to run
         zeros = 0;
         for (i = 0; i < 1024; i = i + 1)
-            if (dut.app_ram.ram[i] === 32'b0)
+            if (`APP_RAM[i] === 32'b0)
                 zeros = zeros + 1;
         $display("%s run: firmware finished after %0d cycles, LED=%h", fault ? "Fault" : tamper ? "Tampered" : "Good", cyc, led);
         $display("UART0 %0d chars, hash printed: %0s", nchar, seen_hash ? hash_txt : "(none)");
         $display("golden                 : %0s", golden_text(0));
         $display("app_core_reset_n=%b lock=%b zero_done=%b app_ram[0]=%0d zeroed words=%0d mcause=%h bus errors=%0d",
-                 dut.app_core_reset_n, dut.syscsr.lock_q, dut.syscsr.zero_done, dut.app_ram.ram[0], zeros,
+                 dut.app_core_reset_n, dut.syscsr.lock_q, dut.syscsr.zero_done, `APP_RAM[0], zeros,
                  dut.master_core.u_CSR_Unit.mcause, bus_errs);
         $display("Secure DMA runs=%0d busy=%0d cycles errors=%0d, App ROM reads by the CPU=%0d",
                  dma_runs, dma_cycles, dma_errs, cpu_rom_reads);
@@ -197,7 +202,7 @@ module SoC_Fw_tb;
         else
             ok = ok && led == 8'h01 && seen_released && !seen_locked && dut.app_core_reset_n === 1'b1
                     && dut.boot_verifier.ok_q === 1'b1 && dut.boot_verifier.key_lock === 1'b1
-                    && dut.syscsr.lock_q === 1'b0 && dut.app_ram.ram[0] === 42 && hash_txt == golden_text(0);
+                    && dut.syscsr.lock_q === 1'b0 && `APP_RAM[0] === 42 && hash_txt == golden_text(0);
         $display("SoC_Fw_tb RESULT: %s", ok ? "PASS" : "FAIL");
         $finish;
     end

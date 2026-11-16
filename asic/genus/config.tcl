@@ -13,10 +13,17 @@ set LIB_DIR  $PDK_DIR/lib
 # Setup corner (1.0 V, 125 C)
 set LIB_SLOW slow_vdd1v0_basiccells.lib
 
+# SRAM macro of the school (P-21), read only when SRAM=1 (see synth.tcl). One corner only (typical)
+set SRAM_LIB sram_2k_macro.lib
+
 # Double-height cells of gsclib045 (SITE CoreSiteDouble). The floorplan has only single-height
 # rows, so they are banned in Genus and the netlist stays usable for Innovus (P-21)
 set DONT_USE_CELLS {BUFX2 CLKBUFX2}
 
+if {[info exists ::env(SRAM)] && $::env(SRAM) == 1 && ![file exists $LIB_DIR/$SRAM_LIB]} {
+    puts "ERROR: SRAM=1 but cannot find $LIB_DIR/$SRAM_LIB"
+    quit
+}
 if {![file exists $LIB_DIR/$LIB_SLOW]} {
     puts "ERROR: cannot find $LIB_DIR/$LIB_SLOW, set PDK_DIR to the Lab PDK_GPDK45 folder"
     quit

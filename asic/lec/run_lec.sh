@@ -12,7 +12,10 @@
 #   SRC_DIR=asic/out_genus      where make asic-genus wrote the netlist
 #   LEC_DIR=asic/out_lec        private copy of the netlist and the results, so a new
 #                               make asic-genus cannot change the netlist during the run
-#   MEM_RTL="<files>"           extra golden RTL files (SRAM wrappers), empty today
+#   SRAM=1                      the netlist was made with make asic-genus SRAM=1: the golden side defines
+#                               SRAM_MACRO and reads rtl/mem/RAM_Macro_*.v. sram_2k_macro is a black box
+#                               on both sides, like the two ROMs
+#   MEM_RTL="<files>"           extra golden RTL files, empty by default
 #   DRY_RUN=1                   only check the inputs and write the dofile, do not start lec
 #
 # The copy of the netlist and the results stay in LEC_DIR (git ignores asic/out*).
@@ -23,6 +26,7 @@ cd "$(dirname "$0")/../.." || { echo "ERROR: cannot change to the repo root"; ex
 SRC_DIR=${SRC_DIR:-asic/out_genus}
 LEC_DIR=${LEC_DIR:-asic/out_lec}
 MEM_RTL=${MEM_RTL:-}
+SRAM=${SRAM:-0}
 DRY_RUN=${DRY_RUN:-0}
 NETLIST_SRC=$SRC_DIR/ASIC_Top_netlist.v
 LIB_V=${PDK_DIR:-$HOME/PDK_GPDK45}/lib/slow_vdd1v0_basiccells.v
@@ -42,6 +46,12 @@ for d in core bus periph crypto top; do
     for f in $(ls rtl/$d/*.v 2> /dev/null | sort); do files="$files $f"; done
 done
 files="$files asic/ASIC_Top.v $MEM_RTL"
+if [ "$SRAM" = 1 ]; then
+    # A first file that holds the define keeps it for the files after it, like in synth.tcl
+    mkdir -p "$LEC_DIR"
+    echo '`define SRAM_MACRO' > "$LEC_DIR/sram_define.v"
+    files="$LEC_DIR/sram_define.v $files $(ls rtl/mem/RAM_Macro_*.v | sort | tr '\n' ' ')"
+fi
 for f in $files; do [ -f "$f" ] || die "RTL file $f not found"; done
 
 # RTL files newer than the netlist were changed after synthesis (for example by git pull)

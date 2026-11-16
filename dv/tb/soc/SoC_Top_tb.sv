@@ -7,6 +7,11 @@
 //   +TAMPER     : one bit of the App ROM is flipped, the hash must not match and Boot Guard must lock the
 //                 App out for good and clear its RAM, even though the firmware then tries to release it
 // Ends with "SoC_Top_tb RESULT: PASS|FAIL".
+`ifdef SRAM_MACRO
+`define APP_RAM dut.app_ram.u_macro.mem   // the App RAM is the SRAM macro model (P-21)
+`else
+`define APP_RAM dut.app_ram.ram
+`endif
 module soc_tb;
     `include "labels.vh"
 
@@ -118,10 +123,10 @@ module soc_tb;
         repeat (400) @(posedge clk);
         zeros = 0;
         for (i = 0; i < 1024; i = i + 1)
-            if (dut.app_ram.ram[i] === 32'b0)
+            if (`APP_RAM[i] === 32'b0)
                 zeros = zeros + 1;
         $display("%s run: boot took %0d cycles", tamper ? "Tampered" : "Good", cyc);
-        $display("app_core_reset_n=%b  app_ram[0]=%0d  zeroed RAM words=%0d", dut.app_core_reset_n, dut.app_ram.ram[0], zeros);
+        $display("app_core_reset_n=%b  app_ram[0]=%0d  zeroed RAM words=%0d", dut.app_core_reset_n, `APP_RAM[0], zeros);
         $display("SLVERR=%0d SLVERR_R=%0d DECERR_W=%0d DECERR_R=%0d  stray DMA requests=%0d", slverr, slverr_r, decerr_w, decerr_r, dma_stray);
         $display("UART received %0d chars: \"%0s\"  LED=%h", nchar, uart_str, led);
         ok = (cyc < MAXC) && slverr == 1 && slverr_r == 1 && decerr_w == 1 && decerr_r == 4
@@ -130,7 +135,7 @@ module soc_tb;
             ok = ok && dut.app_core_reset_n === 1'b0 && dut.syscsr.lock_q === 1'b1
                     && dut.syscsr.zero_done === 1'b1 && led == 8'hEE && zeros == 1024;
         else
-            ok = ok && dut.app_core_reset_n === 1'b1 && dut.app_ram.ram[0] === 42
+            ok = ok && dut.app_core_reset_n === 1'b1 && `APP_RAM[0] === 42
                     && dut.syscsr.lock_q === 1'b0 && led == 8'h5A;
         $display("SoC_Top_tb RESULT: %s", ok ? "PASS" : "FAIL");
         $finish;

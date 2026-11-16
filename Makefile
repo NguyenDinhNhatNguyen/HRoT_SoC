@@ -6,6 +6,7 @@
 #   make sim-uvm     UVM AXI4-Lite (sim/run_uvm.do), TEST=axi4_lite_full_test SEED=1
 #   make sim-soc     whole-SoC simulation (sim/run_soc.do)
 #   make sim-ip      APB peripheral testbench (sim/run_ip.do)
+#   make sim-ram     SRAM macro wrappers of the ASIC build against a reference array (sim/run_ram.do, P-21)
 #   make sim-bv      Boot_Verifier and the SYSCSR release gate (sim/run_bv.do)
 #   make vp          SystemC virtual platform (sim/run_vp.sh)
 #   make fw          build the Master firmware (CMake + riscv64-unknown-elf)
@@ -42,7 +43,7 @@ RAM_HEX  ?= $(HEX_DIR)/zero.hex
 APP_HEX  ?= $(HEX_DIR)/app.hex
 winpath   = $(shell wslpath -m $(abspath $(1)))
 
-.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-sweep asic-genus-save asic-lec asic-lec-save asic-gls asic-macro-info asic-innovus asic-sta asic-pnr-save asic-sta-save clean
+.PHONY: test cov sim-unit sim-core sim-uvm sim-soc sim-ip sim-ram vp fw hex de2 xilinx asic-yosys asic-genus asic-genus-sweep asic-genus-save asic-lec asic-lec-save asic-gls asic-macro-info asic-innovus asic-sta asic-pnr-save asic-sta-save clean
 
 test:
 	bash sim/regress.sh
@@ -65,6 +66,9 @@ sim-soc:
 
 sim-ip:
 	cd sim && $(QUESTA) -c -do run_ip.do
+
+sim-ram:
+	cd sim && $(QUESTA) -c -do run_ram.do
 
 sim-bv:
 	cd sim && $(QUESTA) -c -do run_bv.do
