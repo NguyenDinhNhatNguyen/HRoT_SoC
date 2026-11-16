@@ -10,7 +10,9 @@
  *        0x0000_0FE0  32 B   golden hash of the App ROM (secure_boot.h SB_GOLDEN_ADDR), filled
  *                            in after the build: the golden step of fw/CMakeLists.txt writes it
  *                            into firmware_imem.hex (I-04, P-16), SoC_Fw_tb and the VP write their own
- *   RAM  0x1000_0000  4 KB   .data           -> firmware_dmem.hex
+ *   RAM  0x1000_0000  4 KB   .data           -> firmware_dmem.hex. It must stay empty: the ASIC RAM is an
+ *                            SRAM macro without a preload (P-21) and crt0 copies nothing, so the
+ *                            ASSERT at the end of this file stops the build if .data gets a byte
  *                            .bss (cleared by crt0), then the 1 KB stack right after it
  *                            (__stack_top = end of .stack, not the end of RAM)
  *
@@ -71,3 +73,7 @@ SECTIONS
 
     /DISCARD/ : { *(.eh_frame .eh_frame.*) *(.comment) }
 }
+
+/* An initialized global would work on the FPGA (RAM preloaded from firmware_dmem.hex) and fail on the
+ * ASIC (SRAM macro, no preload). Use const data (it goes to the ROM) or set the value in code. */
+ASSERT(SIZEOF(.data) == 0, "ERROR: .data is not empty, the ASIC RAM has no preload (see the header of linker.ld)")

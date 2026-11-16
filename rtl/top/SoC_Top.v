@@ -266,7 +266,8 @@ module SoC_Top #(
     endgenerate
 
     // Slave 0: Master RAM. `define SRAM_MACRO (ASIC build, P-21) swaps it for the SRAM macro wrapper.
-    // The macro has no firmware preload (RAM_HEX): the Master firmware loads its data at boot
+    // The macro has no firmware preload (RAM_HEX). The Master firmware needs none: its .data is empty
+    // (fw/linker.ld asserts it) and crt0 clears .bss
 `ifdef SRAM_MACRO
     RAM_Macro_Axi master_ram (
         .clk(clk),

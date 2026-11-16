@@ -1,7 +1,7 @@
 /*
  * crt0.S -- start-up of the Master Core and the App Core (P-16): set the stack, clear .bss, call main().
- * Master: .rodata sits in the Boot ROM and .data is preloaded into RAM (linker.ld). App: no .rodata
- * or .data at all (app/app.ld). Either way there is nothing to copy.
+ * Master: .rodata sits in the Boot ROM and .data must be empty (linker.ld asserts it, the ASIC RAM
+ * has no preload). App: no .rodata or .data at all (app/app.ld). Either way there is nothing to copy.
  * If main() returns, stop in an endless loop.
  * Traps (P-24): mtvec points at trap_entry, which starts a fresh stack and calls
  * trap_handler(mcause, mepc, mtval). trap_handler is weak: a firmware without one (the App demo)
