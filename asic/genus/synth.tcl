@@ -12,7 +12,10 @@
 #                  trial: accept it only if the flop count stays the same and the assigns are gone
 #   SRAM=0|1       1 = the two RAMs are SRAM macro wrappers (rtl/mem/RAM_Macro_*.v, P-21) instead of
 #                  black boxes. The macro sram_2k_macro stays a library cell (its .lib is read), the two
-#                  ROMs stay black boxes. Not run on the server yet. Default 0 keeps the 12/11 flow
+#                  ROMs stay black boxes unless ROM=1. Not run on the server yet. Default 0 keeps the 12/11 flow
+#   ROM=0|1        1 = the two ROMs are logic (rtl/mem/ROM_Logic.v and the image generated from the firmware
+#                  hex by make rom-images) instead of black boxes. The firmware is fixed in the netlist.
+#                  SRAM=1 ROM=1 leaves no black box, which Innovus needs
 #   SYN_OUT=<dir>  output folder (default asic/out_genus, ignored by git)
 #   PDK_DIR=<dir>  Lab PDK folder (default ~/PDK_GPDK45, see config.tcl)
 #
@@ -51,7 +54,8 @@ set OUT      [file normalize [env_or SYN_OUT $REPO/asic/out_genus]]
 set AUDIT    $OUT/reports/audit
 set RPT      $OUT/reports/synthesis
 set SRAM     [env_or SRAM 0]
-set N_MEM    [expr {$SRAM ? 2 : 4}]      ;# black boxes left: 2 ROMs with SRAM=1, else 2 RAMs and 2 ROMs
+set ROM      [env_or ROM 0]
+set N_MEM    [expr {($SRAM ? 0 : 2) + ($ROM ? 0 : 2)}]   ;# black boxes left: 2 RAMs unless SRAM=1, 2 ROMs unless ROM=1
 set N_MACRO  [expr {$SRAM ? 2 : 0}]      ;# sram_2k_macro instances expected
 file mkdir $OUT $AUDIT $RPT
 
@@ -85,13 +89,27 @@ foreach d {core bus periph crypto top} {
     set RTL [concat $RTL [lsort [glob -directory $REPO/rtl/$d *.v]]]
 }
 lappend RTL $REPO/asic/ASIC_Top.v
-if {$SRAM} {
-    # SoC_Top picks the macro wrappers with `ifdef SRAM_MACRO. A first file that holds the define
-    # keeps it for the files read after it (not run on the server yet)
-    set fp [open $OUT/sram_define.v w]
-    puts $fp "`define SRAM_MACRO"
+if {$SRAM || $ROM} {
+    # SoC_Top picks the macro wrappers with `ifdef SRAM_MACRO and the ROM logic with `ifdef ROM_LOGIC.
+    # A first file that holds the defines keeps them for the files read after it (not run on the
+    # server yet, check with help read_hdl if Genus has a -define option and prefer it)
+    set fp [open $OUT/mem_define.v w]
+    if {$SRAM} { puts $fp "`define SRAM_MACRO" }
+    if {$ROM}  { puts $fp "`define ROM_LOGIC" }
     close $fp
-    set RTL [concat [list $OUT/sram_define.v] $RTL [lsort [glob -directory $REPO/rtl/mem RAM_Macro_*.v]]]
+    set RTL [concat [list $OUT/mem_define.v] $RTL]
+}
+if {$SRAM} {
+    set RTL [concat $RTL [lsort [glob -directory $REPO/rtl/mem RAM_Macro_*.v]]]
+}
+if {$ROM} {
+    # The image is generated from the firmware hex: make rom-images (needs fw/build/*.hex)
+    set rom_images $REPO/build/rom/rom_images.v
+    if {![file exists $rom_images]} {
+        puts "ERROR: $rom_images not found, run make rom-images first"
+        quit
+    }
+    lappend RTL $REPO/rtl/mem/ROM_Logic.v $rom_images
 }
 if {$MEM_BB eq "stub"} {
     lappend RTL $REPO/asic/yosys/mem_bb.v

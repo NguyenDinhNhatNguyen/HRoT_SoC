@@ -295,7 +295,12 @@ module SoC_Top #(
     wire [31:0] bv_rom_data = reg_rdata[4];
 
     // Slave 4: Boot ROM. Port A feeds the Master Core's fetch, port B serves loads over AXI (read-only)
+`ifdef ROM_LOGIC
+    // `define ROM_LOGIC (ASIC build, P-21): the ROM is logic generated from the firmware hex (BOOT_HEX is not used)
+    ROM_Logic #(.IMAGE(0)) boot_rom (
+`else
     Dual_Port_ROM #(.INIT_FILE(BOOT_HEX)) boot_rom (
+`endif
         .clk(clk),
         .addrA(boot_addr),
         .dataOutA(boot_data),
@@ -491,7 +496,11 @@ module SoC_Top #(
     );
 
     // Slave 3: App ROM. Port A feeds App Core fetch, port B is read-only over the Master AXI bus
+`ifdef ROM_LOGIC
+    ROM_Logic #(.IMAGE(1)) app_rom (
+`else
     Dual_Port_ROM #(.INIT_FILE(APP_HEX)) app_rom (
+`endif
         .clk(clk),
         .addrA(app_instr_addr),
         .dataOutA(app_instr),

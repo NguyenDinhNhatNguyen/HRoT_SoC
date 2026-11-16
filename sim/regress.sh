@@ -70,6 +70,9 @@ check "APB peripherals"             $LOG/ip.log        "RESULT: PASS"
 # SRAM macro wrappers of the ASIC build (P-21) against a reference array, with the home macro model
 (cd sim && "$QUESTA" -c -do run_ram.do < /dev/null)                                 > $LOG/ram.log 2>&1
 check "SRAM macro wrappers"         $LOG/ram.log       "RAM_Macro_tb RESULT: PASS"
+# The core runs its ISA program with the App RAM on the macro wrapper (the wrapper stalls the core)
+(cd sim && "$QUESTA" -c -do "set TB RAM_Core_ISA_tb; do run_ram.do" < /dev/null)    > $LOG/ram_isa.log 2>&1
+check "Core ISA on macro RAM"       $LOG/ram_isa.log   "RAM_Core_ISA_tb RESULT: PASS"
 (cd sim && "$QUESTA" -c -do run_bv.do < /dev/null)                                  > $LOG/bv.log 2>&1
 check "Boot_Verifier and release gate" $LOG/bv.log      "RESULT: PASS"
 python3 dv/sw/mkhex.py sim > /dev/null
@@ -103,6 +106,11 @@ if command -v riscv64-unknown-elf-gcc > /dev/null && make -s fw            > $LO
     # Real firmware with both RAMs on the SRAM macro wrappers (P-21)
     (cd sim && "$QUESTA" -c -do "set TB ASIC_Top_tb; set DEFS +define+SRAM_MACRO; do run_fw.do" < /dev/null) > $LOG/asic_top_macro.log 2>&1
     check "ASIC_Top macro RAM: boot"    $LOG/asic_top_macro.log "ASIC_Top_tb RESULT: PASS"
+    # ROM as logic from the firmware hex (P-21): the image against the hex, then Secure Boot on it
+    (cd sim && "$QUESTA" -c -do run_rom.do < /dev/null)                                     > $LOG/rom_logic.log 2>&1
+    check "ROM logic = firmware hex"    $LOG/rom_logic.log "ROM_Logic_tb RESULT: PASS"
+    (cd sim && "$QUESTA" -c -do "set TB ASIC_Top_tb; set DEFS +define+SRAM_MACRO+ROM_LOGIC; do run_fw.do" < /dev/null) > $LOG/asic_top_rom.log 2>&1
+    check "ASIC_Top RAM+ROM logic: boot" $LOG/asic_top_rom.log "ASIC_Top_tb RESULT: PASS"
     (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set DEFS +define+SRAM_MACRO; do run_fw.do" < /dev/null) > $LOG/fw_macro.log 2>&1
     check "FW macro RAM: good image"    $LOG/fw_macro.log  "SoC_Fw_tb RESULT: PASS"
     (cd sim && "$QUESTA" -c -do "set TB SoC_Fw_tb; set DEFS +define+SRAM_MACRO; set PLUSARGS +TAMPER; do run_fw.do" < /dev/null) > $LOG/fw_macro_tamper.log 2>&1

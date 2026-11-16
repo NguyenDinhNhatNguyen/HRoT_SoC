@@ -7,6 +7,8 @@
 #                                                                        "set PLUSARGS +TAMPER" for a tampered App ROM
 #   vsim -c -do "set TB ASIC_Top_tb; do run_fw.do"                       ASIC wrapper: reset synchronizer, then both firmwares
 #   vsim -c -do "set TB ASIC_Top_tb; set DEFS +define+SRAM_MACRO; do run_fw.do"   same, RAMs on the SRAM macro model (P-21)
+#   vsim -c -do "set TB ASIC_Top_tb; set DEFS +define+SRAM_MACRO+ROM_LOGIC; do run_fw.do"   and the ROMs as logic (P-21).
+#                                                        ROM_LOGIC needs the real firmware: SoC_Fw_tb and SoC_App_tb poke the ROMs, use ASIC_Top_tb
 # SoC_Fw_tb and SoC_App_tb need the firmware first: make fw (fw/build/firmware_imem.hex, firmware_dmem.hex,
 # app_firmware.hex). SoC_App_tb takes the golden hash from firmware_imem.hex, as built.
 # app.hex comes from dv/sw/mkhex.py, fw_golden.hex from fw/tools/golden.py app.hex,
@@ -23,6 +25,11 @@ vlib work
 vlog -sv ../rtl/core/*.v
 vlog -sv ../rtl/bus/*.v ../rtl/periph/*.v ../rtl/mem/*.v ../rtl/crypto/*.v
 vlog -sv ../dv/models/sram_macro_model.v         ;# home model of the SRAM macro, used only with SRAM_MACRO
+if {[string match *ROM_LOGIC* $DEFS]} {          ;# ROM as logic from the firmware hex (P-21): generate and compile the images
+    file mkdir ../build/rom
+    exec python ../fw/tools/gen_rom_v.py ../fw/build/firmware_imem.hex ../fw/build/app_firmware.hex ../build/rom/rom_images.v
+    vlog -sv ../build/rom/rom_images.v
+}
 vlog -sv {*}$DEFS ../rtl/top/RISCV_Core.v ../rtl/top/SoC_Top.v ../asic/ASIC_Top.v
 vlog -sv ../dv/tb/RISCV_Core_sva.sv              ;# assertions on both cores (P-19)
 vlog -sv {*}$DEFS ../dv/tb/$TB.sv

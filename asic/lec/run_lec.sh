@@ -15,6 +15,9 @@
 #   SRAM=1                      the netlist was made with make asic-genus SRAM=1: the golden side defines
 #                               SRAM_MACRO and reads rtl/mem/RAM_Macro_*.v. sram_2k_macro is a black box
 #                               on both sides, like the two ROMs
+#   ROM=1                       the netlist was made with ROM=1: the golden side defines ROM_LOGIC and reads
+#                               rtl/mem/ROM_Logic.v and build/rom/rom_images.v (make rom-images, same
+#                               firmware hex as the Genus run)
 #   MEM_RTL="<files>"           extra golden RTL files, empty by default
 #   DRY_RUN=1                   only check the inputs and write the dofile, do not start lec
 #
@@ -27,6 +30,7 @@ SRC_DIR=${SRC_DIR:-asic/out_genus}
 LEC_DIR=${LEC_DIR:-asic/out_lec}
 MEM_RTL=${MEM_RTL:-}
 SRAM=${SRAM:-0}
+ROM=${ROM:-0}
 DRY_RUN=${DRY_RUN:-0}
 NETLIST_SRC=$SRC_DIR/ASIC_Top_netlist.v
 LIB_V=${PDK_DIR:-$HOME/PDK_GPDK45}/lib/slow_vdd1v0_basiccells.v
@@ -46,12 +50,16 @@ for d in core bus periph crypto top; do
     for f in $(ls rtl/$d/*.v 2> /dev/null | sort); do files="$files $f"; done
 done
 files="$files asic/ASIC_Top.v $MEM_RTL"
-if [ "$SRAM" = 1 ]; then
-    # A first file that holds the define keeps it for the files after it, like in synth.tcl
+if [ "$SRAM" = 1 ] || [ "$ROM" = 1 ]; then
+    # A first file that holds the defines keeps them for the files after it, like in synth.tcl
     mkdir -p "$LEC_DIR"
-    echo '`define SRAM_MACRO' > "$LEC_DIR/sram_define.v"
-    files="$LEC_DIR/sram_define.v $files $(ls rtl/mem/RAM_Macro_*.v | sort | tr '\n' ' ')"
+    : > "$LEC_DIR/mem_define.v"
+    [ "$SRAM" = 1 ] && echo '`define SRAM_MACRO' >> "$LEC_DIR/mem_define.v"
+    [ "$ROM" = 1 ] && echo '`define ROM_LOGIC' >> "$LEC_DIR/mem_define.v"
+    files="$LEC_DIR/mem_define.v $files"
 fi
+[ "$SRAM" = 1 ] && files="$files $(ls rtl/mem/RAM_Macro_*.v | sort | tr '\n' ' ')"
+[ "$ROM" = 1 ] && files="$files rtl/mem/ROM_Logic.v build/rom/rom_images.v"
 for f in $files; do [ -f "$f" ] || die "RTL file $f not found"; done
 
 # RTL files newer than the netlist were changed after synthesis (for example by git pull)
