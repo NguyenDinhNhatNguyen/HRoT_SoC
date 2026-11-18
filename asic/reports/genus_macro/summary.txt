@@ -1,0 +1,1 @@
+top=ASIC_Top period_ns=20.0 cg=1 mem_bb=unresolved sram=1 rom=1 macros=2 memories_black_box=0 assigns=0 scan_flops=0 flops=7117 latches=0 icg=220 wns_ps=7123.8

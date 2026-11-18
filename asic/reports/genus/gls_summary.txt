@@ -1,0 +1,11 @@
+netlist: 4 memory black boxes (RTL models), 0 SRAM macros
+ok  : reset_system rises with the clock stopped
+ok  : reset_system still high after the first edge
+ok  : reset_system falls on the second edge
+Boot after 535898 cycles: LED=01 app_running=1
+ok  : Secure Boot releases the App through ASIC_Top
+ok  : reset_system rises between clock edges
+ok  : App held in reset while the pad reset is low
+ok  : second release also takes two edges
+ok  : Secure Boot releases the App again after the reset
+ASIC_Top_tb RESULT: PASS

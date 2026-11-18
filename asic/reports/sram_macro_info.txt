@@ -1,0 +1,22 @@
+Macro sram_2k_macro, read 2026-11-18
+
+LEF size and class:
+    CLASS BLOCK ;
+    SIZE 80.000 BY 100.000 ;
+    SYMMETRY X Y ;
+
+LEF pins (bus bits counted), direction and metal layers:
+  VDD[1] INOUT Metal4
+  VSS[1] INOUT Metal4
+  CLK[1] INPUT Metal3
+  CEN[1] INPUT Metal3
+  WEN[1] INPUT Metal3
+  A[10] INPUT Metal3
+  D[32] INPUT Metal3
+  Q[32] OUTPUT Metal3
+
+.lib area and corner:
+  area : 8000.0;
+  nom_process : 1.0;
+  nom_temperature : 25.0;
+  nom_voltage : 1.0;

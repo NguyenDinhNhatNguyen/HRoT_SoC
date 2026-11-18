@@ -1,0 +1,213 @@
+                          CONFORMAL (R)
+                   Version 24.10-s300 (06-Dec-2024) (64 bit executable)
+   Copyright (c) Cadence Design Systems, Inc., 1997-2024. All Rights Reserved
+
+
+This program is proprietary and confidential information belonging to
+Cadence Design Systems, Inc., and may be used and disclosed only as authorized
+in a license agreement controlling such use and disclosure.
+
+// Warning: This version is 711 days old. You can download the latest version from http://downloads.cadence.com.
+
+// Check out Conformal_Asic 24.1 license
+// Command: set dofile abort off
+CPU time     : 0.16    seconds
+Elapse time  : 1       seconds
+Memory usage : 42.57   M bytes
+// Command: read library -both ~/PDK_GPDK45/lib/slow_vdd1v0_basiccells.v
+// Parsing file ~/PDK_GPDK45/lib/slow_vdd1v0_basiccells.v ...
+// Warning: (RTL14.1) Fanout load of the signal is removed (occurrence:56)
+// Warning: (VLG5.5) Internal primitive is recognized (occurrence:120)
+// Warning: (VLG5.6) Named port association is ignored for primitive gate (occurrence:120)
+// Warning: (IGN7.1) trireg net is modeled as a latch to hold value (occurrence:1)
+// Warning: (HRC1.4) Module/entity is empty (blackboxed) (occurrence:1)
+// Note: (HRC3.5b) Open output port connection is detected (occurrence:80)
+// Warning: (HRC3.10b) An input port is declared, but it is not used. Module is empty (occurrence:1)
+// Note: Read VERILOG library successfully
+CPU time     : 0.29    seconds
+Elapse time  : 1       seconds
+Memory usage : 65.50   M bytes
+// Command: set undefined cell black_box -noascend -both
+// Command: read design -golden -verilog  rtl/core/ALU.v rtl/core/ALU_Mux.v rtl/core/ALU_decoder.v rtl/core/Branch_Unit.v rtl/core/CSR_Unit.v rtl/core/Control_Unit.v rtl/core/EX_MEM_Reg.v rtl/core/EX_Stage.v rtl/core/Extend.v rtl/core/Forwarding_Unit.v rtl/core/Hazard_Detection.v rtl/core/ID_EX_Reg.v rtl/core/ID_Stage.v rtl/core/IF_ID_Reg.v rtl/core/IF_Stage.v rtl/core/MEM_Stage.v rtl/core/MEM_WB_Reg.v rtl/core/Main_Decoder.v rtl/core/PC.v rtl/core/PC_Plus_4.v rtl/core/PC_Target.v rtl/core/Pipe_Reg.v rtl/core/Register_File.v rtl/core/Result_Mux.v rtl/core/Sys_Decoder.v rtl/core/WB_Stage.v rtl/bus/APB_Decoder.v rtl/bus/AXI4_Lite_Master.v rtl/bus/AXI4_Lite_Slave_Template.v rtl/bus/AXI4_Lite_to_APB.v rtl/bus/DMA_Firewall.v rtl/bus/Secure_DMA.v rtl/periph/Boot_Verifier.v rtl/periph/GPIO.v rtl/periph/Mailbox.v rtl/periph/PLIC.v rtl/periph/SYSCSR.v rtl/periph/Sync_FIFO.v rtl/periph/TIMER.v rtl/periph/UART.v rtl/periph/WDT.v rtl/crypto/SHA256_Core.v rtl/crypto/SHA256_Wrapper.v rtl/top/RISCV_Core.v rtl/top/SoC_Top.v asic/ASIC_Top.v 
+// Parsing file rtl/core/ALU.v ...
+// Parsing file rtl/core/ALU_Mux.v ...
+// Parsing file rtl/core/ALU_decoder.v ...
+// Parsing file rtl/core/Branch_Unit.v ...
+// Parsing file rtl/core/CSR_Unit.v ...
+// Parsing file rtl/core/Control_Unit.v ...
+// Parsing file rtl/core/EX_MEM_Reg.v ...
+// Parsing file rtl/core/EX_Stage.v ...
+// Parsing file rtl/core/Extend.v ...
+// Parsing file rtl/core/Forwarding_Unit.v ...
+// Parsing file rtl/core/Hazard_Detection.v ...
+// Parsing file rtl/core/ID_EX_Reg.v ...
+// Parsing file rtl/core/ID_Stage.v ...
+// Parsing file rtl/core/IF_ID_Reg.v ...
+// Parsing file rtl/core/IF_Stage.v ...
+// Parsing file rtl/core/MEM_Stage.v ...
+// Parsing file rtl/core/MEM_WB_Reg.v ...
+// Parsing file rtl/core/Main_Decoder.v ...
+// Parsing file rtl/core/PC.v ...
+// Parsing file rtl/core/PC_Plus_4.v ...
+// Parsing file rtl/core/PC_Target.v ...
+// Parsing file rtl/core/Pipe_Reg.v ...
+// Parsing file rtl/core/Register_File.v ...
+// Parsing file rtl/core/Result_Mux.v ...
+// Parsing file rtl/core/Sys_Decoder.v ...
+// Parsing file rtl/core/WB_Stage.v ...
+// Parsing file rtl/bus/APB_Decoder.v ...
+// Parsing file rtl/bus/AXI4_Lite_Master.v ...
+// Parsing file rtl/bus/AXI4_Lite_Slave_Template.v ...
+// Parsing file rtl/bus/AXI4_Lite_to_APB.v ...
+// Parsing file rtl/bus/DMA_Firewall.v ...
+// Parsing file rtl/bus/Secure_DMA.v ...
+// Parsing file rtl/periph/Boot_Verifier.v ...
+// Parsing file rtl/periph/GPIO.v ...
+// Parsing file rtl/periph/Mailbox.v ...
+// Parsing file rtl/periph/PLIC.v ...
+// Parsing file rtl/periph/SYSCSR.v ...
+// Parsing file rtl/periph/Sync_FIFO.v ...
+// Parsing file rtl/periph/TIMER.v ...
+// Parsing file rtl/periph/UART.v ...
+// Parsing file rtl/periph/WDT.v ...
+// Parsing file rtl/crypto/SHA256_Core.v ...
+// Parsing file rtl/crypto/SHA256_Wrapper.v ...
+// Parsing file rtl/top/RISCV_Core.v ...
+// Parsing file rtl/top/SoC_Top.v ...
+// Parsing file asic/ASIC_Top.v ...
+// Golden root module is set to 'ASIC_Top'
+// Warning: (RTL1.2) Variable/signal is assigned by multiple non-blocking assignments (occurrence:13)
+// Warning: (RTL1.5b) Potential loss of RHS msb or carry-out bit (occurrence:28)
+// Note: (RTL1.9h) Parameter declaration with no type or range specification (occurrence:42)
+// Warning: (RTL5.3) Case expressions/items are resized (occurrence:1)
+// Note: (RTL5.5a) Default case item with non-X assignment(s) (occurrence:30)
+// Note: (RTL5.6) Case statement with no default (occurrence:1)
+// Note: (RTL5.7) Default case item with inconsistent assignment(s). (occurrence:11)
+// Warning: (RTL7.3) Array index in RHS might be out of range (occurrence:6)
+// Warning: (RTL7.10a) Comparison with different data sizes (occurrence:12)
+// Warning: (RTL7.10d) Comparison with positive constant of different signedness (occurrence:2)
+// Warning: (RTL14) Signal has input but it has no output (occurrence:2)
+// Warning: (RTL14.1) Fanout load of the signal is removed (occurrence:271)
+// Warning: (RTL25) Non-automatic task/function (occurrence:3)
+// Note: (VLG2.2b) Non-binary case item is used in casez statement (occurrence:7)
+// Warning: (DIR6.1) Ignored compiler directive is detected (occurrence:46)
+// Warning: (DIR6.2) Supported compiler directive is detected (occurrence:16)
+// Note: (DIR6.3) Conditional compiler directive clause is effective (occurrence:4)
+// Note: (HRC1.3) Undefined or non-translated modules will be blackboxed (occurrence:4)
+// Note: (HRC3.5b) Open output port connection is detected (occurrence:3)
+// Warning: (HRC3.10a) An input port is declared, but it is not completely used in the module (occurrence:151)
+// Warning: Total black box modules referenced in Golden = 4
+// Note: Read VERILOG design successfully
+CPU time     : 0.59    seconds
+Elapse time  : 1       seconds
+Memory usage : 94.09   M bytes
+// Command: read design -revised -verilog asic/out_lec/ASIC_Top_netlist.v
+// Parsing file asic/out_lec/ASIC_Top_netlist.v ...
+// Revised root module is set to 'ASIC_Top'
+// Warning: (RTL2.5) Net is referenced without an assignment. Design verification will be based on set_undriven_signal setting (occurrence:34)
+// Warning: (RTL2.13) Undriven pin is detected (occurrence:447)
+// Warning: (RTL14) Signal has input but it has no output (occurrence:2)
+// Note: (HRC1.3) Undefined or non-translated modules will be blackboxed (occurrence:4)
+// Warning: (HRC3.5a) Open input/inout port connection is detected (occurrence:9)
+// Note: (HRC3.5b) Open output port connection is detected (occurrence:99)
+// Warning: (HRC3.10a) An input port is declared, but it is not completely used in the module (occurrence:502)
+// Warning: (HRC3.16) A wire is declared, but not used in the module (occurrence:16)
+// Warning: Total black box modules referenced in Revised = 4
+// Warning: There are 447 undriven nets in Revised
+// Warning: There are 447 undriven pins in Revised
+// Note: Read VERILOG design successfully
+CPU time     : 1.67    seconds
+Elapse time  : 2       seconds
+Memory usage : 113.49  M bytes
+// Command: set root module ASIC_Top -both
+// Warning: Golden root module is already at 'ASIC_Top'
+// Warning: Revised root module is already at 'ASIC_Top'
+// Command: report black box -both
+SYSTEM: (G R) Data_Memory
+SYSTEM: (G R) Data_Memory_INIT_FILEx6669726d776172655f646d656d2e686578
+SYSTEM: (G R) Dual_Port_ROM_INIT_FILEx6170705f6669726d776172652e686578
+SYSTEM: (G R) Dual_Port_ROM_INIT_FILEx6669726d776172655f696d656d2e686578
+// Command: set flatten model -seq_constant
+// Command: set flatten model -seq_constant_x_to 0
+// Command: set flatten model -nodff_to_dlat_zero
+// Command: set flatten model -nodff_to_dlat_feedback
+// Command: set flatten model -hier_seq_merge
+// Command: set flatten model -gated_clock
+// Command: set system mode lec
+// Processing Golden ...
+//   1% completed//   2% completed//   3% completed//   4% completed//   5% completed//   6% completed//   7% completed//   8% completed//   9% completed//  10% completed//  11% completed//  12% completed//  13% completed//  14% completed//  15% completed//  16% completed//  17% completed//  18% completed//  19% completed//  20% completed//  21% completed//  22% completed//  23% completed//  24% completed//  25% completed//  26% completed//  27% completed//  28% completed//  29% completed//  30% completed//  31% completed//  32% completed//  33% completed//  34% completed//  35% completed//  36% completed//  37% completed//  38% completed//  39% completed//  40% completed//  41% completed//  42% completed//  43% completed//  44% completed//  45% completed//  46% completed//  47% completed//  48% completed//  49% completed//  50% completed//  51% completed//  52% completed//  53% completed//  54% completed//  55% completed//  56% completed//  57% completed//  58% completed//  59% completed//  60% completed//  61% completed//  62% completed//  63% completed//  64% completed//  65% completed//  66% completed//  67% completed//  68% completed//  69% completed//  70% completed//  71% completed//  72% completed//  73% completed//  74% completed//  75% completed//  76% completed//  77% completed//  78% completed//  79% completed//  80% completed//  81% completed//  82% completed//  83% completed//  84% completed//  85% completed//  86% completed//  87% completed//  88% completed//  89% completed//  90% completed//  91% completed//  92% completed//  93% completed//  94% completed//  95% completed//  96% completed//  97% completed//  98% completed//  99% completed// 100% completed// Modeling Golden ...
+//   0% completed//   1% completed//   2% completed//   3% completed//   4% completed//   5% completed//   7% completed// Warning: (F34) Converted 66 X assignment(s) as don't care(s)
+//   8% completed//   9% completed//  10% completed//  11% completed//  12% completed//  14% completed//  15% completed//  16% completed//  17% completed//  18% completed//  20% completed//  21% completed//  22% completed//  23% completed//  24% completed//  25% completed//  27% completed//  28% completed//  29% completed//  30% completed//  31% completed//  32% completed//  34% completed//  35% completed//  36% completed//  37% completed//  38% completed//  40% completed//  41% completed//  42% completed//  43% completed//  44% completed//  45% completed//  47% completed//  48% completed//  49% completed//  50% completed//  51% completed//  52% completed//  54% completed// Processing Revised ...
+//   0% completed//   1% completed//   2% completed//   3% completed//   4% completed//   5% completed//   6% completed//   7% completed//   8% completed//   9% completed//  10% completed//  11% completed//  12% completed//  13% completed//  14% completed//  15% completed//  16% completed//  17% completed//  18% completed//  19% completed//  20% completed//  21% completed//  22% completed//  23% completed//  24% completed//  25% completed//  26% completed//  27% completed//  28% completed//  29% completed//  30% completed//  31% completed//  32% completed//  33% completed//  34% completed//  35% completed//  36% completed//  37% completed//  38% completed//  39% completed//  40% completed//  41% completed//  42% completed//  43% completed//  44% completed//  45% completed//  46% completed//  47% completed//  48% completed//  49% completed//  50% completed//  51% completed//  52% completed//  53% completed//  54% completed//  55% completed//  56% completed//  57% completed//  58% completed//  59% completed//  60% completed//  61% completed//  62% completed//  63% completed//  64% completed//  65% completed//  66% completed//  67% completed//  68% completed//  69% completed//  70% completed//  71% completed//  72% completed//  73% completed//  74% completed//  75% completed//  76% completed//  77% completed//  78% completed//  79% completed//  80% completed//  81% completed//  82% completed//  83% completed//  84% completed//  85% completed//  86% completed//  87% completed//  88% completed//  89% completed//  90% completed//  91% completed//  92% completed//  93% completed//  94% completed//  95% completed//  96% completed//  97% completed//  98% completed//  99% completed// 100% completed// Modeling Revised ...
+//   0% completed//   1% completed//   2% completed//   3% completed//   4% completed//   5% completed//   7% completed//   8% completed//   9% completed//  10% completed//  11% completed//  12% completed//  14% completed//  15% completed//  16% completed//  17% completed//  18% completed//  20% completed//  21% completed//  22% completed//  23% completed//  24% completed//  25% completed//  27% completed//  28% completed//  29% completed//  30% completed//  31% completed//  32% completed//  34% completed//  35% completed//  36% completed//  37% completed//  38% completed//  40% completed//  41% completed//  42% completed//  43% completed//  44% completed//  45% completed//  47% completed//  48% completed//  49% completed//  50% completed//  51% completed//  52% completed//  54% completed// Balanced modeling (auto) mapped 14010 out of 14351 DFF/DLATs
+//  55% completed//  56% completed//  57% completed//  58% completed//  60% completed//  61% completed//  62% completed//  63% completed//  64% completed//  65% completed//  67% completed//  68% completed//  69% completed//  70% completed//  71% completed//  72% completed//  74% completed//  75% completed//  76% completed//  77% completed//  78% completed//  80% completed//  81% completed//  82% completed//  83% completed//  84% completed//  85% completed//  87% completed//  88% completed//  89% completed//  90% completed//  91% completed//  92% completed//  94% completed//  95% completed//  96% completed//  97% completed//  98% completed// 100% completed//  55% completed//  56% completed//  57% completed//  58% completed//  60% completed//  61% completed//  62% completed//  63% completed//  64% completed//  65% completed//  67% completed//  68% completed//  69% completed//  70% completed//  71% completed//  72% completed//  74% completed//  75% completed//  76% completed//  77% completed//  78% completed//  80% completed// (F14) Remodeled 6276 gated-clock DFF/DLAT(s)
+//  81% completed//  82% completed//  83% completed//  84% completed//  85% completed//  87% completed//  88% completed//  89% completed//  90% completed//  91% completed//  92% completed//  94% completed//  95% completed//  96% completed//  97% completed//  98% completed// 100% completed// (F28) Converted 447 internal output port(s) to inout port(s)
+CPU time     : 4.17    seconds
+Elapse time  : 5       seconds
+Memory usage : 173.25  M bytes
+// Warning: Golden and Revised have different numbers of key points:
+// Golden  key points = 7116
+// Revised key points = 7329
+// Mapping key points ...
+//   1% completed//   2% completed//   3% completed//   4% completed//   5% completed//   6% completed//   7% completed//   8% completed//   9% completed//  10% completed//  11% completed//  12% completed//  13% completed//  14% completed//  15% completed//  16% completed//  17% completed//  18% completed//  19% completed//  20% completed//  21% completed//  22% completed//  23% completed//  24% completed//  25% completed//  26% completed//  27% completed//  28% completed//  29% completed//  30% completed//  31% completed//  32% completed//  33% completed//  34% completed//  35% completed//  36% completed//  37% completed//  38% completed//  39% completed//  40% completed//  41% completed//  42% completed//  43% completed//  44% completed//  45% completed//  46% completed//  47% completed//  48% completed//  49% completed//  50% completed//  51% completed//  52% completed//  53% completed//  54% completed//  55% completed//  56% completed//  57% completed//  58% completed//  59% completed//  60% completed//  61% completed//  62% completed//  63% completed//  64% completed//  65% completed//  66% completed//  67% completed//  68% completed//  69% completed//  70% completed//  71% completed//  72% completed//  73% completed//  74% completed//  75% completed//  76% completed//  77% completed//  78% completed//  79% completed//  80% completed//  81% completed//  82% completed//  83% completed//  84% completed//  85% completed//  86% completed//  87% completed//  88% completed//  89% completed//  90% completed//  91% completed//  92% completed//  93% completed//  94% completed//  95% completed//  96% completed//  97% completed//  98% completed//  99% completed// 100% completed================================================================================
+Mapped points: SYSTEM class
+--------------------------------------------------------------------------------
+Mapped points     PI     PO     DFF    BBOX      Total   
+--------------------------------------------------------------------------------
+Golden            24     19     7049   4         7096    
+--------------------------------------------------------------------------------
+Revised           24     19     7049   4         7096    
+================================================================================
+Unmapped points:
+================================================================================
+Golden:
+--------------------------------------------------------------------------------
+Unmapped points   DFF       Total   
+--------------------------------------------------------------------------------
+Unreachable       20        20      
+================================================================================
+Revised:
+--------------------------------------------------------------------------------
+Unmapped points   DFF    DLAT      Total   
+--------------------------------------------------------------------------------
+Unreachable       20     213       233     
+================================================================================
+CPU time     : 5.42    seconds
+Elapse time  : 6       seconds
+Memory usage : 187.73  M bytes
+// Command: set compare effort high
+// Command: add compared points -all
+// 7072 compared points added to compare list
+// Command: compare
+//   0% Comparing 0 out of 7072 points, 0 Non-equivalent//   0% Comparing 3 out of 7072 points, 0 Non-equivalent//   0% Comparing 4 out of 7072 points, 0 Non-equivalent//   0% Comparing 5 out of 7072 points, 0 Non-equivalent//   0% Comparing 6 out of 7072 points, 0 Non-equivalent//   0% Comparing 7 out of 7072 points, 0 Non-equivalent//   0% Comparing 8 out of 7072 points, 0 Non-equivalent//   0% Comparing 9 out of 7072 points, 0 Non-equivalent//   0% Comparing 10 out of 7072 points, 0 Non-equivalent//   0% Comparing 11 out of 7072 points, 0 Non-equivalent//   0% Comparing 12 out of 7072 points, 0 Non-equivalent//   0% Comparing 13 out of 7072 points, 0 Non-equivalent//   0% Comparing 14 out of 7072 points, 0 Non-equivalent//   0% Comparing 15 out of 7072 points, 0 Non-equivalent//   0% Comparing 16 out of 7072 points, 0 Non-equivalent//   0% Comparing 17 out of 7072 points, 0 Non-equivalent//   0% Comparing 18 out of 7072 points, 0 Non-equivalent//   0% Comparing 19 out of 7072 points, 0 Non-equivalent//   0% Comparing 20 out of 7072 points, 0 Non-equivalent//   0% Comparing 21 out of 7072 points, 0 Non-equivalent//  70% Comparing 4961 out of 7072 points, 0 Non-equivalent//  84% Comparing 5983 out of 7072 points, 0 Non-equivalent//  97% Comparing 6904 out of 7072 points, 0 Non-equivalent// 100% Comparing 7072 out of 7072 points, 0 Non-equivalent================================================================================
+Compared points      PO     DFF    BBOX      Total   
+--------------------------------------------------------------------------------
+Equivalent           19     7049   4         7072    
+================================================================================
+CPU time     : 43.81   seconds
+Elapse time  : 44      seconds
+Memory usage : 248.39  M bytes
+// Command: report compare data -class nonequivalent -verbose > asic/out_lec/reports/lec_noneq.rpt
+// Command: report compare data -class abort > asic/out_lec/reports/lec_abort.rpt
+// Command: report verification > asic/out_lec/reports/lec_verification.rpt
+// Command: report unmapped points > asic/out_lec/reports/lec_unmapped.rpt
+// Command: report verification
+================================================================================
+                            Verification Report
+--------------------------------------------------------------------------------
+Category                                                                  Count
+--------------------------------------------------------------------------------
+1. Non-standard modeling options used:                                      0
+--------------------------------------------------------------------------------
+2. Incomplete verification:                                                 0
+--------------------------------------------------------------------------------
+3. User modification to design:                                             0
+--------------------------------------------------------------------------------
+4. Conformal Constraint Designer clock domain crossing checks recommended:  0
+--------------------------------------------------------------------------------
+5. Design ambiguity:                                                        1
+     Black box due to undefined cells:                         yes
+--------------------------------------------------------------------------------
+6. Compare Results:                                                        PASS
+================================================================================
+// Command: exit -force
