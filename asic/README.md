@@ -133,6 +133,29 @@ Lưu ý về Genus trên server: Genus đọc Verilog-2001 nên không khai báo
 
 Giới hạn của lần chạy mặc định: bộ nhớ là black box nên report không có diện tích bộ nhớ và đường đi qua bộ nhớ không được tính giờ, giống lần chạy Yosys. Số đầy đủ lấy từ lần chạy `SRAM=1 ROM=1` (wrapper có từ 16/11, chưa chạy trên server). Ở lần chạy đó `.lib` của macro chỉ có góc typical còn cell chuẩn ở góc slow, nên timing qua macro lạc quan hơn thực tế.
 
+## Thứ tự chạy buổi Innovus (soạn 18/11/2026)
+
+Mục tiêu: netlist `SRAM=1 ROM=1` ở 11 ns qua Innovus (bước 5 tới 8) và Tempus sau route (bước 9). Các script Innovus và Tempus là bản nháp của Nguyên, chưa chạy lần nào trên HRoT_SoC, nên lần đầu có thể dừng ở một lệnh đổi tên giữa các bản tool. Mọi lệnh dài chạy bằng `nohup ... &` vì mạng hay rớt. Chưa chạy hai Genus hoặc hai Innovus cùng lúc.
+
+| Bước | Lệnh | Thời gian | Đạt khi |
+| --- | --- | --- | --- |
+| 1 | `cd ~/HRoT_SoC && git pull --rebase && git log --oneline -1` (server còn commit report 18/11 đứng tên Nguyên, rebase bỏ qua nó vì nội dung đã có trên GitHub) | 2 phút | Thấy commit mới nhất của GitHub |
+| 2 | `ls ~/PDK_GPDK45/lib/ ~/PDK_GPDK45/lef/ fw/build build/rom` | 1 phút | Có `fast_vdd1v0_basicCells.lib` (thư viện hold), `gsclib045_tech.lef`, `gsclib045_macro.lef`, `sram_2k_macro.lef`, 3 file hex, `rom_images.v`. Thiếu file nào thì sửa `asic/pnr/config.tcl` trước |
+| 3 | `nohup make asic-genus SRAM=1 ROM=1 > genus_11.txt 2>&1 &` | 18 phút | `period_ns=11.0`, `macros=2`, `memories_black_box=0`, `assigns=0`, `scan_flops=0`, `wns_ps` dương (khoảng +1.100) |
+| 4 | `nohup make asic-lec SRAM=1 ROM=1 > lec_11.txt 2>&1 &` rồi `nohup make asic-gls > gls_11.txt 2>&1 &` | 10 phút | LEC `PASS`, GLS `ASIC_Top_tb RESULT: PASS` |
+| 5 | `nohup make asic-sta > sta_pre.txt 2>&1 &` (Tempus trước layout, cũng là lần thử đầu của `mmmc.view` và thư viện macro) | 10 phút | `asic/out_sta/pre/summary.txt` có 4 số slack, setup dương. Hold, recovery, removal lần đầu được tính, ghi lại, chưa cần đạt (chưa có cây clock) |
+| 6 | `nohup make asic-innovus > innovus_run.txt 2>&1 &`. Xem tiến độ: `tail -3 asic/run_innovus/innovus.log` và `ls asic/run_innovus/DBS` (mỗi bước xong ghi một `.enc`) | 1 tới 3 giờ | Có `asic/out_innovus/ASIC_Top_pnr.v`. `pd_checks.rpt`: 0 cell bị cấm, mật độ ngoài macro 50 tới 70%. `slack_summary.txt` dòng `postroute_async`: cả 4 slack không âm. `drc.rpt`, `connectivity.rpt`, `antenna.rpt` 0 lỗi |
+| 7 | `nohup make asic-sta SPEF=$PWD/asic/out_innovus/ASIC_Top.spef NETLIST=$PWD/asic/out_innovus/ASIC_Top_pnr.v > sta_spef.txt 2>&1 &` | 15 phút | `asic/out_sta/spef/summary.txt`: setup, hold, recovery, removal đều không âm |
+| 8 | Lưu: `make asic-genus-save asic-pnr-save asic-sta-save`, LEC vào `asic/reports/lec_macro` như ngày 18/11, lệnh `sed` bỏ tên người dùng, tên máy cho `asic/reports/lec_macro/*` và `asic/reports/innovus` (`grep -rl` lại sau đó), kiểm không có file PDK, commit, xuất patch | 15 phút | Chỉ `.rpt`, `.txt`, không netlist, SPEF, SDF, GDS, DEF |
+
+Nếu Innovus dừng giữa chừng: dán 30 dòng cuối của `asic/run_innovus/innovus.log` (tìm dòng `**ERROR`). Bước đã xong được lưu ở `asic/run_innovus/DBS/<bước>.enc`, nên sửa xong chạy lại từ đầu vẫn nhanh hơn chỉ ở phần đầu. Nếu Tempus sau route báo setup âm mà `optDesign` không sửa được thì lùi về 12 ns: `make asic-genus SRAM=1 ROM=1 PERIOD=12`, rồi bước 4 tới 7.
+
+Điểm chưa chắc của bản nháp Innovus:
+
+- `run_all.tcl` không đặt `setMultiCpuUsage`, Innovus chạy 1 CPU nên có thể lâu. Chưa sửa vì là script của Nguyên và server dùng chung.
+- Vòng nguồn quanh macro dùng Metal5 và Metal6, chân nguồn của macro ở Metal4 (`sram_macro_info.txt`). `sroute -connect blockPin` phải nối được, xem `pdn_geometry.rpt` và dòng `PD-02` trong log.
+- Không có file QRC (`gpdk045.tch` không đọc được), RC lấy từ tech LEF nên trễ dây sau route chỉ gần đúng.
+
 ## Thứ tự chạy cho buổi tới trên server
 
 Đã chạy đủ ngày 18/11/2026, kết quả ở mục "Kết quả buổi chạy 18/11/2026". Giữ bảng dưới làm thứ tự chuẩn cho lần chạy lại (ví dụ sau khi đổi firmware thì chạy lại từ bước 9). Soạn 13/11/2026. Các script mới qua chạy thử khô ở nhà (Genus giả, `ASIC_Top_tb` ở chế độ GLS chạy PASS trên RTL bằng iverilog và Questa), chưa chạy với công cụ Cadence.

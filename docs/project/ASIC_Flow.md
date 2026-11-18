@@ -4,11 +4,11 @@
 
 ## 1. Tóm tắt
 
-- Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 và 2 đã chạy. Bước 3 tới 9 đã có script nháp, chưa chạy lần nào trên server. Bước 4 (GLS) có `make asic-gls` từ 16/11 (Phát, `94b25fc`).
+- Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 tới 4 đã chạy và đạt (Genus, LEC, GLS trên server 18/11, kết quả ở `asic/README.md` mục "Kết quả buổi chạy 18/11/2026"). Bước 5 tới 11 có script nháp, chưa chạy lần nào trên server.
 - Tất cả script nháp dựa trên flow đã chạy thật của RV32i-SoC (đồ án CE434, cùng nhóm, cùng server và PDK GPDK45). Chúng chưa được kiểm trên HRoT_SoC.
 - LEC (bước 3) chạy được ngay trên netlist hiện tại, vì bộ nhớ là hộp đen ở cả hai phía.
-- Hai RAM 4 KB có wrapper SRAM (phase 1) và hai ROM 4 KB là logic sinh từ file hex (phase 2), cả hai từ 16/11. Bật bằng `make asic-genus SRAM=1 ROM=1`. Đã mô phỏng ở nhà với mô hình macro, chưa chạy Genus hay LEC với macro thật.
-- Innovus (bước 5 tới 8) chạy được khi Genus ra netlist `SRAM=1 ROM=1`, vì không còn hộp đen. Còn cần kiểm netlist không còn lệnh `assign` và đo diện tích ROM logic.
+- Hai RAM 4 KB có wrapper SRAM (phase 1) và hai ROM 4 KB là logic sinh từ file hex (phase 2), cả hai từ 16/11. Bật bằng `make asic-genus SRAM=1 ROM=1`. Chạy trên server 18/11: 2 macro, 0 hộp đen, 0 `assign`, 101.597 µm², LEC và GLS PASS. ROM logic 12.204 µm².
+- Innovus (bước 5 tới 8) dùng netlist `SRAM=1 ROM=1` ở 11 ns, chu kỳ Phát chốt 18/11. Netlist trên server đang ở 20 ns, phải chạy lại Genus trước.
 - Rủi ro chính: Số liệu ASIC hiện chưa có diện tích bộ nhớ, và `.gitignore` chặn mọi file tên bắt đầu bằng `sram_2k_macro` nên wrapper không được đặt tên như vậy.
 
 ## 2. Các bước
@@ -18,15 +18,15 @@ Công cụ trên server theo `docs/flow_notes.md` của RV32i-SoC: Genus và Inn
 | # | Bước | Lệnh | Đầu vào | Cổng nghiệm thu | Tình trạng |
 | --- | --- | --- | --- | --- | --- |
 | 1 | RTL, mô phỏng | `make test` | `rtl/`, `dv/` | `All checks passed`, 22/22 | Xong (13/11) |
-| 2 | Tổng hợp | `make asic-genus` | `asic/ASIC_Top.v`, `asic/ASIC_Top.sdc` | Slack >= 0, 0 latch, 0 scan flop, 0 vi phạm design rule | Chạy 12/11, đạt từ 20 tới 8 ns. Còn 8 cell scan `SMDFFHQX1`, `synth.tcl` đã sửa (`ac43bf1`), chạy lại cùng lượt quét 7 và 6 ns |
-| 3 | LEC | `make asic-lec` | RTL, netlist Genus | 0 non-equivalent, 0 abort, hộp đen chỉ là bộ nhớ | Script nháp |
-| 4 | Mô phỏng netlist | `make asic-gls` | Netlist, mô hình cell, 3 file hex của `make fw` | `ASIC_Top_tb RESULT: PASS`, giống mô phỏng RTL | Script có từ 16/11, chưa chạy. Bộ nhớ dùng mô hình RTL nên không cần wrapper SRAM |
+| 2 | Tổng hợp | `make asic-genus` | `asic/ASIC_Top.v`, `asic/ASIC_Top.sdc` | Slack >= 0, 0 latch, 0 scan flop, 0 vi phạm design rule | Xong 18/11: 0 scan flop, đạt từ 20 tới 6 ns cho cả hai netlist, chốt 11 ns |
+| 3 | LEC | `make asic-lec` | RTL, netlist Genus | 0 non-equivalent, 0 abort, hộp đen chỉ là bộ nhớ | Xong 18/11: PASS cả hai netlist, sau khi `synth.tcl` thêm `optimize_constant_feedback_seqs false` |
+| 4 | Mô phỏng netlist | `make asic-gls` | Netlist, mô hình cell, 3 file hex của `make fw` | `ASIC_Top_tb RESULT: PASS`, giống mô phỏng RTL | Xong 18/11: PASS cả hai netlist, boot 535.898 chu kỳ như RTL, bản `SRAM=1 ROM=1` dùng mô hình macro của trường |
 | 5 | Floorplan, nguồn | `make asic-innovus` | Netlist, SDC, LEF | `verifyGeometry` 0 lỗi | Script nháp |
 | 6 | Placement | như trên | như trên | 0 cell chưa đặt, overflow dưới 0,5% | Script nháp |
 | 7 | CTS | như trên | như trên | Skew <= 80 ps, hold >= 0 | Script nháp |
 | 8 | Route, filler, kiểm tra | như trên | như trên | 0 DRC, 0 lỗi kết nối, 0 antenna | Script nháp |
 | 9 | Signoff STA | `make asic-sta SPEF=... NETLIST=... SDC=...` | Netlist sau route, SPEF | Setup, hold, recovery, removal >= 0 | Script nháp |
-| 10 | Công suất | Chưa có script | SPEF, activity | Số mW theo testcase | Chưa xác nhận Voltus chạy được. Bước kiểm Voltus ở `asic/README.md` (bước 4b) |
+| 10 | Công suất | Chưa có script | SPEF, activity | Số mW theo testcase | Voltus v23.14 có license (18/11), chưa có script |
 | 11 | Lưu kết quả | `make asic-lec-save`, `asic-pnr-save`, `asic-sta-save` | Report văn bản | Chỉ file văn bản, không file dựng từ PDK | Script nháp |
 
 Nguồn của các cổng nghiệm thu bước 5 tới 8: `docs/flow_notes.md` mục 3 của RV32i-SoC.
@@ -59,22 +59,20 @@ Lưu ý khi đặt tên file wrapper: `.gitignore` chặn `sram_2k_macro*`, `*.l
 
 ## 5. Giới hạn của bản nháp
 
-- Chưa chạy: Mọi script bước 3 tới 11 chưa chạy trên server. Mỗi lần chạy đầu có thể lộ lỗi tên lệnh, vì tên đổi giữa các bản tool. Các lệnh phụ đều bọc `try_cmd` để chỉ báo cảnh báo.
+- Chưa chạy: Script bước 5 tới 11 chưa chạy trên server (bước 3 và 4 chạy 18/11). Mỗi lần chạy đầu có thể lộ lỗi tên lệnh, vì tên đổi giữa các bản tool. Các lệnh phụ đều bọc `try_cmd` để chỉ báo cảnh báo.
 - Đã kiểm ở nhà: Cú pháp bash, cân bằng ngoặc Tcl, cây lệnh `make -n`, và dofile LEC sinh ra đúng (46 file RTL, cùng danh sách với `synth.tcl`).
 - Chưa quyết: DFT. RV32i-SoC cũng cấm scan flop và không làm DFT. Đề xuất giữ ngoài phạm vi, ghi vào báo cáo như một giới hạn.
 - Wrapper SRAM (16/11): `make sim-ram` kiểm hai wrapper với mảng tham chiếu (khoảng 15.600 phép kiểm, 0 lỗi, phá thử 5 kiểu lỗi trong wrapper đều bị bắt). `make test` chạy thêm `SoC_Top_tb` và `SoC_Fw_tb` (ảnh đúng, ảnh sửa, access fault) và `ASIC_Top_tb` với RAM là macro. Mô hình macro là của nhóm (`dv/models/sram_macro_model.v`), hành vi macro thật (thời gian truy cập, `Q` khi ghi) chưa biết, `make asic-macro-info` sẽ cho. Firmware thật của lõi App không đọc RAM, nên phá `stall` của `RAM_Macro_Core` thành 0 thì các test SoC vẫn PASS. Chỗ hở này đóng bằng `RAM_Core_ISA_tb`: lõi chạy `core_isa_test` (mọi lệnh load và store) trên `RAM_Macro_Core`, có và không có `bus_stall`, `instr_stall` ngẫu nhiên. Phá `stall` thì test này FAIL. ROM logic: `ROM_Logic_tb` so từng từ của hai ROM với file hex (khoảng 86.000 phép kiểm), và `ASIC_Top_tb` boot qua ROM logic. Sai 1 bit trong ảnh App ROM hoặc trong hash vàng của Boot ROM thì `ASIC_Top_tb` FAIL.
-- Bước 10 chưa có script, Voltus chưa xác nhận. Bước 4 có `make asic-gls` từ 16/11, chạy với mô hình RTL của bộ nhớ (thay hộp đen), chưa chạy trên server.
+- Bước 10 chưa có script, Voltus v23.14 có license (18/11). Bước 4 (`make asic-gls`) chạy 18/11 cho cả hai netlist.
 
 ## 6. Cách chạy trên server
 
 ```bash
-cd ~/HRoT_SoC && git pull
-make asic-genus          # bước 2, đã chạy được
-make asic-lec            # bước 3, chạy được trên netlist hiện tại
-# trên máy có firmware: make fw, make rom-images, rồi chép build/rom/rom_images.v lên server
-# (hoặc chép fw/build/*.hex và chạy make rom-images trên server, cần python3)
-make asic-genus SRAM=1 ROM=1   # RAM trên macro, ROM là logic, không còn hộp đen
-make asic-lec SRAM=1 ROM=1
+cd ~/HRoT_SoC && git pull --rebase
+# fw/build/*.hex và build/rom/rom_images.v phải có sẵn (chép từ máy nhà, hoặc make rom-images)
+make asic-genus SRAM=1 ROM=1   # bước 2, 11 ns mặc định, không còn hộp đen
+make asic-lec SRAM=1 ROM=1     # bước 3
+make asic-gls                  # bước 4
 make asic-innovus        # bước 5 tới 8
 make asic-sta            # bước 9 trước layout. Sau route: thêm SPEF=$PWD/asic/out_innovus/ASIC_Top.spef
 make asic-lec-save asic-pnr-save asic-sta-save   # bước 11, rồi commit asic/reports

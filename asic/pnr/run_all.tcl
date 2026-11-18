@@ -1,8 +1,8 @@
 # run_all.tcl - Innovus flow of ASIC_Top: init, floorplan, placement, CTS, route, checks, files (P-21).
 # Run from the repo root on the school server with: make asic-innovus (after make asic-genus).
 # Adapted from RV32i-SoC pnr/scripts/run_all.tcl (Innovus 21.19, GPDK45, ran in Nov 2026).
-# NOT RUN on HRoT_SoC yet: it needs the SRAM wrappers first, because Innovus rejects the black
-# box memories and the assign statements they leave in the netlist.
+# NOT RUN on HRoT_SoC yet. It needs the netlist of make asic-genus SRAM=1 ROM=1 (no black box, no
+# assign statement, 2 sram_2k_macro), which passed Genus, LEC and GLS on 18/11.
 # Each step saves DBS/<step>.enc in the run folder, for restoreDesign when debugging.
 #
 # Environment: CORE_W, CORE_H (see floorplan.tcl), UTIL is set in floorplan.tcl.
