@@ -73,8 +73,9 @@ sim-ram:
 	cd sim && $(QUESTA) -c -do "set TB RAM_Core_ISA_tb; do run_ram.do"
 
 # ROM as logic for the ASIC build (needs make fw): the generated file goes to build/, git ignores it
+# env -u LD_LIBRARY_PATH: on the school server that variable breaks python3 (see asic/gls/run.sh)
 rom-images:
-	python3 fw/tools/gen_rom_v.py fw/build/firmware_imem.hex fw/build/app_firmware.hex build/rom/rom_images.v
+	env -u LD_LIBRARY_PATH python3 fw/tools/gen_rom_v.py fw/build/firmware_imem.hex fw/build/app_firmware.hex build/rom/rom_images.v
 
 sim-rom:
 	cd sim && $(QUESTA) -c -do run_rom.do

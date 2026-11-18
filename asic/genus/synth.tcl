@@ -12,7 +12,7 @@
 #                  trial: accept it only if the flop count stays the same and the assigns are gone
 #   SRAM=0|1       1 = the two RAMs are SRAM macro wrappers (rtl/mem/RAM_Macro_*.v, P-21) instead of
 #                  black boxes. The macro sram_2k_macro stays a library cell (its .lib is read), the two
-#                  ROMs stay black boxes unless ROM=1. Not run on the server yet. Default 0 keeps the 12/11 flow
+#                  ROMs stay black boxes unless ROM=1. Default 0 keeps the 12/11 flow
 #   ROM=0|1        1 = the two ROMs are logic (rtl/mem/ROM_Logic.v and the image generated from the firmware
 #                  hex by make rom-images) instead of black boxes. The firmware is fixed in the netlist.
 #                  SRAM=1 ROM=1 leaves no black box, which Innovus needs
@@ -89,16 +89,11 @@ foreach d {core bus periph crypto top} {
     set RTL [concat $RTL [lsort [glob -directory $REPO/rtl/$d *.v]]]
 }
 lappend RTL $REPO/asic/ASIC_Top.v
-if {$SRAM || $ROM} {
-    # SoC_Top picks the macro wrappers with `ifdef SRAM_MACRO and the ROM logic with `ifdef ROM_LOGIC.
-    # A first file that holds the defines keeps them for the files read after it (not run on the
-    # server yet, check with help read_hdl if Genus has a -define option and prefer it)
-    set fp [open $OUT/mem_define.v w]
-    if {$SRAM} { puts $fp "`define SRAM_MACRO" }
-    if {$ROM}  { puts $fp "`define ROM_LOGIC" }
-    close $fp
-    set RTL [concat [list $OUT/mem_define.v] $RTL]
-}
+# SoC_Top picks the macro wrappers with `ifdef SRAM_MACRO and the ROM logic with `ifdef ROM_LOGIC.
+# Genus 21.10 takes them with read_hdl -define (help read_hdl on the server, 18/11)
+set DEFS {}
+if {$SRAM} { lappend DEFS -define SRAM_MACRO }
+if {$ROM}  { lappend DEFS -define ROM_LOGIC }
 if {$SRAM} {
     set RTL [concat $RTL [lsort [glob -directory $REPO/rtl/mem RAM_Macro_*.v]]]
 }
@@ -117,7 +112,7 @@ if {$MEM_BB eq "stub"} {
     try_cmd {set_db hdl_undriven_output_port_value none}
     try_cmd {set_db hdl_undriven_signal_value none}
 }
-read_hdl -language v2001 $RTL
+read_hdl -language v2001 {*}$DEFS $RTL
 elaborate $TOP
 
 if {$CG && [catch {set_db [get_db designs] .lp_clock_gating_min_flops 4} msg]} {
@@ -162,6 +157,10 @@ catch {set_db optimize_merge_flops false}
 catch {set_db optimize_merge_latches false}
 catch {set_db optimize_constant_0_flops false}
 catch {set_db optimize_constant_1_flops false}
+# Keep the data mux of a flop that only ever reloads its own reset value (synchronous reset, for example
+# the stop bit of the UART shift register). Genus ties such a D pin to the constant, LEC cannot prove
+# the flop constant before reset and reports it non-equivalent (46 flops on 18/11)
+set_db optimize_constant_feedback_seqs false
 catch {set_db delete_unloaded_seqs false}
 
 syn_generic

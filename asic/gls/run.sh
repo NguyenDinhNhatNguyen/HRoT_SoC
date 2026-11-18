@@ -30,8 +30,9 @@ command -v "$xrun" > /dev/null || { echo "ERROR: $xrun not found, asic-gls runs 
 [ -f "$netlist" ] || { echo "ERROR: no netlist $netlist, run make asic-genus first"; exit 1; }
 [ -f "$lib" ] || { echo "ERROR: cannot find the cell model $lib (set GLS_LIB or PDK_DIR)"; exit 1; }
 # What the netlist holds: memory black boxes (Data_Memory, Dual_Port_ROM) and SRAM macro instances
-n_bb=$(grep -cE '^\s*(Data_Memory|Dual_Port_ROM)\w*\s' "$netlist")
-n_macro=$(grep -cE '^\s*sram_2k_macro\w*\s+\S+\s*\(' "$netlist")
+# A word boundary, not a space, after the name: Genus writes some instances as name#( or name on its own line
+n_bb=$(grep -cE '^\s*(Data_Memory|Dual_Port_ROM)\w*\b' "$netlist")
+n_macro=$(grep -cE '^\s*sram_2k_macro\w*\b' "$netlist")
 macro=""
 macro_note=""
 if [ "$n_macro" -gt 0 ]; then
@@ -59,7 +60,9 @@ for f in firmware_imem.hex firmware_dmem.hex app_firmware.hex; do
 done
 
 # Memory instances in the netlist: "<module name> <instance name> (" with or without "#(...)"
-python3 - "$netlist" "$out/mem_shim.v" <<'PY' || { echo "ERROR: could not write the memory wrappers"; exit 1; }
+# The server's LD_LIBRARY_PATH (Xcelium, Calibre, XRT) loads a wrong libpython into /usr/bin/python3
+# (undefined symbol _Py_LegacyLocaleDetected, 18/11), so Python runs without it
+env -u LD_LIBRARY_PATH python3 - "$netlist" "$out/mem_shim.v" <<'PY' || { echo "ERROR: could not write the memory wrappers"; exit 1; }
 import re
 import sys
 

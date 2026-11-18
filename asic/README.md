@@ -168,6 +168,12 @@ Bước 7 ghi đè `asic/out_genus/`, nên chạy sau LEC và GLS, và chạy l�
 - Bước 9: ROM logic làm đường lấy lệnh dài hơn (PC qua bảng tra tới thanh ghi IF/ID), nên chu kỳ đạt được có thể lớn hơn số của bước 3. Chốt chu kỳ theo netlist `SRAM=1 ROM=1` vì đó là netlist đưa vào Innovus.
 - Bước 11: mô hình macro của trường có thể cho `Q` khác mô hình của nhóm khi ghi hoặc khi chưa ghi lần nào. Wrapper không dùng `Q` ở các chu kỳ đó, nhưng nếu GLS lỗi thì xem dòng `MACRO ERROR` và tín hiệu X đầu tiên trong `xrun.log`.
 
+Đã biết từ buổi chạy 18/11 (đã sửa trong script):
+
+- `python3` của server lỗi `undefined symbol: _Py_LegacyLocaleDetected` vì `LD_LIBRARY_PATH` (thư viện của Xcelium, Calibre, XRT) làm nó nạp nhầm `libpython`. `asic/gls/run.sh` và `make rom-images` giờ gọi Python với `env -u LD_LIBRARY_PATH`.
+- LEC lần đầu ra 46 flop non-equivalent. Cả 46 là flop reset đồng bộ chỉ nạp lại đúng giá trị reset của nó (2 bit thấp của `Boot_Verifier.rom_addr`, bit stop của thanh ghi dịch UART, `RRESP` của slave AXI). Genus nối D của chúng vào hằng số, Conformal không chứng minh được flop là hằng trước reset (thêm `-seq_constant_feedback` cũng không đủ). GLS 18/11 PASS với netlist đó, nên netlist đúng. `synth.tcl` giờ đặt `optimize_constant_feedback_seqs false` để Genus giữ MUX như RTL.
+- `read_hdl` của Genus 21.10 có `-define` (xem bằng `help read_hdl`). `synth.tcl` dùng nó thay cho file `mem_define.v` đứng đầu danh sách.
+
 ## Kết quả Genus (12/11/2026)
 
 Genus 21.10, GPDK45 `slow_vdd1v0` (0,9 V, 125 °C), top `ASIC_Top`, `CG=1`, 4 bộ nhớ là black box. Report bản 20 ns nằm ở `asic/reports/genus/` (`cab84df`).
