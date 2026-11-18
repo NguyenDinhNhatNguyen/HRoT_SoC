@@ -103,7 +103,7 @@ xilinx: hex
 asic-yosys:
 	bash asic/run_yosys.sh
 
-# School server only (Genus + GPDK45). PERIOD=20 CG=1 are the defaults, see asic/genus/synth.tcl.
+# School server only (Genus + GPDK45). PERIOD=11 CG=1 are the defaults (11 ns chosen 18/11), see asic/genus/synth.tcl.
 # The netlist, SDF and logs stay in asic/out_genus and asic/run_genus, both ignored by git.
 asic-genus:
 	rm -f asic/out_genus/ASIC_Top_netlist.v

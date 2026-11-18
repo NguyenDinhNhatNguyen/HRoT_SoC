@@ -3,7 +3,8 @@
 # Run from the repo root on the server (MobaXterm): make asic-genus
 # The order of the steps follows the Lab 01 Genus flow of the school (Genus 21.10 on the server).
 # Environment:
-#   PERIOD=<ns>    clock period, becomes CLK_PERIOD_NS of asic/ASIC_Top.sdc (default 20)
+#   PERIOD=<ns>    clock period, becomes CLK_PERIOD_NS of asic/ASIC_Top.sdc (default 11, chosen on 18/11 from
+#                  the SRAM=1 ROM=1 sweep: the smallest period with WNS at least 10% of it, see asic/README.md)
 #   CG=0|1         clock gating (default 1, CG=0 for the baseline without it)
 #   MEM_BB=unresolved|stub  how the four memories become black boxes (default unresolved):
 #                  unresolved leaves them out, as in the 12/11 run. Genus then does not know the pin
@@ -47,7 +48,7 @@ proc try_cmd {cmd} {
 }
 
 set TOP      ASIC_Top
-set PERIOD   [env_or PERIOD 20.0]
+set PERIOD   [env_or PERIOD 11.0]
 set CG       [env_or CG 1]
 set MEM_BB   [env_or MEM_BB unresolved]
 set OUT      [file normalize [env_or SYN_OUT $REPO/asic/out_genus]]

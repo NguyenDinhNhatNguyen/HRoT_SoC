@@ -39,7 +39,7 @@ Nguồn của các cổng nghiệm thu bước 5 tới 8: `docs/flow_notes.md` m
 | Genus đọc wrapper, ROM logic và `.lib` của macro | Nguyên viết, Phát chạy | `make asic-genus SRAM=1 ROM=1`: không còn hộp đen, kiểm đúng 2 instance `sram_2k_macro`. Chưa chạy trên server. Cách đặt `` `define `` bằng file đầu tiên trong cùng một lệnh `read_hdl` chưa kiểm trên server. Bài trên diễn đàn Cadence báo cách này chạy được, và `read_hdl -define {tên}` cũng có (chưa thấy tài liệu chính thức), nên nếu lỗi thì thử `-define` sau khi xem `help read_hdl` |
 | LEC với wrapper và ROM logic | Nguyên viết, Phát chạy | `make asic-lec SRAM=1 ROM=1` (cùng hex với lần chạy Genus), macro là hộp đen ở cả hai phía |
 | Hai ROM 4 KB (`boot_rom`, `app_rom`) | Nguyên | Xong 16/11, phase 2. SRAM macro không có nội dung firmware, nên ROM là logic: `fw/tools/gen_rom_v.py` sinh `build/rom/rom_images.v` từ hex (`make rom-images`), `rtl/mem/ROM_Logic.v` thay `Dual_Port_ROM` bằng `` `define ROM_LOGIC ``. Mỗi cổng đọc là một bản tra cứu riêng, đọc tổ hợp. Firmware cố định trong netlist: đổi firmware thì chạy lại `make rom-images` và Genus |
-| Chốt chu kỳ clock | Phát | Chờ quét 7 và 6 ns (P-20) |
+| Chốt chu kỳ clock | Phát | Xong 18/11: 11 ns, mặc định của `synth.tcl`. Netlist trong `asic/out_genus/` trên server phải chạy lại `make asic-genus SRAM=1 ROM=1` ở 11 ns trước Innovus |
 | Chốt kích thước lõi | Phát | Đặt `CORE_W` và `CORE_H`, hoặc để `UTIL` mặc định 0,60 trong `asic/pnr/floorplan.tcl` |
 
 Lưu ý khi đặt tên file wrapper: `.gitignore` chặn `sram_2k_macro*`, `*.lib`, `*.lef`, `*_netlist.v` và `*_pnr.v`. Một file tên `sram_2k_macro_wrap.v` sẽ không lên repo mà không báo lỗi.

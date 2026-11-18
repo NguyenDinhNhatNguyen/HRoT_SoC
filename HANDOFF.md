@@ -31,7 +31,7 @@ Không còn. Repo trên GitHub tới `04cf74a` (16/11).
 ## Việc chờ người khác (không cần board)
 | Việc | Chờ ai | Ghi chú |
 | --- | --- | --- |
-| N-30 SDC ASIC | Phát (P-20, P-21) | `asic/SoC_Top.sdc` là khung. Từ 12/11 `asic/ASIC_Top.sdc` chỉ cần `CLK_PERIOD_NS`, độ trễ vào ra lấy 24% và 20% chu kỳ. Genus 12/11 đạt từ 20 tới 8 ns, chu kỳ chốt sau khi quét 7 và 6 ns. Đầu vào bất đồng bộ đã kiểm 09/11, `reset_system` có bộ đồng bộ ở `asic/ASIC_Top.v` kèm `ASIC_Top.sdc` (`3a3a6e0`) |
+| N-30 SDC ASIC | Phát (P-20, P-21) | `asic/SoC_Top.sdc` là khung. Từ 12/11 `asic/ASIC_Top.sdc` chỉ cần `CLK_PERIOD_NS`, độ trễ vào ra lấy 24% và 20% chu kỳ. Genus 18/11 đạt từ 20 tới 6 ns, chu kỳ chốt 11 ns (Phát, 18/11). Đầu vào bất đồng bộ đã kiểm 09/11, `reset_system` có bộ đồng bộ ở `asic/ASIC_Top.v` kèm `ASIC_Top.sdc` (`3a3a6e0`) |
 | N-30 số sơ bộ ASIC | không cần chờ | `make asic-yosys` (WSL, docker `iic-osic-tools` phải chạy): 72.012 µm² logic, 7.004 flop, F_max 249 MHz với NanGate45, bộ nhớ là black box. Chỉ là xu hướng. Số chính thức chạy Genus trên server trường với GPDK45, không commit file PDK |
 | N-31 khớp chương báo cáo | Dàn ý chương báo cáo | Sơ đồ và README đã xong, 21 trang sơ đồ |
 

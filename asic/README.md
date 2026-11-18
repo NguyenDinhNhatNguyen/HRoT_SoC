@@ -79,7 +79,7 @@ Soạn 12/11/2026 cho riêng HRoT_SoC (top `ASIC_Top`, SDC `ASIC_Top.sdc`, kết
 
 | Mục | Giá trị |
 | --- | --- |
-| Clock | `PERIOD` (mặc định 20 ns), duty 50% |
+| Clock | `PERIOD` (mặc định 11 ns từ 18/11, trước đó 20 ns), duty 50% |
 | Clock uncertainty, transition | Setup 0,15 ns, hold 0,08 ns, transition 0,08 ns |
 | Input delay | Max 24% chu kỳ, min 0,3 ns cho `uart*_rx`, `gpio*_i`. `rst_pad_n` và `boot_strap` là false path, input delay 0 |
 | Output delay | Max 20% chu kỳ, min 0,2 ns |
@@ -135,7 +135,7 @@ Giới hạn của lần chạy mặc định: bộ nhớ là black box nên rep
 
 ## Thứ tự chạy cho buổi tới trên server
 
-Soạn 13/11/2026. Các script mới qua chạy thử khô ở nhà (Genus giả, `ASIC_Top_tb` ở chế độ GLS chạy PASS trên RTL bằng iverilog và Questa), chưa chạy với công cụ Cadence.
+Đã chạy đủ ngày 18/11/2026, kết quả ở mục "Kết quả buổi chạy 18/11/2026". Giữ bảng dưới làm thứ tự chuẩn cho lần chạy lại (ví dụ sau khi đổi firmware thì chạy lại từ bước 9). Soạn 13/11/2026. Các script mới qua chạy thử khô ở nhà (Genus giả, `ASIC_Top_tb` ở chế độ GLS chạy PASS trên RTL bằng iverilog và Questa), chưa chạy với công cụ Cadence.
 
 | Bước | Lệnh | Thời gian | Đạt khi |
 | --- | --- | --- | --- |
@@ -174,6 +174,52 @@ Bước 7 ghi đè `asic/out_genus/`, nên chạy sau LEC và GLS, và chạy l�
 - LEC lần đầu ra 46 flop non-equivalent. Cả 46 là flop reset đồng bộ chỉ nạp lại đúng giá trị reset của nó (2 bit thấp của `Boot_Verifier.rom_addr`, bit stop của thanh ghi dịch UART, `RRESP` của slave AXI). Genus nối D của chúng vào hằng số, Conformal không chứng minh được flop là hằng trước reset (thêm `-seq_constant_feedback` cũng không đủ). GLS 18/11 PASS với netlist đó, nên netlist đúng. `synth.tcl` giờ đặt `optimize_constant_feedback_seqs false` để Genus giữ MUX như RTL.
 - `read_hdl` của Genus 21.10 có `-define` (xem bằng `help read_hdl`). `synth.tcl` dùng nó thay cho file `mem_define.v` đứng đầu danh sách.
 
+## Kết quả buổi chạy 18/11/2026
+
+Genus 21.10, Conformal (LEC), Xcelium 24.03, GPDK45 `slow_vdd1v0`, top `ASIC_Top`, `CG=1`. Chạy theo mục "Thứ tự chạy cho buổi tới trên server", sau commit `26f5a54` (sửa 3 lỗi tìm thấy trong buổi, xem cuối mục đó). Report: bản black box ở `asic/reports/genus/` và `asic/reports/lec/`, bản `SRAM=1 ROM=1` ở `asic/reports/genus_macro/` và `asic/reports/lec_macro/`, hai bảng quét ở `asic/reports/genus_sweep/`.
+
+| Chỉ số (20 ns) | Bản black box | Bản `SRAM=1 ROM=1` (netlist cho Innovus) |
+| --- | --- | --- |
+| Bộ nhớ | 4 black box | 2 `sram_2k_macro` (2 RAM), 2 ROM là logic, 0 black box |
+| `assign` trong netlist | 68 | 0 |
+| Multiple driver sau tổng hợp | Có (do black box) | 0 |
+| Flip-flop | 7.069, 88,8% được gate | 7.117 (thêm 48 của 2 wrapper), 98,3% được gate |
+| Scan flop, latch | 0, 0 | 0, 0 |
+| Cell clock gating | 213 | 220 |
+| Diện tích | 73.210 µm² logic | 101.597 µm² tổng, gồm 16.000 µm² của 2 macro, logic 85.597 µm² |
+| Slack (WNS) | +6,934 ns | +7,124 ns |
+| Đường xấu nhất | Lõi App: `MEM_WB_Reg/Rd_WB` tới `PC[31]` | Lõi Master: `EX_MEM_Reg/Rd_MEM` tới `PC[31]`, không qua ROM |
+| Design rule | 0 vi phạm | 0 vi phạm |
+| LEC (Conformal) | PASS, 7.049 flop, 0 non-equivalent | PASS, 7.095 flop, 0 non-equivalent, black box chỉ còn `sram_2k_macro` |
+| GLS (Xcelium, không SDF) | PASS, boot 535.898 chu kỳ, bộ nhớ là mô hình RTL | PASS, boot 535.898 chu kỳ, mô hình macro của trường |
+
+Diện tích ROM logic (bản `SRAM=1 ROM=1`): Boot ROM 10.721 µm² (2 bản tra cứu cho 2 cổng, mỗi bản khoảng 5.360), App ROM 1.483 µm² (2 bản, firmware App nhỏ). Tổng 12.204 µm², nhỏ hơn 16.000 µm² nếu dùng 2 macro cho ROM. Wrapper `RAM_Macro_Axi` thêm 515 µm² ngoài macro. So với bản black box, logic tăng 12.387 µm² (17%), gần ước tính Yosys ở nhà (13%).
+
+Quét chu kỳ (`CG=1`, WNS dương ở mọi chu kỳ đã thử):
+
+| Chu kỳ | Black box: WNS | Black box: diện tích | `SRAM=1 ROM=1`: WNS | `SRAM=1 ROM=1`: WNS / chu kỳ | `SRAM=1 ROM=1`: diện tích |
+| --- | --- | --- | --- | --- | --- |
+| 20 ns | +6,977 ns | 73.316 µm² | +7,124 ns | 35,6% | 101.597 µm² |
+| 12 ns | +1,640 ns | 73.216 µm² | +2,173 ns | 18,1% | 101.371 µm² |
+| 11 ns | | | +1,113 ns | 10,1% | 101.560 µm² |
+| 10 ns | +0,786 ns | 73.478 µm² | +0,519 ns | 5,2% | 101.710 µm² |
+| 8 ns | +0,458 ns | 74.054 µm² | +0,461 ns | 5,8% | 101.878 µm² |
+| 7 ns | +0,011 ns | 74.108 µm² | +0,033 ns | 0,5% | 102.313 µm² |
+| 6 ns | +0,001 ns | 74.545 µm² | +0,001 ns | 0% | 103.019 µm² |
+
+- Genus tối ưu tới khi slack vừa không âm thì dừng, nên WNS gần 0 ở 7 và 6 ns nghĩa là đạt nhưng phải dùng cell lớn hơn. Chưa tìm được chu kỳ vi phạm đầu tiên, F_max mức tổng hợp ít nhất 166 MHz cho cả hai bản. Diện tích chỉ tăng khoảng 1,6% từ 12 xuống 6 ns.
+- Clock gating (bản black box, 20 ns): `CG=0` là 83.313 µm² và công suất gấp 2,24 lần `CG=1`, tức clock gating giảm 12% diện tích và 55% công suất.
+- Công suất Genus dùng hoạt động chuyển mạch mặc định, chỉ dùng để so tương đối giữa các lần chạy. Bản `SRAM=1 ROM=1` có thêm công suất của 2 macro theo `.lib` nên cao hơn bản black box khoảng 9 lần, không so trực tiếp được.
+- Lượt quét bản black box chạy trước khi `synth.tcl` có `optimize_constant_feedback_seqs false` (46 flop dùng D nối hằng), chênh lệch dưới 0,05 ns. Lượt quét bản `SRAM=1 ROM=1` chạy với `synth.tcl` đã sửa.
+
+Chốt chu kỳ theo quy tắc ở mục "Thứ tự chạy" (chu kỳ nhỏ nhất mà WNS còn ít nhất 10% chu kỳ, theo bảng `SRAM=1 ROM=1`): 11 ns (khoảng 91 MHz), vừa qua ngưỡng với 10,1%. Phát chốt 11 ns ngày 18/11, `PERIOD` mặc định của `synth.tcl` đổi thành 11. Quy tắc lùi: nếu Tempus sau route báo WNS âm mà Innovus không sửa được thì chuyển sang 12 ns (WNS 18,1%), chạy lại `make asic-genus SRAM=1 ROM=1 PERIOD=12` rồi Innovus.
+
+Trước khi chạy Innovus: netlist và SDC trong `asic/out_genus/` trên server đang là bản `SRAM=1 ROM=1` ở 20 ns (Innovus và Tempus đọc `asic/out_genus/ASIC_Top_synth.sdc`). Phải chạy lại `make asic-genus SRAM=1 ROM=1` (mặc định giờ là 11 ns), rồi mới `make asic-innovus`.
+
+Thông số macro `sram_2k_macro` (`asic/reports/sram_macro_info.txt` và đọc trên server): 80 × 100 µm, 8.000 µm², `.lib` góc typical 1,0 V 25 °C. `CLK` tới `Q` 1,20 ns, setup 0,35 tới 0,40 ns, hold 0,20 ns. Mô hình Verilog của trường: đọc ra `Q` sau `T_ACCESS`, `CEN=1` thì `Q` giữ, khi ghi `Q` giữ giá trị cũ, mảng nhớ khởi động bằng 0, chân điều khiển X thì `Q` ra X kể cả khi `CEN=1`. Các giả định của wrapper đều đúng.
+
+Công cụ khác: Voltus v23.14 mở được, license XL, nên bước 10 của flow làm được trên server.
+
 ## Kết quả Genus (12/11/2026)
 
 Genus 21.10, GPDK45 `slow_vdd1v0` (0,9 V, 125 °C), top `ASIC_Top`, `CG=1`, 4 bộ nhớ là black box. Report bản 20 ns nằm ở `asic/reports/genus/` (`cab84df`).
@@ -198,13 +244,13 @@ Quét chu kỳ cùng ngày (report còn trên server ở `asic/out_sweep/`, chư
 | 10 ns | +0,625 ns | 107 MHz | 73.436 µm² | 0 vi phạm |
 | 8 ns | +0,175 ns | 128 MHz | 74.114 µm² | 0 vi phạm |
 
-F_max = 1 / (chu kỳ − WNS), chỉ là ước lượng từ đường xấu nhất, đã gồm 0,15 ns uncertainty. Chưa quét 7 ns và 6 ns nên chưa chốt chu kỳ.
+F_max = 1 / (chu kỳ − WNS), chỉ là ước lượng từ đường xấu nhất, đã gồm 0,15 ns uncertainty. 7 ns và 6 ns quét ngày 18/11 (mục trên).
 
 Điểm cần biết khi đọc report:
 
-- `summary.txt` ghi `flops=7061` và `scan_flops=0`, nhưng `clock_gating.rpt` đếm 7.069 flop. 8 flop chênh là cell `SMDFFHQX1` (flop có mux tích hợp, thuộc nhóm cell scan của gsclib045), thấy trong danh sách cell ở cuối `post_syn_design_lint.rpt`. Lần chạy 12/11 chỉ cấm và chỉ đếm tên `SDFF*` nên sót. Genus dùng chúng như flop có mux, không phải chuỗi scan, nên chức năng và timing không sai, nhưng tiêu chí "0 scan flop" chưa đạt. `synth.tcl` đã sửa 13/11 (cấm và đếm cả `SEDFF*`, `SMDFF*`), cần chạy lại trên server để xác nhận.
+- `summary.txt` ghi `flops=7061` và `scan_flops=0`, nhưng `clock_gating.rpt` đếm 7.069 flop. 8 flop chênh là cell `SMDFFHQX1` (flop có mux tích hợp, thuộc nhóm cell scan của gsclib045), thấy trong danh sách cell ở cuối `post_syn_design_lint.rpt`. Lần chạy 12/11 chỉ cấm và chỉ đếm tên `SDFF*` nên sót. Genus dùng chúng như flop có mux, không phải chuỗi scan, nên chức năng và timing không sai, nhưng tiêu chí "0 scan flop" chưa đạt. `synth.tcl` đã sửa 13/11 (cấm và đếm cả `SEDFF*`, `SMDFF*`), xác nhận 18/11: `scan_flops=0`, `flops=7069`.
 - `pre_syn_timing_intent.rpt` báo "multiple drivers" trên `clk`, `app_instr_addr`, `boot_addr`, `reg_raddr`, `reg_wdata`, `reg_wen`, `reg_wstrb`. Đây đều là net nối vào chân của 4 bộ nhớ black box: Genus không biết hướng chân của module chưa phân giải nên coi chúng là nguồn lái. Không phải lỗi RTL.
-- Netlist còn 68 lệnh `assign` (`reg_wstrb` 4, `reg_wdata` 32, `reg_raddr` 32 bit), cùng nguyên nhân trên. Innovus không nhận `assign`. Wrapper SRAM và ROM logic có từ 16/11, nên netlist cho Innovus (P-21) là bản `SRAM=1 ROM=1`, cần chạy trên server để xác nhận `assigns=0`.
+- Netlist còn 68 lệnh `assign` (`reg_wstrb` 4, `reg_wdata` 32, `reg_raddr` 32 bit), cùng nguyên nhân trên. Innovus không nhận `assign`. Wrapper SRAM và ROM logic có từ 16/11, nên netlist cho Innovus (P-21) là bản `SRAM=1 ROM=1`, xác nhận 18/11: `assigns=0`.
 - `post_syn_design_lint.rpt` báo 502 chân module không có nguồn lái. Tất cả có fanout 0: đó là các bit không dùng (bit địa chỉ cao của slave AXI, chân `stall` hằng của lõi App), vô hại.
 - `gates.rpt` không đưa vào repo vì nó liệt kê từng cell của thư viện kèm diện tích.
 
@@ -214,7 +260,7 @@ Ghi 09/11/2026. Những việc dưới cần GPDK45, macro SRAM hoặc công c�
 
 | Việc | Cần gì | Ghi chú |
 | --- | --- | --- |
-| Chốt `CLK_PERIOD_NS` và `IO_DELAY_NS` | Genus với GPDK45, thông số pad | Từ 12/11 độ trễ vào ra theo tỉ lệ 24% và 20% chu kỳ của Lab 01, nên chỉ còn chốt chu kỳ. Genus đạt tới 8 ns, chờ quét 7 và 6 ns. Xong thì báo Nguyên để đóng N-30 |
+| Chốt `CLK_PERIOD_NS` và `IO_DELAY_NS` | Genus với GPDK45, thông số pad | Từ 12/11 độ trễ vào ra theo tỉ lệ 24% và 20% chu kỳ của Lab 01, nên chỉ còn chốt chu kỳ. Xong 18/11: chốt 11 ns theo bảng quét `SRAM=1 ROM=1` (mục "Kết quả buổi chạy 18/11/2026"), báo Nguyên đóng N-30 |
 | Chạy Genus với `ASIC_Top` làm top, nạp `ASIC_Top.sdc` | GPDK45 | Đã chạy 12/11 bằng `make asic-genus`, đạt từ 20 tới 8 ns, cây reset đã được buffer. Còn: quét 7 và 6 ns, bản `CG=0`. Recovery và removal của reset kiểm bằng Tempus |
 | Đọc diện tích, thời gian truy cập của macro `sram_2k` | `.lib`, `.lef` của macro trên server | Cộng diện tích bộ nhớ vào số Yosys và Genus, kiểm trễ `Q` có vừa một chu kỳ không |
 | Kiểm tương đương netlist với RTL | Conformal LEC | Sau Genus |
