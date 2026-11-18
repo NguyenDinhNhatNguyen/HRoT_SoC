@@ -4,6 +4,10 @@
 # Copied: summary and .rpt files of asic/out_genus, of every sweep run in asic/out_sweep, and the
 # GLS summary when it exists. LEC reports are saved by make asic-lec-save. Never copied: netlists, SDF, SDC written by the tool, logs,
 # and gates.rpt (it lists every library cell with its area). The server host name is replaced.
+# The two check_design reports (*_design_lint.rpt) list every pin and instance they flag, up to
+# 7 MB for the SRAM=1 ROM=1 netlist. Each run of list lines is cut to its first 50 lines with a note.
+# Headings, every "Total number" line, the lib_cell list and the Summary table stay complete.
+# The full reports stay in asic/out_genus/reports/audit on the server.
 # A run with SRAM=1 or ROM=1 (fewer than 4 memory black boxes in summary.txt) goes to
 # asic/reports/genus_macro, so it does not replace the reports of the black-box run in asic/reports/genus.
 set -u
@@ -13,11 +17,35 @@ cd "$root" || exit 1
 dst=asic/reports
 n=0
 
+# Keeps the first 50 lines of every run of list lines (inst:, hpin:, pin: ... or "Encountered an
+# assign"), then one line that says how many were cut. lib_cell: lines are never cut
+trim_lint() {
+    awk -v keep=50 '
+        function flush() {
+            if (cut > 0)
+                printf "... %d more lines cut by asic/genus/save.sh, the full report stays on the server\n", cut
+            cut = 0
+        }
+        /^(inst|hinst|hpin|hport|pin|port|net|hnet):|^Encountered an assign/ {
+            run++
+            if (run <= keep) print
+            else cut++
+            next
+        }
+        { flush(); run = 0; print }
+        END { flush() }'
+}
+
 put() {     # put <source file> <destination folder>
     [ -f "$1" ] || return 0
     case "$(basename "$1")" in gates.rpt) return 0 ;; esac
     mkdir -p "$2"
-    sed -E 's/^([[:space:]]*Hostname[[:space:]]+).*/\1server/' "$1" > "$2/$(basename "$1")"
+    case "$(basename "$1")" in
+        *_design_lint.rpt)
+            sed -E 's/^([[:space:]]*Hostname[[:space:]]+).*/\1server/' "$1" | trim_lint > "$2/$(basename "$1")" ;;
+        *)
+            sed -E 's/^([[:space:]]*Hostname[[:space:]]+).*/\1server/' "$1" > "$2/$(basename "$1")" ;;
+    esac
     n=$((n + 1))
 }
 

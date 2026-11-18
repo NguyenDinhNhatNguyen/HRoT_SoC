@@ -243,6 +243,8 @@ Thông số macro `sram_2k_macro` (`asic/reports/sram_macro_info.txt` và đọc
 
 Công cụ khác: Voltus v23.14 mở được, license XL, nên bước 10 của flow làm được trên server.
 
+Report lint (`pre_syn_design_lint.rpt`, `post_syn_design_lint.rpt`): bản lưu ngày 18/11 là bản đầy đủ (bản `SRAM=1 ROM=1` nặng 7,4 MB vì liệt kê 73.461 chân hằng của ROM logic và 32.477 instance). Từ lần lưu sau, `asic/genus/save.sh` cắt mỗi danh sách còn 50 dòng đầu kèm một dòng ghi số dòng đã cắt. Giữ nguyên mọi tiêu đề, mọi dòng `Total number`, danh sách `lib_cell` (dùng để thấy cell scan lọt vào) và bảng `Summary`. Bản đầy đủ còn trên server ở `asic/out_genus/reports/audit/` tới lần chạy Genus sau. Thử ở nhà trên report 18/11: bản `SRAM=1 ROM=1` từ 7,2 MB còn 60 KB, mọi dòng ngoài danh sách giữ nguyên, các file khác giống từng byte.
+
 ## Kết quả Genus (12/11/2026)
 
 Genus 21.10, GPDK45 `slow_vdd1v0` (0,9 V, 125 °C), top `ASIC_Top`, `CG=1`, 4 bộ nhớ là black box. Report bản 20 ns nằm ở `asic/reports/genus/` (`cab84df`).
