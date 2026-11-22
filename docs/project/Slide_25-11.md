@@ -26,7 +26,7 @@ Lời nói: Hai lõi giống nhau, khác ở vai trò. Master kiểm, App bị k
 | Khối | Làm gì | Yêu cầu |
 | --- | --- | --- |
 | Boot ROM và golden hash | Giữ mã khởi động và vân tay chuẩn, không ghi được | SR-04 |
-| SHA-256 | Tạo vân tay của 4 KB ROM App, 65 chu kỳ mỗi khối | SR-03 |
+| SHA-256 | Tạo vân tay của 4 KB ROM App, 66 chu kỳ mỗi khối tính từ lệnh start | SR-03 |
 | Boot_Verifier | Phần cứng tự so vân tay, từ chối ảnh cũ, khóa khóa HMAC | SR-02, 03, 06, 07 |
 | SYSCSR | Giữ App trong reset, Boot Guard khóa và xóa RAM App, ghi lỗi bus | SR-01, 05, 11 |
 | DMA và tường lửa | Chuyển ảnh App vào SHA-256, chỉ chạm hai vùng cho phép | SR-08 |
@@ -71,7 +71,7 @@ Lời nói: Bộ test chạy một lệnh, tất cả đều đạt. Em cũng th
 | Công cụ | Quartus II 13.0sp1 | Vivado 2025.2 | Vivado 2025.2 |
 | Clock | 50 MHz | 50 MHz | 50 MHz |
 | Tốc độ | Fmax 54,07 MHz | WNS +3,228 ns | WNS +5,517 ns |
-| Hold | +0,391 ns | WHS +0,018 ns | WHS +0,011 ns |
+| Hold | +0,391 ns (đo 27/10) | WHS +0,018 ns | WHS +0,011 ns |
 | Logic | 10.982 LE (33%) | 6.137 LUT | 6.045 LUT |
 | Bộ nhớ | 135.168 bit (28%) | 2,5 BRAM | 2,5 BRAM |
 | Chân | 52 (khớp sổ tay DE2) | 25 | 8 |
@@ -95,13 +95,35 @@ Server trường, buổi chạy 18/11, bản hai RAM dùng macro SRAM, hai ROM l
 | Chu kỳ chốt | 11 ns, khoảng 91 MHz, dư biên 10% |
 | LEC (Conformal) | Đạt, 0 điểm không tương đương |
 | GLS (Xcelium) | Đạt, boot ra LED 0x01 |
-| Clock gating | Giảm khoảng 12% diện tích và 55% công suất |
+| Clock gating | Giảm khoảng 12% diện tích và 55% công suất (bản black box ở 20 ns, chỉ bản này có lượt so `CG=0`) |
 
 - Đường găng của lõi: từ thanh ghi đích tầng MEM qua forwarding và bộ so sánh ALU tới PC, 12,62 ns ở 20 ns. Không đi qua ROM.
 - Chưa có: kết quả Innovus (diện tích sau layout, thời gian sau route).
 - Nguồn: `asic/README.md` mục kết quả 18/11, `asic/reports/genus_macro/`.
 
-Lời nói: Tổng hợp đạt từ rất nhanh. Em chốt 11 ns để dư biên. Phần layout bằng Innovus đang chạy.
+Lời nói: Tổng hợp đạt từ rất nhanh. Em chốt 11 ns để dư biên. Phần layout bằng Innovus sẽ chạy ở buổi server tới.
+
+## Slide 7b. Layout ASIC (Innovus)
+
+> Khung chờ kết quả: Phát chạy `make asic-innovus` ở server ngày 23 hoặc 24/11 theo `asic/README.md` mục "Thứ tự chạy buổi Innovus", rồi điền các ô "chờ" và thay ảnh. Nếu chưa có kết quả trước 25/11 thì bỏ slide này, giữ câu "Chưa có kết quả Innovus" ở slide 7.
+
+- Hình (Innovus GUI, cắt thanh tiêu đề có tên tài khoản và tên máy, không đưa vào repo):
+  - `07_innovus_floorplan.png`: hai macro SRAM, vòng nguồn, chân hai bên
+  - `08_innovus_placement.png`: cell đã đặt
+  - `09_innovus_cts.png`: cây clock (CCOpt Clock Tree Debugger)
+  - `10_innovus_route.png`: layout sau route và cửa sổ timing
+  - `11_innovus_reports.png`: DRC, connectivity, antenna, slack
+
+| Chỉ số (netlist `SRAM=1 ROM=1`, 11 ns) | Giá trị | Nguồn |
+| --- | --- | --- |
+| Kích thước lõi, mật độ cell ngoài macro | chờ | `pd_checks.rpt` |
+| DRC, connectivity, antenna | chờ (cần 0, 0, 0) | `drc.rpt`, `connectivity.rpt`, `antenna.rpt` |
+| Setup WNS sau route | chờ (cần ≥ 0) | `slack_summary.txt`, Tempus với SPEF |
+| Hold, recovery, removal sau route | chờ (cần ≥ 0) | như trên |
+| Skew của cây clock | chờ (mục tiêu ≤ 80 ps) | `cts_skew_groups.rpt` |
+| Chu kỳ dùng | 11 ns, hoặc 12 ns nếu phải lùi theo quy tắc ở `asic/README.md` | |
+
+Lời nói: Đây là chip sau khi đặt và đi dây. Hai khối lớn là hai macro SRAM, phần giữa là logic. Sau route không còn lỗi quy tắc và thời gian vẫn đạt ở [chu kỳ].
 
 ## Slide 8. Hướng tiếp theo
 

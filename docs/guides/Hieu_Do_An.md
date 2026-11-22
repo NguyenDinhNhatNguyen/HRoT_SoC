@@ -39,7 +39,7 @@ Hai lõi là cùng một module `RISCV_Core` (`rtl/top/SoC_Top.v`, `master_core`
 | Khái niệm | Hiểu đời thường | Hiểu kỹ thuật | Trong đồ án |
 | --- | --- | --- | --- |
 | Hàm băm | Vân tay của một tập tin. Cùng tập tin ra cùng vân tay. Sửa một chút là vân tay đổi hẳn | Biến dữ liệu dài bất kỳ thành chuỗi dài cố định. Hầu như không tìm được hai dữ liệu cùng chuỗi, và không suy ngược được dữ liệu từ chuỗi | Băm 4 KB ROM của App để phát hiện bị sửa |
-| SHA-256 | Một loại hàm băm cụ thể, ra 256 bit (32 byte) | Chuẩn FIPS 180-4. Chia dữ liệu thành khối 64 byte, mỗi khối qua 64 vòng tính | Lõi `rtl/crypto/SHA256_Core.v` làm một vòng mỗi chu kỳ, 65 chu kỳ mỗi khối (theo chú thích trong file) |
+| SHA-256 | Một loại hàm băm cụ thể, ra 256 bit (32 byte) | Chuẩn FIPS 180-4. Chia dữ liệu thành khối 64 byte, mỗi khối qua 64 vòng tính | Lõi `rtl/crypto/SHA256_Core.v` làm một vòng mỗi chu kỳ. Một khối: 65 chu kỳ bận (64 vòng và 1 chu kỳ cộng vào H), 66 chu kỳ tính từ chu kỳ nhận `start` tới khi `done` lên |
 | Golden hash | Vân tay chuẩn cất trong két | Giá trị băm đúng của ảnh App, ghi sẵn lúc build | 8 từ 32 bit ở Boot ROM `0x0000_0FE0`, chỉ đọc |
 | HMAC và khóa | Vân tay có khóa bí mật. Chỉ ai có khóa mới tạo được vân tay đúng | Hàm băm kết hợp khóa. Chứng minh ảnh đến từ chủ khóa, không chỉ là không bị sửa | Phần cứng có chế độ `MODE 1`. Firmware hiện dùng `MODE 0` (so hash). Khóa trong RTL là hằng demo (giới hạn L3) |
 | Chống chạy lại ảnh cũ | Không cho cài lại phiên bản cũ có lỗi | `MIN_VER` là ngưỡng phiên bản, chỉ tăng, không giảm | `APP_VER < MIN_VER` thì bị từ chối (SR-06) |
@@ -55,7 +55,7 @@ Hai lõi là cùng một module `RISCV_Core` (`rtl/top/SoC_Top.v`, `master_core`
 | Hazard và forwarding | Công đoạn sau cần kết quả mà công đoạn trước chưa xong | Hazard là phụ thuộc dữ liệu. Forwarding chuyền kết quả tắt thay vì chờ ghi vào thanh ghi | `Forwarding_Unit.v`, `Hazard_Detection` trong `RISCV_Core` |
 | Ngắt và trap | Chuông cửa và báo động | Ngắt do thiết bị gọi lõi. Trap do lõi tự gặp lỗi (lệnh lạ, truy cập lỗi) | `CSR_Unit.v`, PLIC-lite gom ngắt |
 | Bản đồ địa chỉ | Số nhà của từng khối | Mỗi khối chiếm một dải địa chỉ | `docs/spec/SoC_Memory_Map.md` |
-| Clock gating | Tắt điện phòng không có người | Ngắt xung nhịp tới nhóm flip-flop không đổi | Giảm khoảng 12% diện tích và 55% công suất (`asic/README.md`) |
+| Clock gating | Tắt điện phòng không có người | Ngắt xung nhịp tới nhóm flip-flop không đổi | Giảm khoảng 12% diện tích và 55% công suất (bản black box ở 20 ns, `asic/README.md`) |
 
 ## 3. Từng khối
 
@@ -269,6 +269,6 @@ Nguồn: `docs/spec/Security_Model.md`. Nói thật các giới hạn này tốt
 - Cột "thiếu thì sao" dựa vào mô tả và bảng truy vết, nhóm chưa chạy thử tắt từng khối.
 - Phân loại "lõi", "hỗ trợ", "mở rộng" ở mục 7 là đánh giá của mình, chưa phải của thầy hay của đề cương.
 - Số chu kỳ DMA và CPU (17.026 và 34.143) lấy từ ghi chú trong sheet, mình chưa chạy lại.
-- SHA-256 làm 65 chu kỳ mỗi khối theo chú thích trong `SHA256_Core.v`. Sheet N-07 ghi 66, chưa đối chiếu hai con số.
+- SHA-256: đã đo bằng mô phỏng 22/11 (khối "abc", hash khớp FIPS 180-4). `busy` lên 65 chu kỳ như chú thích trong `SHA256_Core.v`, và `done` lên ở cạnh thứ 66 tính từ cạnh nhận `start`, khớp số 66 của sheet N-07. Hai số đều đúng, khác nhau ở chỗ có tính chu kỳ nhận lệnh hay không.
 - Số liệu ASIC là của buổi chạy server 18/11 do Phát chạy, Innovus chưa chạy xong.
 - Chưa có đề cương chính thức trong tay, nên chưa biết đề cương nói gì về SoC.
