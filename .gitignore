@@ -68,3 +68,6 @@ gsclib045*
 slow_vdd1v0_*
 fast_vdd1v0_*
 sram_2k_macro*
+
+# Local work notes, not shared
+HANDOFF.md
