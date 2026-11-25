@@ -1,6 +1,6 @@
 # Hiểu rõ đồ án HRoT_SoC
 
-> Bản nháp 21/11/2026 (Nguyên). Người đọc: các bạn trong nhóm, để nắm mình đang làm gì và trả lời được khi thầy hỏi. Mỗi con số có ghi nguồn. Chỗ nào chưa kiểm thì ghi rõ ở mục 10.
+> Bản nháp 21/11/2026 (Nguyên). Người đọc: các bạn trong nhóm, để nắm mình đang làm gì. Mỗi con số có ghi nguồn. Chỗ nào chưa kiểm thì ghi rõ ở mục 9.
 
 ## 0. Cách dùng
 
@@ -8,7 +8,7 @@
 - Mục 2 giải thích các khái niệm nền bằng ví dụ đời thường rồi mới tới kỹ thuật.
 - Mục 3 trả lời cùng năm câu cho từng khối: Là gì. Để làm gì. Vì sao chọn nó. Thiếu nó thì sao. Chứng minh ở đâu.
 - Mục 5 và 6 giải thích công cụ, đường găng, các con số.
-- Mục 7 phân loại khối nào là lõi Secure, khối nào là mở rộng. Mục 8 là các câu thầy có thể hỏi.
+- Mục 7 phân loại khối nào là lõi Secure, khối nào là mở rộng.
 
 ## 1. Đồ án trong một trang
 
@@ -223,7 +223,7 @@ Hiểu: lệnh nhánh so sánh hai thanh ghi ở tầng EX, cần dữ liệu ch
 
 ## 7. Khối nào là lõi, khối nào là mở rộng
 
-Thầy nhận xét System đang quá rộng. Đây là phân loại của nhóm dựa vào bảng truy vết SR-01 đến SR-11 trong `Security_Model.md`. Khối nào có yêu cầu bảo mật riêng là lõi.
+Đây là phân loại của nhóm dựa vào bảng truy vết SR-01 đến SR-11 trong `Security_Model.md`. Khối nào có yêu cầu bảo mật riêng là lõi.
 
 | Nhóm | Khối | Căn cứ |
 | --- | --- | --- |
@@ -233,29 +233,11 @@ Thầy nhận xét System đang quá rộng. Đây là phân loại của nhóm 
 
 **Nói thẳng về DMA.** DMA không cần cho tính đúng của secure boot. Nó làm băm nhanh gấp đôi và đưa CPU ra khỏi việc đọc ảnh App. Nó cũng tạo thêm một master bus phải canh bằng tường lửa. Có thể trình bày DMA như một phần tối ưu đã làm và đã kiểm, không phải tính năng bảo mật cốt lõi. RTL không có tham số tắt DMA, tắt thì phải sửa RTL đã freeze.
 
-**Về DE2.** Thiết kế đã tổng hợp, xếp chân và đạt thời gian trên DE2 bằng Quartus (mục 6). Thầy không yêu cầu nạp board.
+**Về DE2.** Thiết kế đã tổng hợp, xếp chân và đạt thời gian trên DE2 bằng Quartus (mục 6).
 
-## 8. Các câu thầy có thể hỏi
+## 8. Giới hạn đã biết
 
-1. **Vì sao cần hai lõi?** Cần một bên tin cậy để kiểm bên kia. Lõi Master chạy từ ROM không sửa được và quyết định khi nào lõi App được chạy. Cách ly bằng bus riêng chắc hơn cách ly bằng quyền, vì lõi chỉ có chế độ máy.
-2. **Hàm băm dùng để làm gì ở đây?** Tạo vân tay của ảnh App. Sửa một bit thì vân tay đổi, nên so với vân tay chuẩn là biết có bị sửa không.
-3. **Sao không để firmware tự so hash?** Firmware lỗi hoặc bị glitch có thể bỏ qua bước so. Boot_Verifier phần cứng tự so lại, và App chỉ được nhả khi phần cứng báo `VERIFIED`.
-4. **DMA để làm gì, bỏ được không?** Để băm nhanh gấp đôi mà CPU không đọc ảnh. Bỏ được, secure boot vẫn đúng. Nhóm nhận DMA là phần tối ưu, không phải lõi bảo mật.
-5. **Chạy được trên DE2 không?** Đã tổng hợp và đạt thời gian trên EP2C35: 33% logic, 28% bộ nhớ, 54,07 MHz, 52/52 chân khớp. Chưa nạp board vì không yêu cầu.
-6. **Đường găng là gì, của mình ở đâu?** Đường chậm nhất trong một chu kỳ. Của lõi là từ thanh ghi đích tầng MEM qua forwarding và bộ so sánh ALU tới PC, 12,62 ns ở bản 20 ns.
-7. **Tần số bao nhiêu?** FPGA đạt 50 MHz. ASIC tổng hợp đạt tới 6 ns, nhóm chốt 11 ns (khoảng 91 MHz) để dư biên 10%.
-8. **ASIC khác FPGA chỗ nào?** FPGA là khối lập trình sẵn, ASIC là cell chuẩn đặt và đi dây. Đo bằng đơn vị khác nhau nên không so trực tiếp.
-9. **Vì sao ROM thành logic?** Macro SRAM không giữ nội dung lúc bật nguồn. ROM logic sinh từ file hex, tốn 12.204 µm², ít hơn hai macro.
-10. **Chống được kẻ tấn công nào?** A1 (ảnh sửa hoặc ảnh cũ), A2 (App bị chiếm), A3 (glitch phần mềm), A4 (DMA cấu hình sai). Không chống glitch điện áp, kênh phụ, thăm dò vật lý.
-11. **Giới hạn lớn nhất?** Khóa HMAC là hằng trong RTL, không có chữ ký bất đối xứng, `MIN_VER` xóa khi cấp nguồn lại vì FPGA không có bộ nhớ không mất dữ liệu, lõi không có phân quyền.
-12. **Test nào chứng minh?** `make test` 32 mục. Ảnh sửa bị khóa và RAM bị xóa (`SoC_Top_tb +TAMPER`), ghi `APP_RUN` sớm bị từ chối (`Boot_Verifier_tb`), DMA ra ngoài vùng bị chặn.
-13. **Vì sao có PLIC, hộp thư, UART1, TIMER1?** Chúng là phần mở rộng của System, không có yêu cầu bảo mật riêng. Nhóm đồng ý dừng mở rộng.
-14. **Thiết kế có phụ thuộc firmware không?** ROM logic cố định firmware trong netlist, đổi firmware thì chạy lại `make rom-images` và Genus.
-15. **Hướng tiếp theo?** Layout ASIC đã đạt 25/11, còn GLS có SDF, LEC sau layout và Voltus. Sau đó đào sâu Secure (xử lý giới hạn L2 tới L12, thêm test tấn công). Dừng thêm tính năng System.
-
-## 9. Giới hạn đã biết
-
-Nguồn: `docs/spec/Security_Model.md`. Nói thật các giới hạn này tốt hơn để thầy tự phát hiện.
+Nguồn: `docs/spec/Security_Model.md`.
 
 | Nhóm | Giới hạn |
 | --- | --- |
@@ -266,10 +248,10 @@ Nguồn: `docs/spec/Security_Model.md`. Nói thật các giới hạn này tốt
 | Quy ước chưa có phần cứng chặn | CPU không đụng SHA-256 khi DMA bận (L10). Không `lw` Boot ROM lúc `CHECK` khoảng 9 chu kỳ (L12a) |
 | Phạm vi xóa | Zeroization chỉ xóa RAM App, không xóa hộp thư và thanh ghi lõi (L11) |
 
-## 10. Chỗ chưa chắc của tài liệu này
+## 9. Chỗ chưa chắc của tài liệu này
 
 - Cột "thiếu thì sao" dựa vào mô tả và bảng truy vết, nhóm chưa chạy thử tắt từng khối.
-- Phân loại "lõi", "hỗ trợ", "mở rộng" ở mục 7 là đánh giá của mình, chưa phải của thầy hay của đề cương.
+- Phân loại "lõi", "hỗ trợ", "mở rộng" ở mục 7 là đánh giá của nhóm, chưa đối chiếu với đề cương.
 - Số chu kỳ DMA và CPU (17.026 và 34.143) lấy từ ghi chú trong sheet, mình chưa chạy lại.
 - SHA-256: đã đo bằng mô phỏng 22/11 (khối "abc", hash khớp FIPS 180-4). `busy` lên 65 chu kỳ như chú thích trong `SHA256_Core.v`, và `done` lên ở cạnh thứ 66 tính từ cạnh nhận `start`, khớp số 66 của sheet N-07. Hai số đều đúng, khác nhau ở chỗ có tính chu kỳ nhận lệnh hay không.
 - Số liệu ASIC là của các buổi chạy server 18/11 và 25/11 do Phát chạy. Innovus đạt signoff ở 11 ns ngày 25/11 (`asic/README.md`).

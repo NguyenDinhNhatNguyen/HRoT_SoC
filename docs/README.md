@@ -12,7 +12,7 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | `spec/` | [Core_Datapath.md](spec/Core_Datapath.md) | Sơ đồ khối datapath lõi RISC-V 5 tầng, đối chiếu module RTL và tín hiệu stall/flush/forward | Phát |
 | `verification/` | [SHA256_UVM_TestPlan.md](verification/SHA256_UVM_TestPlan.md) | Kế hoạch kiểm chứng UVM cho SHA-256 | Phát |
 | `guides/` | [Dev_Guide.md](guides/Dev_Guide.md) | Phân công, giao kèo của lõi, cách chạy kiểm tra, quy ước code | Phát |
-| `guides/` | [Hieu_Do_An.md](guides/Hieu_Do_An.md) | Hiểu đồ án cho cả nhóm: từng khối, luồng Secure Boot, công cụ, đường găng, các con số, câu thầy có thể hỏi | Nguyên |
+| `guides/` | [Hieu_Do_An.md](guides/Hieu_Do_An.md) | Hiểu đồ án cho cả nhóm: từng khối, luồng Secure Boot, công cụ, đường găng, các con số | Nguyên |
 | `project/` | [Project_Plan.md](project/Project_Plan.md) | Kế hoạch tổng thể, mốc, lộ trình theo tuần | Phát |
 | `project/` | [Project_Status.md](project/Project_Status.md) | Trạng thái kỹ thuật hiện tại và các điểm cần lưu ý | Phát |
 | `project/` | [FPGA_Results.md](project/FPGA_Results.md) | Số đo DE2, Artix-7 và KV260 (LE/LUT, thanh ghi, bộ nhớ, Fmax, slack, đường găng) của mọi lần tổng hợp, để so sánh giữa các phiên bản | Phát |
