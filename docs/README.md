@@ -6,7 +6,7 @@ Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sh
 | --- | --- | --- | --- |
 | `spec/` | [SoC_Memory_Map.md](spec/SoC_Memory_Map.md) | Bản đồ địa chỉ và thanh ghi của hai thế giới (bus, SYSCSR, UART, GPIO, TIMER, WDT, PLIC, Mailbox, Secure DMA, Boot_Verifier, ngắt) | Nguyên |
 | `diagrams/` | [README.md](diagrams/README.md) | Bộ 21 sơ đồ kiến trúc và lưu đồ vận hành (tổng quan, từng khối, Secure Boot, FSM, ngắt, reset, chân Pmod KV260, VP, testbed FPGA), file `.drawio` nhiều trang và PNG cho báo cáo | Nguyên |
-| `diagrams/` | `gui/` | Ảnh chụp QuestaSim và Quartus II ngày 25/11: sóng boot, ảnh bị sửa, transcript firmware, tài nguyên và Fmax DE2 | Nguyên |
+| `diagrams/` | `gui/` | Ảnh chụp QuestaSim, Quartus II và Vivado ngày 25/11: sóng boot, ảnh bị sửa, transcript firmware, PPA của DE2, DE10, Artix-7 và KV260 | Nguyên |
 | `spec/` | [Security_Model.md](spec/Security_Model.md) | Tài sản, kẻ tấn công giả định, yêu cầu bảo mật SR-01..11 kèm truy vết tới RTL và test, giới hạn đã biết | Nguyên |
 | `spec/` | [SHA256_Register_Map.md](spec/SHA256_Register_Map.md) | Thanh ghi và hợp đồng phần cứng–HAL của khối SHA-256 | Phát |
 | `spec/` | [Core_Datapath.md](spec/Core_Datapath.md) | Sơ đồ khối datapath lõi RISC-V 5 tầng, đối chiếu module RTL và tín hiệu stall/flush/forward | Phát |

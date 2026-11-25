@@ -1,0 +1,12 @@
+PowerPlay Power Analyzer Status : Successful - Wed Nov 25 14:13:47 2026
+Quartus II 64-Bit Version : 13.0.1 Build 232 06/12/2013 SP 1 SJ Web Edition
+Revision Name : hrot_de10
+Top-level Entity Name : Xilinx_Top
+Family : Cyclone V
+Device : 5CSEBA6U23I7
+Power Models : Preliminary
+Total Thermal Power Dissipation : 474.09 mW
+Core Dynamic Thermal Power Dissipation : 52.04 mW
+Core Static Thermal Power Dissipation : 410.80 mW
+I/O Thermal Power Dissipation : 11.25 mW
+Power Estimation Confidence : Low: user provided insufficient toggle rate data
