@@ -249,7 +249,7 @@ Thầy nhận xét System đang quá rộng. Đây là phân loại của nhóm 
 12. **Test nào chứng minh?** `make test` 32 mục. Ảnh sửa bị khóa và RAM bị xóa (`SoC_Top_tb +TAMPER`), ghi `APP_RUN` sớm bị từ chối (`Boot_Verifier_tb`), DMA ra ngoài vùng bị chặn.
 13. **Vì sao có PLIC, hộp thư, UART1, TIMER1?** Chúng là phần mở rộng của System, không có yêu cầu bảo mật riêng. Nhóm đồng ý dừng mở rộng.
 14. **Thiết kế có phụ thuộc firmware không?** ROM logic cố định firmware trong netlist, đổi firmware thì chạy lại `make rom-images` và Genus.
-15. **Hướng tiếp theo?** Hướng A: dừng System, đào sâu Secure (xử lý giới hạn L2 tới L12, thêm test tấn công). Hướng B: Secure vừa đủ và tiếp tục System. Nhóm đề xuất hướng A.
+15. **Hướng tiếp theo?** Trước mắt hoàn thiện ASIC tới layout (Innovus, Tempus). Sau đó đào sâu Secure (xử lý giới hạn L2 tới L12, thêm test tấn công). Dừng thêm tính năng System.
 
 ## 9. Giới hạn đã biết
 

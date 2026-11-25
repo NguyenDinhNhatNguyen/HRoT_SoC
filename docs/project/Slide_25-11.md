@@ -127,15 +127,8 @@ Lời nói: Đây là chip sau khi đặt và đi dây. Hai khối lớn là hai
 
 ## Slide 8. Hướng tiếp theo
 
-Thầy nhận xét System đang quá rộng. Nhóm trình bày cả hai hướng:
+- Trước mắt: Hoàn thiện layout ASIC bằng Innovus và Tempus, lấy PPA sau layout.
+- Tiếp theo: Tăng phần bảo mật gồm khóa HMAC thật, chữ ký bất đối xứng, chống glitch và thêm bài test tấn công. Thêm tính năng trong RTL phải mở lại phần đã freeze (13/11) và chạy lại bộ kiểm.
+- Nhóm dừng thêm tính năng mới cho hệ thống. DMA, PLIC, hộp thư, ngoại vi App coi là phần mở rộng. Mong thầy góp ý thứ tự thực hiện.
 
-| | Hướng A: dừng System, đào sâu Secure | Hướng B: Secure vừa đủ, tiếp tục System |
-| --- | --- | --- |
-| Việc | Xử lý giới hạn khóa HMAC hằng, chữ ký bất đối xứng, chống glitch. Thêm test tấn công | Thêm ngoại vi, tăng hiệu năng |
-| Khớp nhận xét của thầy | Có | Không |
-| Rủi ro | Thêm tính năng Secure có thể mở lại RTL đã freeze | Càng rộng càng khó kiểm chứng |
-
-- Nhóm đề xuất hướng A. DMA, PLIC, hộp thư, ngoại vi App coi là phần mở rộng, không phát triển thêm.
-- Xin ý kiến thầy.
-
-Lời nói: Nhóm nhận System đã đủ rộng. Em đề xuất dừng mở rộng và dành thời gian cho Secure. Mong thầy cho ý kiến.
+Lời nói: Việc trước mắt là hoàn thiện ASIC tới layout. Sau đó nhóm đào sâu bảo mật. Mong thầy góp ý thứ tự thực hiện.
