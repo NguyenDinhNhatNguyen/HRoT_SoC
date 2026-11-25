@@ -1,8 +1,8 @@
 # sta.tcl - Tempus STA of ASIC_Top, before layout (Genus netlist) or after route (SPEF) (P-21).
 # Run from the repo root on the school server: make asic-sta (after make asic-genus).
 # Adapted from RV32i-SoC sta/scripts/sta_soc.tcl (Tempus 23.14, ran in Nov 2026).
-# NOT RUN on HRoT_SoC yet. Every report goes through try_cmd, so one wrong command only warns
-# and the other reports are still written.
+# Ran on HRoT_SoC on 25/11, before layout and with the SPEF of Innovus. Every report goes through
+# try_cmd, so one wrong command only warns and the other reports are still written.
 #
 # Environment (all optional, paths absolute because Tempus runs in asic/run_sta):
 #   NETLIST=<file>   default asic/out_genus/ASIC_Top_netlist.v (Genus)

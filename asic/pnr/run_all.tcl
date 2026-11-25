@@ -1,8 +1,9 @@
 # run_all.tcl - Innovus flow of ASIC_Top: init, floorplan, placement, CTS, route, checks, files (P-21).
 # Run from the repo root on the school server with: make asic-innovus (after make asic-genus).
 # Adapted from RV32i-SoC pnr/scripts/run_all.tcl (Innovus 21.19, GPDK45, ran in Nov 2026).
-# NOT RUN on HRoT_SoC yet. It needs the netlist of make asic-genus SRAM=1 ROM=1 (no black box, no
-# assign statement, 2 sram_2k_macro), which passed Genus, LEC and GLS on 18/11.
+# Ran on HRoT_SoC on 25/11 with the netlist of make asic-genus SRAM=1 ROM=1 at 11 ns (no black box,
+# no assign statement, 2 sram_2k_macro): 0 DRC, 0 antenna, Tempus signoff passed after an ECO that
+# is now part of this script (setupTargetSlack and editTrim below). Results in asic/README.md.
 # Each step saves DBS/<step>.enc in the run folder, for restoreDesign when debugging.
 #
 # Environment: CORE_W, CORE_H (see floorplan.tcl), UTIL is set in floorplan.tcl.
@@ -126,6 +127,9 @@ saveDesign DBS/cts.enc
 try_mode {setNanoRouteMode -route_with_timing_driven true -route_with_si_driven true} {setNanoRouteMode -routeWithTimingDriven true -routeWithSiDriven true}
 routeDesign
 try_cmd {setDelayCalMode -SIAware true}
+# Ask for 50 ps of setup slack, not 0. On 25/11 Innovus stopped at +1 ps and Tempus with the SPEF
+# reported -10 ps, the two tools differ by about 10 ps. An ECO with this target gave +42 ps in Tempus
+try_cmd {setOptMode -setupTargetSlack 0.050}
 optDesign -postRoute -setup -hold
 
 # Quick checks written to reports/pd_checks.rpt: banned cells must be 0, and the standard cell
@@ -180,6 +184,9 @@ proc fix_drc_boxes {rpt_in rpt_out} {
 }
 
 try_cmd {addFiller -cell [dbGet [dbGet -p head.libCells.name FILL*].name] -prefix FILLER}
+# Remove dangling pieces of the power stripes. On 25/11 a VSS stub on Metal7 next to the top SRAM
+# macro was the only connectivity error (IMPVFC-94). editTrim on the routed design removed it
+try_cmd {editTrim -nets [list $PWR_NET $GND_NET]}
 saveDesign DBS/route.enc
 
 # Check and report

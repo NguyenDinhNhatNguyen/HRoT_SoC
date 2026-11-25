@@ -2,8 +2,9 @@
 # Called by run_all.tcl after init_design and globalNetConnect. Needs try_cmd (from run_all.tcl)
 # and the variables of config.tcl.
 # Adapted from RV32i-SoC pnr/scripts/soc_floorplan.tcl (Innovus 21.1, GPDK45, ran in Nov 2026).
-# NOT RUN on HRoT_SoC yet. The SRAM=1 ROM=1 netlist has 2 macros (the two RAMs), the core size is
-# still open (UTIL below). Macros are found by cell name, so the instance names do not matter.
+# Ran on HRoT_SoC on 25/11: 2 macros (the two RAMs) at the left edge, UTIL 0.60 gave a 413 x 410 um
+# core with 71.9% standard cell density outside the macros. Macros are found by cell name, so the
+# instance names do not matter.
 #
 # Layout: half of the macros in one row at the bottom edge, the rest at the top edge, logic in
 # the middle band. Signal pins on the left (inputs) and right (outputs) edges.

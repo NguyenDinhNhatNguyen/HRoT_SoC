@@ -131,12 +131,14 @@ asic-genus-save:
 asic-lec:
 	bash asic/lec/run_lec.sh
 
-# Innovus needs the SRAM wrappers first: it rejects black boxes and the assign statements they leave
+# Innovus needs the SRAM wrappers first: it rejects black boxes and the assign statements they leave.
+# -nowin, no DISPLAY and < /dev/null: with the X11 DISPLAY of MobaXterm set, a batch Innovus started in
+# the background hung after the license checkout on 25/11 (0% CPU, nothing in the log)
 asic-innovus:
 	@test -f asic/out_genus/ASIC_Top_netlist.v || { echo "ERROR: no netlist yet, run make asic-genus first"; exit 1; }
 	rm -f asic/out_innovus/ASIC_Top_pnr.v
 	mkdir -p asic/run_innovus
-	cd asic/run_innovus && rm -f innovus.log* innovus.cmd* && innovus -batch -files ../pnr/run_all.tcl -log innovus.log
+	cd asic/run_innovus && rm -f innovus.log* innovus.cmd* && env -u DISPLAY innovus -nowin -batch -files ../pnr/run_all.tcl -log innovus.log < /dev/null
 	@test -f asic/out_innovus/ASIC_Top_pnr.v || { echo "ERROR: Innovus stopped midway, see asic/run_innovus/innovus.log"; exit 1; }
 	@cat asic/out_innovus/reports/pd_checks.rpt asic/out_innovus/reports/slack_summary.txt 2>/dev/null || true
 	@grep -i violations asic/out_innovus/reports/drc.rpt 2>/dev/null || true
