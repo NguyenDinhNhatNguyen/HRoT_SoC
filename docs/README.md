@@ -1,6 +1,6 @@
 # Tài liệu HRoT_SoC
 
-Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit). Khi sheet và file ở đây lệch nhau thì theo sheet.
+Tiến độ, hạn và các giao diện đã chốt (I-xx) nằm ở [Google Sheet "HRoT_SoC — Tiến độ Đồ án 2"](https://docs.google.com/spreadsheets/d/13jJj9UP1Cxr8ZNFqzQnNTaiulD2_HaKOWAONfCnZnU4/edit). Khi sheet và file ở đây lệch nhau thì theo sheet. Từ 25/11, phần kiến trúc hai vùng Secure và Normal theo dõi ở [Google Sheet "Tiến độ Kiến trúc hai vùng"](https://docs.google.com/spreadsheets/d/1KRVgqhBQTtMYmXy_JcUepT4pIpEweyZhe4eJqxbCPAY/edit).
 
 | Thư mục | File | Nội dung | Người giữ |
 | --- | --- | --- | --- |

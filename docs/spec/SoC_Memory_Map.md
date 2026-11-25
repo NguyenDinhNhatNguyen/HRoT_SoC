@@ -163,3 +163,40 @@ Lõi App không có đường nào sang bus Secure. Bus APB của App truy cập
 | PLIC-lite | `plic_irq` | `irq_ext` của lõi Master (nối từ 27/10, I-01) |
 | TIMER1 | `timer1_irq` | `irq_timer` của lõi App (nối từ 27/10) |
 | UART1, GPIO1, Mailbox (từ Secure đang chờ) | OR của `uart1_irq`, `gpio1_irq`, `mbox_irq_a` | `irq_ext` của lõi App (nối từ 27/10) |
+
+## Kiến trúc hai vùng: bộ nhớ lệnh chung (đang thiết kế, chưa có trong RTL)
+
+Các bảng ở trên mô tả RTL hiện tại. Mục này là đặc tả cho bước kế tiếp. Khi RTL làm xong thì nhập vào các bảng trên.
+
+### Địa chỉ trên bus Secure
+
+| Địa chỉ | Khối | Ghi chú |
+| --- | --- | --- |
+| `0x6000_0000` 4 KB | Kho ảnh firmware Normal | Thay cho flash SPI cho tới khi có SPI. Chỉ đọc, ghi → `SLVERR`. Lõi Normal không còn lấy lệnh từ đây |
+| `0x7000_0000` 4 KB | IMEM | Bộ nhớ lệnh của lõi Normal. Quyền theo khóa ở bảng dưới. Từ `0x7000_1000` trở lên → `DECERR` |
+
+### Quyền trên IMEM
+
+| Trạng thái | Secure ghi cả từ | Secure ghi byte, nửa từ | Secure đọc (CPU, DMA) | Lõi Normal |
+| --- | --- | --- | --- | --- |
+| Chưa khóa | OKAY | `SLVERR`, không đổi dữ liệu | `SLVERR` | Bị giữ reset |
+| Đã khóa | `SLVERR`, không đổi dữ liệu | `SLVERR` | OKAY | Chỉ lấy lệnh, sau khi được nhả |
+
+Lõi Normal không có đường ghi vào IMEM và không đọc IMEM như dữ liệu.
+
+### SYSCSR thêm một thanh ghi
+
+| Offset | Tên | Truy cập | Mô tả |
+| --- | --- | --- | --- |
+| `0x24` | IMEM_CTRL | RW | bit0 `LOCK`: ghi 1 để khóa IMEM, chỉ reset hệ thống mới mở. bit1 `HASHED` (chỉ đọc): kết quả SHA-256 hiện tại là của IMEM đã khóa |
+
+### Điều kiện `HASHED`
+
+- Bật khi Secure DMA chạy xong không lỗi, nguồn `0x7000_0000`, đủ 64 khối, IMEM đã khóa lúc bắt đầu, và CPU không ghi vào SHA-256 trong lúc chạy.
+- Tắt khi reset hệ thống, khi DMA bắt đầu một lần chạy mới, hoặc khi CPU ghi vào bất kỳ thanh ghi nào của SHA-256.
+- Boot_Verifier chỉ báo `VERIFIED` khi `HASHED` đang bật.
+- `APP_CTRL.APP_RUN` chỉ lên khi `VERIFIED` và `LOCK`. Với `VERIFY_GATE = 0` (chỉ dùng trong test ngắt) thì bỏ qua cả hai.
+
+### Trình tự khởi động
+
+Secure chép kho ảnh vào IMEM, khóa IMEM, cho DMA băm IMEM, so golden hash, đọc `APP_VER` từ IMEM, yêu cầu Boot_Verifier `CHECK`, rồi mới nhả lõi Normal. Tường lửa DMA cho đọc thêm cửa sổ IMEM. Boot Guard `LOCK` xóa cả IMEM cùng RAM của lõi Normal.

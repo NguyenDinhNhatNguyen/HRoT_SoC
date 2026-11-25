@@ -59,3 +59,20 @@ Hai thế giới: **Secure** (lõi Master, bus AXI, ngoại vi APB, Secure DMA, 
 | L11 | Zeroization chỉ xóa RAM App | Mailbox và thanh ghi lõi không được xóa |
 | L12a | Khi `CHECK` chạy (khoảng 9 chu kỳ) Boot_Verifier mượn cổng B của Boot ROM | Firmware không được `lw` từ Boot ROM lúc đó, quy ước chứ không có phần cứng chặn |
 | L12 | Bộ nhớ dùng cạnh xuống của xung nhịp (suy ra M4K/BRAM) | Phù hợp FPGA, không phù hợp ASIC (R8) |
+
+## Kiến trúc hai vùng: yêu cầu mới (đang thiết kế, chưa có trong RTL)
+
+Lý do thay đổi: Ảnh firmware nằm trong ROM của vùng Normal nên ranh giới tin cậy chưa rõ. Bước mới đưa lệnh của lõi Normal vào IMEM do vùng Secure nạp, khóa và kiểm. Địa chỉ và quyền xem `SoC_Memory_Map.md`.
+
+| Mã | Yêu cầu | Cách thực hiện dự kiến | Kiểm dự kiến |
+| --- | --- | --- | --- |
+| SR-12 | Byte lõi Normal chạy là byte đã được kiểm | Khóa trước khi băm, cờ `HASHED`, nhả cần `VERIFIED` và `LOCK` | `IMEM_tb`, test toàn SoC: băm kho ảnh rồi xin nhả bị từ chối, CPU ghi SHA-256 sau khi DMA băm bị từ chối |
+| SR-13 | Lõi Normal không ghi được bộ nhớ lệnh | IMEM chỉ có cổng lấy lệnh về phía Normal | `IMEM_tb`, đọc `SoC_Top.v` |
+| SR-14 | Sau khi khóa, vùng Secure không sửa được bộ nhớ lệnh | Ghi khi đã khóa trả `SLVERR`, chỉ reset hệ thống mở khóa và đồng thời giữ lõi Normal trong reset | `IMEM_tb` |
+
+Yêu cầu cũ bị ảnh hưởng: SR-04 thêm kho ảnh chỉ đọc. SR-05 xóa cả IMEM. SR-08 thêm cửa sổ đọc IMEM cho DMA. SR-10 thêm cửa sổ 4 KB của IMEM.
+
+| # | Giới hạn mới | Hệ quả |
+| --- | --- | --- |
+| L13 | Vùng Secure đọc được IMEM sau khi khóa | Cần để băm đúng nội dung sẽ chạy và đọc `APP_VER`. Vùng Secure là vùng tin cậy |
+| L14 | Kho ảnh nằm trên chip thay cho flash | Chưa kiểm được tấn công vào flash ngoài cho tới khi có SPI |
