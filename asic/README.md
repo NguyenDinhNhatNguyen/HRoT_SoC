@@ -135,6 +135,8 @@ Giới hạn của lần chạy mặc định: bộ nhớ là black box nên rep
 
 ## Thứ tự chạy buổi Innovus (soạn 18/11/2026)
 
+Đã chạy đủ ngày 25/11/2026, kết quả ở mục "Kết quả buổi chạy 25/11/2026". Ba lỗi gặp trong buổi đã sửa trong `Makefile` và `run_all.tcl`, nên lần chạy lại chỉ cần các bước dưới.
+
 Mục tiêu: netlist `SRAM=1 ROM=1` ở 11 ns qua Innovus (bước 5 tới 8) và Tempus sau route (bước 9). Các script Innovus và Tempus là bản nháp của Nguyên, chưa chạy lần nào trên HRoT_SoC, nên lần đầu có thể dừng ở một lệnh đổi tên giữa các bản tool. Mọi lệnh dài chạy bằng `nohup ... &` vì mạng hay rớt. Chưa chạy hai Genus hoặc hai Innovus cùng lúc.
 
 | Bước | Lệnh | Thời gian | Đạt khi |
@@ -196,6 +198,46 @@ Bước 7 ghi đè `asic/out_genus/`, nên chạy sau LEC và GLS, và chạy l�
 - `python3` của server lỗi `undefined symbol: _Py_LegacyLocaleDetected` vì `LD_LIBRARY_PATH` (thư viện của Xcelium, Calibre, XRT) làm nó nạp nhầm `libpython`. `asic/gls/run.sh` và `make rom-images` giờ gọi Python với `env -u LD_LIBRARY_PATH`.
 - LEC lần đầu ra 46 flop non-equivalent. Cả 46 là flop reset đồng bộ chỉ nạp lại đúng giá trị reset của nó (2 bit thấp của `Boot_Verifier.rom_addr`, bit stop của thanh ghi dịch UART, `RRESP` của slave AXI). Genus nối D của chúng vào hằng số, Conformal không chứng minh được flop là hằng trước reset (thêm `-seq_constant_feedback` cũng không đủ). GLS 18/11 PASS với netlist đó, nên netlist đúng. `synth.tcl` giờ đặt `optimize_constant_feedback_seqs false` để Genus giữ MUX như RTL.
 - `read_hdl` của Genus 21.10 có `-define` (xem bằng `help read_hdl`). `synth.tcl` dùng nó thay cho file `mem_define.v` đứng đầu danh sách.
+
+## Kết quả buổi chạy 25/11/2026 (Innovus, P-21)
+
+Netlist `SRAM=1 ROM=1` ở 11 ns (chu kỳ chốt 18/11), Genus 21.10, Innovus 21.19, Tempus, Conformal, Xcelium, GPDK45. Report ở `asic/reports/genus_macro/`, `lec_macro/`, `innovus/`, `sta/`. Ảnh chụp minh chứng (terminal và giao diện Innovus) Phát giữ riêng cho slide, không đưa vào repo vì ảnh layout dựng từ PDK.
+
+| Bước | Kết quả |
+| --- | --- |
+| Genus 11 ns | 2 macro, 0 black box, 0 `assign`, 0 scan flop, 7.117 flop, WNS +1,114 ns |
+| LEC | PASS: 7.095 flop, 19 đầu ra, 2 black box (`sram_2k_macro`) tương đương |
+| GLS | PASS 8/8, boot 535.898 chu kỳ, mô hình macro của trường |
+| Tempus trước layout | Setup +1,176 ns, hold −0,178 ns (chưa có cây clock), recovery +9,933 ns, removal +0,010 ns |
+| Floorplan | 2 macro sát mép trái (`master_ram` trên, `app_ram` dưới), chân tín hiệu macro ở cạnh bên, nguồn macro Metal4, vòng quanh macro Metal5 và Metal6. `verifyGeometry` 0 lỗi |
+| Placement | Overflow 0,00%, mật độ 67,6%, WNS trước CTS +0,017 ns |
+| CTS | Độ trễ cây clock 0,38 tới 0,48 ns. Skew 100 ps ở góc setup, vượt mục tiêu 80 ps, 97,7% điểm nhận clock nằm trong cửa sổ mục tiêu. Skew 42 ps ở góc hold. Hold sau CTS +0,020 ns |
+| Route (Innovus) | Setup +0,001 ns, hold +0,009 ns, recovery +8,911 ns, removal +0,166 ns. 0 DRC, 0 antenna. Connectivity: 1 mẩu dây `VSS` hở trên Metal7 cạnh macro trên (`IMPVFC-94`), xoá bằng `editTrim` |
+| Tempus signoff (SPEF), trước ECO | Setup **−0,010 ns**, hold +0,018 ns. Innovus dừng ở +1 ps, Tempus lệch khoảng 11 ps |
+| ECO (`setupTargetSlack 0.05`, `optDesign -postRoute`) | 8,5 phút. Innovus setup +0,068 ns, hold +0,016 ns. 0 DRC, 0 antenna, 0 connectivity |
+| **Tempus signoff (SPEF), sau ECO** | **Setup +0,042 ns, hold +0,020 ns, recovery +8,912 ns, removal +0,173 ns. Đạt ở 11 ns** |
+
+Diện tích và công suất sau layout (trước ECO, ECO chỉ đổi vài chục cell):
+
+| Chỉ số | Giá trị |
+| --- | --- |
+| Die | 443,2 × 440,4 µm, khoảng 195.200 µm² |
+| Lõi | 413,2 × 410,4 µm, 169.577 µm² |
+| Cell chuẩn | 110.357 µm², 44.035 cell (Genus 85.597 µm², 32.475 cell). Phần thêm là buffer, cây clock và cell sửa hold |
+| Macro | 2 × 8.000 µm² |
+| Mật độ cell ngoài macro | 71,9% |
+| Công suất Innovus | 2,80 mW (trong cell 1,45, chuyển mạch 1,34, rò 0,011 mW), hoạt động mặc định, chỉ để so tương đối |
+
+Theo nhóm đường của Innovus (`all`, `reg2reg`, `reg2cgate`, `default`), đường sát nhất là `reg2reg` (flop sang flop trong lõi), đúng như Genus. Đường vào ra chân chip (`default`) còn dư khoảng 6,8 ns.
+
+Lỗi gặp và đã sửa trong script (commit sau buổi 25/11):
+
+- `make asic-innovus` chạy nền trong MobaXterm có X11 (`DISPLAY` bật) bị treo sau khi lấy license, 0% CPU, log không có gì. Target giờ chạy `env -u DISPLAY innovus -nowin ... < /dev/null`.
+- Mẩu dây nguồn hở: `run_all.tcl` chạy `editTrim` cho `VDD` và `VSS` sau khi thêm filler.
+- Signoff trượt 10 ps: `run_all.tcl` đặt `setupTargetSlack 0.050` trước `optDesign -postRoute`, nên lần chạy sau không cần ECO riêng.
+- Mở giao diện Innovus qua X11 rất chậm. Ảnh layout xuất bằng `dumpToGIF` (640 × 480) trong một script, không cần thao tác trên cửa sổ.
+
+Chưa làm: GLS trên netlist sau route có SDF, LEC netlist Innovus so với Genus, Voltus (bước 10).
 
 ## Kết quả buổi chạy 18/11/2026
 

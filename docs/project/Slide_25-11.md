@@ -98,37 +98,34 @@ Server trường, buổi chạy 18/11, bản hai RAM dùng macro SRAM, hai ROM l
 | Clock gating | Giảm khoảng 12% diện tích và 55% công suất (bản black box ở 20 ns, chỉ bản này có lượt so `CG=0`) |
 
 - Đường găng của lõi: từ thanh ghi đích tầng MEM qua forwarding và bộ so sánh ALU tới PC, 12,62 ns ở 20 ns. Không đi qua ROM.
-- Chưa có: kết quả Innovus (diện tích sau layout, thời gian sau route).
+- Layout bằng Innovus chạy 25/11 và đạt signoff ở 11 ns, xem slide 7b.
 - Nguồn: `asic/README.md` mục kết quả 18/11, `asic/reports/genus_macro/`.
 
-Lời nói: Tổng hợp đạt từ rất nhanh. Em chốt 11 ns để dư biên. Phần layout bằng Innovus sẽ chạy ở buổi server tới.
+Lời nói: Tổng hợp đạt từ rất nhanh. Em chốt 11 ns để dư biên, và layout giữ được chu kỳ đó.
 
 ## Slide 7b. Layout ASIC (Innovus)
 
-> Khung chờ kết quả: Phát chạy `make asic-innovus` ở server ngày 23 hoặc 24/11 theo `asic/README.md` mục "Thứ tự chạy buổi Innovus", rồi điền các ô "chờ" và thay ảnh. Nếu chưa có kết quả trước 25/11 thì bỏ slide này, giữ câu "Chưa có kết quả Innovus" ở slide 7.
+Chạy 25/11 trên server trường, Innovus 21.19 và Tempus.
 
-- Hình (Innovus GUI, cắt thanh tiêu đề có tên tài khoản và tên máy, không đưa vào repo):
-  - `07_innovus_floorplan.png`: hai macro SRAM, vòng nguồn, chân hai bên
-  - `08_innovus_placement.png`: cell đã đặt
-  - `09_innovus_cts.png`: cây clock (CCOpt Clock Tree Debugger)
-  - `10_innovus_route.png`: layout sau route và cửa sổ timing
-  - `11_innovus_reports.png`: DRC, connectivity, antenna, slack
+- Hình (ảnh Phát chụp, không đưa vào repo): `13_innovus_floorplan.png` (hai macro SRAM, lưới nguồn, chân hai bên), `14_innovus_placement.png`, `15_innovus_cts.png`, `16_innovus_route.png`. Ảnh terminal của từng bước: `03` tới `12`.
 
 | Chỉ số (netlist `SRAM=1 ROM=1`, 11 ns) | Giá trị | Nguồn |
 | --- | --- | --- |
-| Kích thước lõi, mật độ cell ngoài macro | chờ | `pd_checks.rpt` |
-| DRC, connectivity, antenna | chờ (cần 0, 0, 0) | `drc.rpt`, `connectivity.rpt`, `antenna.rpt` |
-| Setup WNS sau route | chờ (cần ≥ 0) | `slack_summary.txt`, Tempus với SPEF |
-| Hold, recovery, removal sau route | chờ (cần ≥ 0) | như trên |
-| Skew của cây clock | chờ (mục tiêu ≤ 80 ps) | `cts_skew_groups.rpt` |
-| Chu kỳ dùng | 11 ns, hoặc 12 ns nếu phải lùi theo quy tắc ở `asic/README.md` | |
+| Die, lõi | 443 × 440 µm, lõi 413 × 410 µm | `pd_checks.rpt` |
+| Diện tích cell, mật độ ngoài macro | 110.357 µm² cell chuẩn và 16.000 µm² macro, mật độ 71,9% | như trên |
+| DRC, antenna, connectivity | 0, 0, 0 (1 mẩu dây nguồn hở đã xoá bằng `editTrim`) | `drc_eco.rpt`, `antenna_eco.rpt`, `connectivity_eco.rpt` |
+| Tempus signoff với SPEF | Setup +0,042 ns, hold +0,020 ns, recovery +8,912 ns, removal +0,173 ns | `asic/reports/sta/spef/summary.txt` |
+| Cây clock | Độ trễ 0,38 tới 0,48 ns, skew 100 ps (mục tiêu 80 ps chưa đạt, timing vẫn đạt) | `cts_skew_groups.rpt` |
+| Chu kỳ | 11 ns, khoảng 91 MHz, không phải lùi 12 ns | |
 
-Lời nói: Đây là chip sau khi đặt và đi dây. Hai khối lớn là hai macro SRAM, phần giữa là logic. Sau route không còn lỗi quy tắc và thời gian vẫn đạt ở [chu kỳ].
+- Lần đầu Tempus báo setup −10 ps vì Innovus dừng ở +1 ps. Một lượt ECO đòi dư 50 ps đã sửa được, và script đã thêm bước này cho lần sau.
+
+Lời nói: Đây là chip sau khi đặt và đi dây. Hai khối lớn là hai macro SRAM, phần còn lại là logic. Sau route không còn lỗi quy tắc, và kiểm thời gian bằng Tempus với điện dung dây thật vẫn đạt ở 11 ns.
 
 ## Slide 8. Hướng tiếp theo
 
-- Trước mắt: Hoàn thiện layout ASIC bằng Innovus và Tempus, lấy PPA sau layout.
+- Trước mắt: Layout ASIC đã đạt (25/11). Còn GLS có SDF, LEC sau layout và công suất bằng Voltus.
 - Tiếp theo: Tăng phần bảo mật gồm khóa HMAC thật, chữ ký bất đối xứng, chống glitch và thêm bài test tấn công. Thêm tính năng trong RTL phải mở lại phần đã freeze (13/11) và chạy lại bộ kiểm.
 - Nhóm dừng thêm tính năng mới cho hệ thống. DMA, PLIC, hộp thư, ngoại vi App coi là phần mở rộng. Mong thầy góp ý thứ tự thực hiện.
 
-Lời nói: Việc trước mắt là hoàn thiện ASIC tới layout. Sau đó nhóm đào sâu bảo mật. Mong thầy góp ý thứ tự thực hiện.
+Lời nói: Layout ASIC đã đạt, còn vài bước kiểm sau layout. Sau đó nhóm đào sâu bảo mật. Mong thầy góp ý thứ tự thực hiện.

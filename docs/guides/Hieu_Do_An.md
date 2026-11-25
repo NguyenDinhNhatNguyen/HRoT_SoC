@@ -164,7 +164,7 @@ Hình: `docs/diagrams/png/11_secure_boot_flow.png` (mọi nhánh) và `12_tamper
 | Genus | Tổng hợp ra cell chuẩn GPDK45 của ASIC | Diện tích, thời gian, công suất | `make asic-genus` |
 | Conformal (LEC) | So netlist với RTL | Netlist có đúng bằng RTL không | `make asic-lec` |
 | Xcelium (GLS) | Mô phỏng netlist | Netlist có boot đúng không | `make asic-gls` |
-| Innovus | Đặt, đi dây, cây clock (layout) | Chip thật trông thế nào, có lỗi quy tắc không | `make asic-innovus` (chưa xong) |
+| Innovus | Đặt, đi dây, cây clock (layout) | Chip thật trông thế nào, có lỗi quy tắc không | `make asic-innovus` (đạt 25/11) |
 | Tempus | Phân tích thời gian sau khi có dây thật | Thời gian có đạt khi có dây thật | `make asic-sta` |
 
 ### Thời gian: slack, WNS, đường găng
@@ -218,6 +218,8 @@ Hiểu: lệnh nhánh so sánh hai thanh ghi ở tầng EX, cần dữ liệu ch
 | Chu kỳ chốt 11 ns (khoảng 91 MHz) | Nhỏ nhất mà WNS còn ít nhất 10% chu kỳ | `asic/README.md`, Phát chốt 18/11 |
 | LEC PASS, 0 điểm không tương đương | Netlist bằng RTL | như trên |
 | GLS PASS, boot 535.898 chu kỳ | Netlist boot ra LED 0x01 | như trên |
+| Layout (Innovus) 25/11: die 443 × 440 µm, 0 DRC, 0 antenna, 0 connectivity | Chip sau khi đặt và đi dây không có lỗi quy tắc | `asic/README.md` mục 25/11 |
+| Tempus sau layout: setup +0,042 ns, hold +0,020 ns ở 11 ns | Thời gian đạt khi có dây thật | `asic/reports/sta/spef/summary.txt` |
 
 ## 7. Khối nào là lõi, khối nào là mở rộng
 
@@ -249,7 +251,7 @@ Thầy nhận xét System đang quá rộng. Đây là phân loại của nhóm 
 12. **Test nào chứng minh?** `make test` 32 mục. Ảnh sửa bị khóa và RAM bị xóa (`SoC_Top_tb +TAMPER`), ghi `APP_RUN` sớm bị từ chối (`Boot_Verifier_tb`), DMA ra ngoài vùng bị chặn.
 13. **Vì sao có PLIC, hộp thư, UART1, TIMER1?** Chúng là phần mở rộng của System, không có yêu cầu bảo mật riêng. Nhóm đồng ý dừng mở rộng.
 14. **Thiết kế có phụ thuộc firmware không?** ROM logic cố định firmware trong netlist, đổi firmware thì chạy lại `make rom-images` và Genus.
-15. **Hướng tiếp theo?** Trước mắt hoàn thiện ASIC tới layout (Innovus, Tempus). Sau đó đào sâu Secure (xử lý giới hạn L2 tới L12, thêm test tấn công). Dừng thêm tính năng System.
+15. **Hướng tiếp theo?** Layout ASIC đã đạt 25/11, còn GLS có SDF, LEC sau layout và Voltus. Sau đó đào sâu Secure (xử lý giới hạn L2 tới L12, thêm test tấn công). Dừng thêm tính năng System.
 
 ## 9. Giới hạn đã biết
 
@@ -270,5 +272,5 @@ Nguồn: `docs/spec/Security_Model.md`. Nói thật các giới hạn này tốt
 - Phân loại "lõi", "hỗ trợ", "mở rộng" ở mục 7 là đánh giá của mình, chưa phải của thầy hay của đề cương.
 - Số chu kỳ DMA và CPU (17.026 và 34.143) lấy từ ghi chú trong sheet, mình chưa chạy lại.
 - SHA-256: đã đo bằng mô phỏng 22/11 (khối "abc", hash khớp FIPS 180-4). `busy` lên 65 chu kỳ như chú thích trong `SHA256_Core.v`, và `done` lên ở cạnh thứ 66 tính từ cạnh nhận `start`, khớp số 66 của sheet N-07. Hai số đều đúng, khác nhau ở chỗ có tính chu kỳ nhận lệnh hay không.
-- Số liệu ASIC là của buổi chạy server 18/11 do Phát chạy, Innovus chưa chạy xong.
+- Số liệu ASIC là của các buổi chạy server 18/11 và 25/11 do Phát chạy. Innovus đạt signoff ở 11 ns ngày 25/11 (`asic/README.md`).
 - Chưa có đề cương chính thức trong tay, nên chưa biết đề cương nói gì về SoC.

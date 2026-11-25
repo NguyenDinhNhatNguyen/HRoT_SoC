@@ -4,11 +4,11 @@
 
 ## 1. Tóm tắt
 
-- Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 tới 4 đã chạy và đạt (Genus, LEC, GLS trên server 18/11, kết quả ở `asic/README.md` mục "Kết quả buổi chạy 18/11/2026"). Bước 5 tới 11 có script nháp, chưa chạy lần nào trên server.
+- Flow gồm 11 bước, từ RTL tới báo cáo. Bước 1 tới 9 và 11 đã chạy và đạt: Genus, LEC, GLS ngày 18/11, Innovus và Tempus signoff ngày 25/11 (kết quả ở `asic/README.md`). Bước 10 (Voltus) chưa có script.
 - Tất cả script nháp dựa trên flow đã chạy thật của RV32i-SoC (đồ án CE434, cùng nhóm, cùng server và PDK GPDK45). Chúng chưa được kiểm trên HRoT_SoC.
 - LEC (bước 3) chạy được ngay trên netlist hiện tại, vì bộ nhớ là hộp đen ở cả hai phía.
 - Hai RAM 4 KB có wrapper SRAM (phase 1) và hai ROM 4 KB là logic sinh từ file hex (phase 2), cả hai từ 16/11. Bật bằng `make asic-genus SRAM=1 ROM=1`. Chạy trên server 18/11: 2 macro, 0 hộp đen, 0 `assign`, 101.597 µm², LEC và GLS PASS. ROM logic 12.204 µm².
-- Innovus (bước 5 tới 8) dùng netlist `SRAM=1 ROM=1` ở 11 ns, chu kỳ Phát chốt 18/11. Netlist trên server đang ở 20 ns, phải chạy lại Genus trước.
+- Innovus (bước 5 tới 8) chạy 25/11 trên netlist `SRAM=1 ROM=1` ở 11 ns: 0 DRC, 0 antenna, 0 connectivity sau `editTrim`. Tempus signoff trượt 10 ps, một lượt ECO sửa được: setup +0,042 ns, hold +0,020 ns. Die 443 × 440 µm.
 - Rủi ro chính: Số liệu ASIC hiện chưa có diện tích bộ nhớ, và `.gitignore` chặn mọi file tên bắt đầu bằng `sram_2k_macro` nên wrapper không được đặt tên như vậy.
 
 ## 2. Các bước
@@ -21,13 +21,13 @@ Công cụ trên server theo `docs/flow_notes.md` của RV32i-SoC: Genus và Inn
 | 2 | Tổng hợp | `make asic-genus` | `asic/ASIC_Top.v`, `asic/ASIC_Top.sdc` | Slack >= 0, 0 latch, 0 scan flop, 0 vi phạm design rule | Xong 18/11: 0 scan flop, đạt từ 20 tới 6 ns cho cả hai netlist, chốt 11 ns |
 | 3 | LEC | `make asic-lec` | RTL, netlist Genus | 0 non-equivalent, 0 abort, hộp đen chỉ là bộ nhớ | Xong 18/11: PASS cả hai netlist, sau khi `synth.tcl` thêm `optimize_constant_feedback_seqs false` |
 | 4 | Mô phỏng netlist | `make asic-gls` | Netlist, mô hình cell, 3 file hex của `make fw` | `ASIC_Top_tb RESULT: PASS`, giống mô phỏng RTL | Xong 18/11: PASS cả hai netlist, boot 535.898 chu kỳ như RTL, bản `SRAM=1 ROM=1` dùng mô hình macro của trường |
-| 5 | Floorplan, nguồn | `make asic-innovus` | Netlist, SDC, LEF | `verifyGeometry` 0 lỗi | Script nháp |
-| 6 | Placement | như trên | như trên | 0 cell chưa đặt, overflow dưới 0,5% | Script nháp |
-| 7 | CTS | như trên | như trên | Skew <= 80 ps, hold >= 0 | Script nháp |
-| 8 | Route, filler, kiểm tra | như trên | như trên | 0 DRC, 0 lỗi kết nối, 0 antenna | Script nháp |
-| 9 | Signoff STA | `make asic-sta SPEF=... NETLIST=... SDC=...` | Netlist sau route, SPEF | Setup, hold, recovery, removal >= 0 | Script nháp |
+| 5 | Floorplan, nguồn | `make asic-innovus` | Netlist, SDC, LEF | `verifyGeometry` 0 lỗi | Xong 25/11: 0 lỗi, 2 macro sát mép trái |
+| 6 | Placement | như trên | như trên | 0 cell chưa đặt, overflow dưới 0,5% | Xong 25/11: overflow 0,00%, mật độ 67,6% |
+| 7 | CTS | như trên | như trên | Skew <= 80 ps, hold >= 0 | 25/11: hold +0,020 ns đạt. Skew 100 ps ở góc setup, chưa đạt mục tiêu 80 ps (97,7% điểm nhận clock trong cửa sổ). Timing sau route vẫn đạt |
+| 8 | Route, filler, kiểm tra | như trên | như trên | 0 DRC, 0 lỗi kết nối, 0 antenna | Xong 25/11: 0 DRC, 0 antenna, 0 lỗi kết nối sau `editTrim` (1 mẩu dây `VSS` hở) |
+| 9 | Signoff STA | `make asic-sta SPEF=... NETLIST=... SDC=...` | Netlist sau route, SPEF | Setup, hold, recovery, removal >= 0 | Xong 25/11 sau ECO: setup +0,042, hold +0,020, recovery +8,912, removal +0,173 ns |
 | 10 | Công suất | Chưa có script | SPEF, activity | Số mW theo testcase | Voltus v23.14 có license (18/11), chưa có script |
-| 11 | Lưu kết quả | `make asic-lec-save`, `asic-pnr-save`, `asic-sta-save` | Report văn bản | Chỉ file văn bản, không file dựng từ PDK | Script nháp |
+| 11 | Lưu kết quả | `make asic-lec-save`, `asic-pnr-save`, `asic-sta-save` | Report văn bản | Chỉ file văn bản, không file dựng từ PDK | Xong 25/11. File `.gz` của Innovus phải giải nén để xoá tên tài khoản rồi nén lại |
 
 Nguồn của các cổng nghiệm thu bước 5 tới 8: `docs/flow_notes.md` mục 3 của RV32i-SoC.
 
