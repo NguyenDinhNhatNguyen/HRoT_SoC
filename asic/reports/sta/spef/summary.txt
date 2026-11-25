@@ -1,0 +1,1 @@
+top=ASIC_Top stage=spef setup_ns=0.042 hold_ns=0.020 recovery_ns=8.912 removal_ns=0.173

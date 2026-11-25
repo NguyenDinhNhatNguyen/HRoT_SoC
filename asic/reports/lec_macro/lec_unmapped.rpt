@@ -11,41 +11,37 @@ Unmapped point (unreachable: all paths to outputs are blocked):
 Unmapped point (unreachable: all paths to outputs are blocked):
   (G)   2210   DFF  /soc/boot_verifier/rom_addr_reg[0]
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3233   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[16]/U$1
+  (R)   4188   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[16]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3234   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[17]/U$1
+  (R)   4189   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[17]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3235   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[18]/U$1
+  (R)   4190   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[18]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3236   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[19]/U$1
+  (R)   4191   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[19]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3237   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[20]/U$1
+  (R)   4192   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[20]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3238   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[21]/U$1
+  (R)   4193   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[21]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3239   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[22]/U$1
+  (R)   4194   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[22]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3240   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[23]/U$1
+  (R)   4195   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[23]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3241   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[24]/U$1
+  (R)   4196   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[24]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3242   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[25]/U$1
+  (R)   4197   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[25]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3243   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[26]/U$1
+  (R)   4198   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[26]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3244   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[27]/U$1
+  (R)   4199   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[27]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3245   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[28]/U$1
+  (R)   4200   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[28]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3246   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[29]/U$1
+  (R)   4201   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[29]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3247   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[30]/U$1
+  (R)   4202   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[30]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   3248   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[31]/U$1
-Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   4990   DFF  /soc/boot_verifier_rom_addr_reg[0]/U$1
-Unmapped point (unreachable: all paths to outputs are blocked):
-  (R)   4991   DFF  /soc/boot_verifier_rom_addr_reg[1]/U$1
+  (R)   4203   DFF  /soc/g_slave[1].g_apb.axi2apb_addr_q_reg[31]/U$1
 Unmapped point (unreachable: all paths to outputs are blocked):
   (G)   5401   DFF  /soc/g_slave[1].g_apb.axi2apb/addr_q_reg[31]
 Unmapped point (unreachable: all paths to outputs are blocked):
@@ -86,6 +82,10 @@ Unmapped point (unreachable: all paths to outputs are blocked):
   (G)   5988   DFF  /soc/g_slave[2].g_sha.sha256/axi_slave/S_AXI_BRESP_reg[1]
 Unmapped point (unreachable: all paths to outputs are blocked):
   (G)   5989   DFF  /soc/g_slave[2].g_sha.sha256/axi_slave/S_AXI_BRESP_reg[0]
+Unmapped point (unreachable: all paths to outputs are blocked):
+  (R)   6005   DFF  /soc/boot_verifier_rom_addr_reg[0]/U$1
+Unmapped point (unreachable: all paths to outputs are blocked):
+  (R)   6006   DFF  /soc/boot_verifier_rom_addr_reg[1]/U$1
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7161   DLAT /soc/RC_CG_HIER_INST0/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
@@ -437,21 +437,21 @@ Unmapped point (unreachable: Gated-clock deglitching latch):
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7335   DLAT /soc/RC_CG_HIER_INST174/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7336   DLAT /soc/RC_CG_HIER_INST175/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7336   DLAT /soc/RC_CG_HIER_INST176/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7337   DLAT /soc/RC_CG_HIER_INST177/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7337   DLAT /soc/app_core_u_ID_EX_Reg/RC_CG_HIER_INST178/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7338   DLAT /soc/app_core_u_ID_EX_Reg/RC_CG_HIER_INST179/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7338   DLAT /soc/app_core_u_IF_ID_Reg/RC_CG_HIER_INST179/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7339   DLAT /soc/app_core_u_IF_ID_Reg/RC_CG_HIER_INST180/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7339   DLAT /soc/app_core_u_sys_EX_MEM/RC_CG_HIER_INST181/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7340   DLAT /soc/app_core_u_sys_EX_MEM/RC_CG_HIER_INST182/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7340   DLAT /soc/g_slave[0].g_reg.axi_slave/RC_CG_HIER_INST182/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7341   DLAT /soc/g_slave[0].g_reg.axi_slave/RC_CG_HIER_INST183/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7342   DLAT /soc/g_slave[0].g_reg.axi_slave/RC_CG_HIER_INST184/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7343   DLAT /soc/g_slave[0].g_reg.axi_slave/RC_CG_HIER_INST185/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7343   DLAT /soc/g_slave[2].g_sha.sha256/RC_CG_HIER_INST185/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7344   DLAT /soc/g_slave[2].g_sha.sha256/RC_CG_HIER_INST186/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
@@ -483,51 +483,49 @@ Unmapped point (unreachable: Gated-clock deglitching latch):
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7358   DLAT /soc/g_slave[2].g_sha.sha256/RC_CG_HIER_INST200/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7359   DLAT /soc/g_slave[2].g_sha.sha256/RC_CG_HIER_INST201/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7359   DLAT /soc/g_slave[2].g_sha.sha256/axi_slave/RC_CG_HIER_INST201/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7360   DLAT /soc/g_slave[2].g_sha.sha256/axi_slave/RC_CG_HIER_INST202/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7361   DLAT /soc/g_slave[2].g_sha.sha256/axi_slave/RC_CG_HIER_INST203/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7362   DLAT /soc/g_slave[2].g_sha.sha256/axi_slave/RC_CG_HIER_INST204/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7362   DLAT /soc/g_slave[2].g_sha.sha256/core_inst/RC_CG_HIER_INST204/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7363   DLAT /soc/g_slave[2].g_sha.sha256/core_inst/RC_CG_HIER_INST205/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7364   DLAT /soc/g_slave[2].g_sha.sha256/core_inst/RC_CG_HIER_INST206/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7365   DLAT /soc/g_slave[2].g_sha.sha256/core_inst/RC_CG_HIER_INST207/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7365   DLAT /soc/g_slave[3].g_reg.axi_slave/RC_CG_HIER_INST207/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7366   DLAT /soc/g_slave[3].g_reg.axi_slave/RC_CG_HIER_INST208/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7367   DLAT /soc/g_slave[3].g_reg.axi_slave/RC_CG_HIER_INST209/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7368   DLAT /soc/g_slave[3].g_reg.axi_slave/RC_CG_HIER_INST210/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7368   DLAT /soc/g_slave[4].g_reg.axi_slave/RC_CG_HIER_INST210/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7369   DLAT /soc/g_slave[4].g_reg.axi_slave/RC_CG_HIER_INST211/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7370   DLAT /soc/g_slave[4].g_reg.axi_slave/RC_CG_HIER_INST212/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7371   DLAT /soc/g_slave[4].g_reg.axi_slave/RC_CG_HIER_INST213/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7371   DLAT /soc/g_slave[5].g_reg.axi_slave/RC_CG_HIER_INST213/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7372   DLAT /soc/g_slave[5].g_reg.axi_slave/RC_CG_HIER_INST214/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
   (R)   7373   DLAT /soc/g_slave[5].g_reg.axi_slave/RC_CG_HIER_INST215/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7374   DLAT /soc/g_slave[5].g_reg.axi_slave/RC_CG_HIER_INST216/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7374   DLAT /soc/master_core_u_ID_EX_Reg/RC_CG_HIER_INST217/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7375   DLAT /soc/master_core_u_ID_EX_Reg/RC_CG_HIER_INST218/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7375   DLAT /soc/master_core_u_IF_ID_Reg/RC_CG_HIER_INST218/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7376   DLAT /soc/master_core_u_IF_ID_Reg/RC_CG_HIER_INST219/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7376   DLAT /soc/master_core_u_sys_EX_MEM/RC_CG_HIER_INST220/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7377   DLAT /soc/master_core_u_sys_EX_MEM/RC_CG_HIER_INST221/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7377   DLAT /soc/master_ram/RC_CG_HIER_INST221/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7378   DLAT /soc/master_ram/RC_CG_HIER_INST222/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7378   DLAT /soc/RC_CG_DECLONE_HIER_INST/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7379   DLAT /soc/RC_CG_DECLONE_HIER_INST/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
-Unmapped point (unreachable: Gated-clock deglitching latch):
-  (R)   7380   DLAT /soc/RC_CG_DECLONE_HIER_INST297546/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
+  (R)   7379   DLAT /soc/RC_CG_DECLONE_HIER_INST301835/RC_CGIC_INST/sttb_$U1/udp1/U$1/i0
 
-264 unmapped points reported
+263 unmapped points reported
 ================================================================================
 Golden:
 --------------------------------------------------------------------------------
@@ -539,5 +537,5 @@ Revised:
 --------------------------------------------------------------------------------
 Unmapped points   DFF    DLAT      Total   
 --------------------------------------------------------------------------------
-Unreachable       22     220       242     
+Unreachable       22     219       241     
 ================================================================================

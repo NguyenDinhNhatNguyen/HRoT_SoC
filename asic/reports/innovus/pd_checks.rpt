@@ -1,0 +1,8 @@
+Core box (um): {15.0 15.01 428.2 425.41}
+Die box (um) : {0.0 0.0 443.2 440.42}
+BUFX2 instances: 0 (must be 0)
+CLKBUFX2 instances: 0 (must be 0)
+Macro soc/master_ram/u_macro at {20.0 320.41} MX
+Macro soc/app_ram_u_macro at {20.0 20.01} R0
+Standard cell area 110357 um2, macro area 16000 um2, core 169577 um2
+Standard cell density outside macros: 71.9%

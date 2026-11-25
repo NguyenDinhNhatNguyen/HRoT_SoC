@@ -1,0 +1,1 @@
+top=ASIC_Top stage=pre setup_ns=1.176 hold_ns=-0.178 recovery_ns=9.933 removal_ns=0.010
