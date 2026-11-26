@@ -47,10 +47,15 @@ module IMEM (
 
     reg [31:0] ram [0:1023];
     reg [31:0] q;
+    // Low power: the RAM rests unless something is written or a read is needed. On the fetch side only the
+    // first cycle of a new address reads, q then holds. The ASIC wrapper drives the macro CEN with ~en.
+    wire en = wr | (released ? fetch_stall : locked);
     always @(posedge clk) begin
-        if (wr)
-            ram[a] <= d;
-        q <= ram[a];
+        if (en) begin
+            if (wr)
+                ram[a] <= d;
+            q <= ram[a];
+        end
     end
 
     // The word in q belongs to the address fa_q once the fetch side has had the port for one cycle

@@ -100,6 +100,12 @@ module IMEM_tb;
         for (int i = 1; i < WORDS; i += 7)
             fetch(i, ref_mem[i], "fetch");               // ends on the last word (APP_VER)
         fetch(0, ref_mem[0], "fetch of the first word");
+        // low power: a held address does not read the RAM again (backdoor change must stay invisible)
+        dut.ram[0] = ~ref_mem[0];
+        repeat (3) @(posedge clk);
+        #1 chk(fetch_stall, 1'b0, "held address does not stall");
+        chk(fetch_data, ref_mem[0], "held address does not read the RAM again");
+        dut.ram[0] = ref_mem[0];
         // outside the 4 KB: an all-zero word (illegal instruction), never an alias of word 0
         fetch(WORDS, 32'h0, "fetch one word past the end");
         fetch(0, ref_mem[0], "fetch back inside");
