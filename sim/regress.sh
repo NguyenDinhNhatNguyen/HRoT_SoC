@@ -75,6 +75,9 @@ check "SRAM macro wrappers"         $LOG/ram.log       "RAM_Macro_tb RESULT: PAS
 check "Core ISA on macro RAM"       $LOG/ram_isa.log   "RAM_Core_ISA_tb RESULT: PASS"
 (cd sim && "$QUESTA" -c -do run_bv.do < /dev/null)                                  > $LOG/bv.log 2>&1
 check "Boot_Verifier and release gate" $LOG/bv.log      "RESULT: PASS"
+# Shared instruction memory of the two-world design (N-41), not wired into SoC_Top yet (N-42)
+(cd sim && "$QUESTA" -c -do run_imem.do < /dev/null)                                > $LOG/imem.log 2>&1
+check "IMEM block"                  $LOG/imem.log      "IMEM_tb RESULT: PASS"
 python3 dv/sw/mkhex.py sim > /dev/null
 (cd sim && "$QUESTA" -c -do run_soc.do < /dev/null)                                 > $LOG/soc.log 2>&1
 check "SoC: secure boot, good image" $LOG/soc.log      "RESULT: PASS"

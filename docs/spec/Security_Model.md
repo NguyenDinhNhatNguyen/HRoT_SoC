@@ -66,13 +66,18 @@ Lý do thay đổi: Ảnh firmware nằm trong ROM của vùng Normal nên ranh 
 
 | Mã | Yêu cầu | Cách thực hiện dự kiến | Kiểm dự kiến |
 | --- | --- | --- | --- |
-| SR-12 | Byte lõi Normal chạy là byte đã được kiểm | Khóa trước khi băm, cờ `HASHED`, nhả cần `VERIFIED` và `LOCK` | `IMEM_tb`, test toàn SoC: băm kho ảnh rồi xin nhả bị từ chối, CPU ghi SHA-256 sau khi DMA băm bị từ chối |
+| SR-12 | Byte lõi Normal chạy là byte đã được kiểm | Khóa trước khi băm, cờ `HASHED` trong SYSCSR, Boot_Verifier chỉ đạt khi `HASHED`, nhả cần `VERIFIED` và `LOCK` | `IMEM_tb`, test toàn SoC: băm kho ảnh rồi xin nhả bị từ chối, CPU ghi SHA-256 sau khi DMA băm bị từ chối |
 | SR-13 | Lõi Normal không ghi được bộ nhớ lệnh | IMEM chỉ có cổng lấy lệnh về phía Normal | `IMEM_tb`, đọc `SoC_Top.v` |
-| SR-14 | Sau khi khóa, vùng Secure không sửa được bộ nhớ lệnh | Ghi khi đã khóa trả `SLVERR`, chỉ reset hệ thống mở khóa và đồng thời giữ lõi Normal trong reset | `IMEM_tb` |
+| SR-14 | Sau khi khóa, vùng Secure không sửa được bộ nhớ lệnh | Ghi khi đã khóa trả `SLVERR`, chỉ reset hệ thống mở khóa và đồng thời giữ lõi Normal trong reset. Sau khi nhả lõi, Secure đọc cũng nhận `SLVERR` | `IMEM_tb` |
+| SR-15 | Phát hiện lõi Normal thực thi lệnh khác firmware đã kiểm hoặc chạy ra ngoài vùng mã | Secure Monitor so PC và lệnh đã thực thi với bản chuẩn 4 KB | Test chèn lỗi vào đường lấy lệnh |
+| SR-16 | Dữ liệu qua mailbox được mã hóa và xác thực bằng khóa chỉ Secure biết | Ascon-AEAD128 trên phía Secure | Vector kiểm thử của NIST, test sửa bản mã bị từ chối |
 
-Yêu cầu cũ bị ảnh hưởng: SR-04 thêm kho ảnh chỉ đọc. SR-05 xóa cả IMEM. SR-08 thêm cửa sổ đọc IMEM cho DMA. SR-10 thêm cửa sổ 4 KB của IMEM.
+Yêu cầu cũ bị ảnh hưởng: SR-04 thêm kho ảnh chỉ đọc. SR-05 xóa cả IMEM. SR-08 đổi cửa sổ đọc của DMA từ kho ảnh sang IMEM. SR-10 thêm cửa sổ 4 KB của IMEM trên bus Secure và trên đường lấy lệnh. L6 đóng khi bus Normal nối `data_err`.
 
 | # | Giới hạn mới | Hệ quả |
 | --- | --- | --- |
-| L13 | Vùng Secure đọc được IMEM sau khi khóa | Cần để băm đúng nội dung sẽ chạy và đọc `APP_VER`. Vùng Secure là vùng tin cậy |
+| L13 | Vùng Secure đọc được IMEM sau khi khóa và trước khi nhả lõi Normal | Cần để băm đúng nội dung sẽ chạy và đọc `APP_VER`. Vùng Secure là vùng tin cậy |
 | L14 | Kho ảnh nằm trên chip thay cho flash | Chưa kiểm được tấn công vào flash ngoài cho tới khi có SPI |
+| L15 | Chế độ HMAC của Boot_Verifier đọc tag từ Boot ROM và cần CPU tự ghi vào SHA-256 | Không dùng được cùng cờ `HASHED`, thiết kế mới chỉ dùng golden hash |
+| L16 | Chưa có bộ nhớ giữ được khi mất điện cho bộ đếm nonce | Sau khi cấp nguồn lại, nonce có thể lặp với cùng khóa. Chỉ chấp nhận cho demo |
+| L17 | Secure Monitor phát hiện sau khi lệnh đã thực thi | Lệnh sai kịp tác động trong vài chu kỳ trước khi lõi bị khóa. Monitor nhắm vào lỗi vật lý, vì phần mềm không ghi được IMEM đã khóa |

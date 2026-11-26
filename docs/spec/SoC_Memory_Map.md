@@ -179,19 +179,24 @@ Các bảng ở trên mô tả RTL hiện tại. Mục này là đặc tả cho 
 
 | Trạng thái | Secure ghi cả từ | Secure ghi byte, nửa từ | Secure đọc (CPU, DMA) | Lõi Normal |
 | --- | --- | --- | --- | --- |
-| Chưa khóa | OKAY | `SLVERR`, không đổi dữ liệu | `SLVERR` | Bị giữ reset |
-| Đã khóa | `SLVERR`, không đổi dữ liệu | `SLVERR` | OKAY | Chỉ lấy lệnh, sau khi được nhả |
+| Chưa khóa, lõi Normal còn reset | OKAY | `SLVERR`, không đổi dữ liệu | `SLVERR` | Bị giữ reset |
+| Đã khóa, lõi Normal còn reset | `SLVERR`, không đổi dữ liệu | `SLVERR` | OKAY | Bị giữ reset |
+| Lõi Normal đã được nhả | `SLVERR`, không đổi dữ liệu | `SLVERR` | `SLVERR` | Chỉ lấy lệnh |
 
-Lõi Normal không có đường ghi vào IMEM và không đọc IMEM như dữ liệu.
+Lõi Normal không có đường ghi vào IMEM và không đọc IMEM như dữ liệu. Lệnh lấy ngoài `0x0000_0000`..`0x0000_0FFF` trả về từ `0x0000_0000`, không lặp về trong IMEM. Lõi coi đó là lệnh không hợp lệ (`mcause` 2).
 
-### SYSCSR thêm một thanh ghi
+IMEM đọc ở cạnh lên, dữ liệu có sau 1 chu kỳ. Khi lấy lệnh, IMEM giữ `instr_stall` = 1 cho tới khi lệnh của địa chỉ đang hỏi đã có (I-09). Cổng được chia theo giai đoạn nên bản ASIC chỉ cần một macro SRAM 1 cổng 4 KB.
+
+### SYSCSR thêm hai thanh ghi
 
 | Offset | Tên | Truy cập | Mô tả |
 | --- | --- | --- | --- |
 | `0x24` | IMEM_CTRL | RW | bit0 `LOCK`: ghi 1 để khóa IMEM, chỉ reset hệ thống mới mở. bit1 `HASHED` (chỉ đọc): kết quả SHA-256 hiện tại là của IMEM đã khóa |
+| `0x28` | BOOT_STATUS | RW | bit[7:0]: mã kết quả secure boot (`fw/secure_boot/secure_boot.h`), đưa ra chân LED. Về `0x00` khi reset hệ thống |
 
 ### Điều kiện `HASHED`
 
+- Cờ nằm trong SYSCSR.
 - Bật khi Secure DMA chạy xong không lỗi, nguồn `0x7000_0000`, đủ 64 khối, IMEM đã khóa lúc bắt đầu, và CPU không ghi vào SHA-256 trong lúc chạy.
 - Tắt khi reset hệ thống, khi DMA bắt đầu một lần chạy mới, hoặc khi CPU ghi vào bất kỳ thanh ghi nào của SHA-256.
 - Boot_Verifier chỉ báo `VERIFIED` khi `HASHED` đang bật.
@@ -199,4 +204,32 @@ Lõi Normal không có đường ghi vào IMEM và không đọc IMEM như dữ 
 
 ### Trình tự khởi động
 
-Secure chép kho ảnh vào IMEM, khóa IMEM, cho DMA băm IMEM, so golden hash, đọc `APP_VER` từ IMEM, yêu cầu Boot_Verifier `CHECK`, rồi mới nhả lõi Normal. Tường lửa DMA cho đọc thêm cửa sổ IMEM. Boot Guard `LOCK` xóa cả IMEM cùng RAM của lõi Normal.
+Secure chép kho ảnh vào IMEM, khóa IMEM, cho DMA băm IMEM, so golden hash, đọc `APP_VER` từ IMEM, yêu cầu Boot_Verifier `CHECK`, rồi mới nhả lõi Normal. Tường lửa DMA chỉ cho đọc cửa sổ IMEM, không còn đọc kho ảnh. Boot Guard `LOCK` xóa cả IMEM cùng RAM của lõi Normal.
+
+### Ngoại vi bên Secure
+
+Bỏ GPIO0 và TIMER0. Giữ UART0 để gỡ lỗi và WDT. Trạng thái boot ghi vào `SYSCSR.BOOT_STATUS` và đưa ra LED, thay cho GPIO0.
+
+### Bus phía Normal (AXI4-Lite)
+
+Lõi Normal lấy lệnh từ IMEM qua cổng lệnh riêng. Cổng dữ liệu đi qua bus AXI4-Lite. Lỗi bus nối vào `data_err` của lõi.
+
+| Địa chỉ | Khối | Ghi chú |
+| --- | --- | --- |
+| `0x1000_0000` 4 KB | RAM Normal | Cùng địa chỉ với `fw/app/app.ld` |
+| `0x4000_0000` | UART1 | Qua cầu AXI→APB |
+| `0x4000_1000` | GPIO1 | |
+| `0x4000_2000` | TIMER1 | |
+| `0x4000_3000` | MAILBOX (phía Normal) | |
+| Địa chỉ khác | (không có) | Lỗi bus, không còn lặp về RAM |
+
+### Secure Monitor (làm sau IMEM)
+
+- Giữ một bản chuẩn 4 KB, ghi cùng lúc khi Secure ghi IMEM và khóa cùng IMEM.
+- Nhận PC và lệnh đã thực thi xong của lõi Normal, so với bản chuẩn.
+- Lệnh khác bản chuẩn hoặc PC ngoài 4 KB: Khóa lõi Normal (Boot Guard), xóa bộ nhớ lệnh, bản chuẩn và RAM Normal, ngắt lõi Secure.
+- Thanh ghi và giao diện: TBD.
+
+### Mã hóa dữ liệu qua mailbox (làm sau IMEM)
+
+Dùng Ascon-AEAD128 (NIST SP 800-232) cho cả mã hóa và xác thực. Làm bằng firmware trên lõi Secure trước, khối phần cứng sau nếu kịp. Khóa chỉ nằm bên Secure.
