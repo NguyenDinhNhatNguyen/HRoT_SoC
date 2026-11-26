@@ -1,7 +1,9 @@
 `timescale 1ns/1ps
 
 // Self-checking testbench for Boot_Verifier and the SYSCSR release gate (VERIFY_GATE = 1).
-// SHA-256 and the Boot ROM are replaced by plain registers so every verdict can be forced.
+// SHA-256, the Secure DMA and the Boot ROM are replaced by plain registers so every verdict can be forced.
+// Both blocks run in the two-world setting (REQ_HASHED, IMEM_BOOT): the verdict needs IMEM_CTRL.HASHED
+// and the release needs IMEM_CTRL.LOCK.
 // Ends with "Boot_Verifier_tb RESULT: PASS|FAIL", which sim/regress.sh looks for.
 module Boot_Verifier_tb;
     reg clk = 0, por = 1;
@@ -22,17 +24,23 @@ module Boot_Verifier_tb;
     always @(negedge clk)
         rom_data <= rom[rom_addr[11:2]];
 
-    wire sys_rst, app_rst, verified;
+    // Fake Secure DMA run reports and CPU write to SHA-256, into SYSCSR
+    reg          dma_start = 0, dma_ok = 0, sha_cpu_wr = 0;
+    reg  [31:0]  dma_src = 0, dma_nblk = 0;
+    wire         sys_rst, app_rst, verified, hashed;
 
-    Boot_Verifier #(.KEY(256'h0123456789ABCDEF_FEDCBA9876543210_0F1E2D3C4B5A6978_8796A5B4C3D2E1F0)) dut (
-        .clk(clk), .por_rst(por), .sys_rst(sys_rst),
+    Boot_Verifier #(.KEY(256'h0123456789ABCDEF_FEDCBA9876543210_0F1E2D3C4B5A6978_8796A5B4C3D2E1F0),
+                    .REQ_HASHED(1)) dut (
+        .clk(clk), .por_rst(por), .sys_rst(sys_rst), .hashed(hashed),
         .sha_digest(dig), .sha_done(sha_done), .sha_busy(sha_busy),
         .rom_addr(rom_addr), .rom_data(rom_data), .busy(), .verified(verified),
         .PADDR(PADDR), .PSEL(sel == 1), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(4'hF), .PRDATA(rd_bv), .PREADY(), .PSLVERR()
     );
 
-    SYSCSR #(.VERIFY_GATE(1), .RST_HOLD(3), .ZERO_WORDS(16)) sys (
+    SYSCSR #(.VERIFY_GATE(1), .RST_HOLD(3), .ZERO_WORDS(16), .IMEM_BOOT(1)) sys (
+        .dma_start(dma_start), .dma_ok(dma_ok), .dma_src(dma_src), .dma_nblk(dma_nblk),
+        .sha_cpu_wr(sha_cpu_wr), .imem_lock(), .imem_hashed(hashed),
         .clk(clk), .por_rst(por), .wdt_rst_req(1'b0),
         .sys_rst(sys_rst), .app_rst(app_rst), .app_zero_en(), .app_zero_addr(),
         .boot_strap(4'h0), .verified(verified),
@@ -108,7 +116,46 @@ module Boot_Verifier_tb;
         end
     endtask
 
-    task sw_reset;
+    // one-cycle pulses on the fake DMA and CPU signals
+    task pulse(input integer which);
+        begin
+            @(posedge clk);
+            if (which == 0) dma_start <= 1;
+            if (which == 1) dma_ok <= 1;
+            if (which == 2) sha_cpu_wr <= 1;
+            @(posedge clk);
+            dma_start <= 0;
+            dma_ok <= 0;
+            sha_cpu_wr <= 0;
+            #1;
+        end
+    endtask
+
+    task dma_run(input [31:0] src, input [31:0] nblk);
+        begin
+            dma_src  = src;
+            dma_nblk = nblk;
+            pulse(0);
+            repeat (3) @(posedge clk);
+            pulse(1);
+        end
+    endtask
+
+    task hash_imem;                       // lock IMEM and let the DMA hash it
+        begin
+            apb_wr(2, 12'h024, 32'h1);
+            dma_run(32'h7000_0000, 32'd64);
+        end
+    endtask
+
+    task sw_reset;                        // reset, then bring IMEM back to locked and hashed
+        begin
+            raw_reset;
+            hash_imem;
+        end
+    endtask
+
+    task raw_reset;
         begin
             apb_wr(2, 12'h014, 32'h5A5A0001);
             repeat (3) @(posedge clk);
@@ -128,6 +175,7 @@ module Boot_Verifier_tb;
         por <= 0;
         wait (!sys_rst);
         repeat (2) @(posedge clk);
+        hash_imem;
 
         // ---- Before any CHECK the gate is shut, whatever the firmware writes ----
         apb_rd(1, 12'h004, r);
@@ -257,6 +305,79 @@ module Boot_Verifier_tb;
         chk(r, 32'h01234567, "power-on reset reopens the key");
         apb_rd(1, 12'h008, r);
         chk(r, 32'h0, "power-on reset clears MIN_VER");
+
+        // ---- IMEM_CTRL: LOCK is sticky until a system reset ----
+        raw_reset;
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h0, "IMEM_CTRL clear after reset");
+        apb_wr(2, 12'h024, 32'h1);
+        apb_wr(2, 12'h024, 32'h0);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "writing 0 does not unlock IMEM");
+        apb_wr(2, 12'h024, 32'h2);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "HASHED cannot be written by software");
+
+        // ---- Runs that must not set HASHED ----
+        raw_reset;
+        dma_run(32'h7000_0000, 32'd64);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h0, "run over an unlocked IMEM: not HASHED");
+        apb_wr(2, 12'h024, 32'h1);
+        dma_run(32'h6000_0000, 32'd64);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "run over the image store: not HASHED");
+        dma_run(32'h7000_0000, 32'd63);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "partial run: not HASHED");
+        dma_run(32'h7000_0040, 32'd64);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "shifted source: not HASHED");
+        dma_src = 32'h7000_0000; dma_nblk = 32'd64;
+        pulse(0);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "run without a clean end: not HASHED");
+        pulse(2);
+        pulse(1);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "CPU writes SHA during the run: not HASHED");
+
+        // ---- HASHED set, then lost ----
+        dma_run(32'h7000_0000, 32'd64);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h3, "clean run over the locked IMEM: HASHED");
+        dma_run(32'h6000_0000, 32'd64);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "a later run elsewhere clears HASHED");
+        dma_run(32'h7000_0000, 32'd64);
+        pulse(2);
+        apb_rd(2, 12'h024, r);
+        chk(r, 32'h1, "CPU write to SHA clears HASHED");
+        load(D, 12'hFE0);
+        apb_wr(1, 12'h00C, 32'd9);
+        check_cmd(0);
+        apb_rd(1, 12'h004, r);
+        chk(r, 32'hA, "good digest without HASHED: FAIL");
+
+        // ---- HASHED lost while the golden hash is being read ----
+        sw_reset;
+        load(D, 12'hFE0);
+        apb_wr(1, 12'h00C, 32'd9);
+        apb_wr(1, 12'h000, 32'h1);
+        pulse(2);
+        repeat (12) @(posedge clk);
+        apb_rd(1, 12'h004, r);
+        chk(r, 32'hA, "HASHED drops during CHECK: FAIL");
+
+        // ---- The release needs LOCK even if the verdict says yes ----
+        raw_reset;
+        force sys.verified = 1'b1;
+        apb_wr(2, 12'h000, 32'h1);
+        chk({31'b0, app_rst}, 32'h1, "no release while IMEM is unlocked");
+        apb_wr(2, 12'h024, 32'h1);
+        apb_wr(2, 12'h000, 32'h1);
+        chk({31'b0, app_rst}, 32'h0, "release once IMEM is locked");
+        release sys.verified;
 
         $display("Boot_Verifier_tb SUMMARY: PASS = %0d | FAIL = %0d", pass, fail);
         $display("Boot_Verifier_tb RESULT: %0s", fail == 0 ? "PASS" : "FAIL");

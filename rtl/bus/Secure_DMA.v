@@ -23,6 +23,12 @@ module Secure_DMA #(
     input             clk, reset,
     output            irq,           // DONE and IRQ_EN, to PLIC source 2
 
+    // Run report for SYSCSR.IMEM_CTRL.HASHED
+    output            run_start,     // pulse: START accepted, src and nblk describe this run
+    output reg        run_ok,        // pulse: every block (and the padding) hashed without an error
+    output     [31:0] src,
+    output     [31:0] nblk,
+
     // APB4 slave
     input      [11:0] PADDR,
     input             PSEL,
@@ -64,7 +70,10 @@ module Secure_DMA #(
     wire wr    = PSEL && PENABLE && PWRITE;
     wire start = wr && PADDR == 12'h008 && PWDATA[0] && st == S_IDLE;
 
-    assign irq = irq_en_q & done;
+    assign irq       = irq_en_q & done;
+    assign run_start = start;
+    assign src       = src_q;
+    assign nblk      = nblk_q;
 
     function [31:0] bswap;
         input [31:0] x;
@@ -108,7 +117,9 @@ module Secure_DMA #(
             req_write <= 1'b0;
             req_addr  <= 32'b0;
             req_wdata <= 32'b0;
+            run_ok    <= 1'b0;
         end else begin
+            run_ok <= 1'b0;
             if (wr && st == S_IDLE) begin
                 if (PADDR == 12'h000)
                     src_q <= PWDATA;
@@ -248,6 +259,7 @@ module Secure_DMA #(
                         end else if (resp_rdata[0]) begin
                             // This block is hashed. The request stays up, so a not-done answer just polls again
                             if (in_pad || (left == 32'd1 && !pad_q)) begin
+                                run_ok    <= 1'b1;
                                 req_valid <= 1'b0;
                                 busy      <= 1'b0;
                                 done      <= 1'b1;

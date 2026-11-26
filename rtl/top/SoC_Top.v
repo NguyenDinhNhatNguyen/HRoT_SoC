@@ -326,9 +326,15 @@ module SoC_Top #(
     wire [9:0] zero_addr;
 
     wire bv_verified;
+
+    // IMEM_CTRL (two-world design): the Secure DMA reports its runs, a CPU write to SHA-256 spoils HASHED
+    wire        dma_run_start, dma_run_ok, imem_lock, imem_hashed;
+    wire [31:0] dma_src, dma_nblk;
+    wire        sha_cpu_wr = axi_req_valid & bus_idle & ~sel_dma & axi_req_write &
+                             (axi_req_addr[31:16] == 16'h5000);
     Boot_Verifier #(.GOLDEN_ADDR(BV_GOLDEN_ADDR), .TAG_ADDR(BV_TAG_ADDR)) boot_verifier (
         .clk(clk), .por_rst(reset_system), .sys_rst(sys_rst),
-        .sha_digest(sha_digest), .sha_done(sha_done), .sha_busy(sha_busy),
+        .sha_digest(sha_digest), .sha_done(sha_done), .sha_busy(sha_busy), .hashed(imem_hashed),
         .rom_addr(bv_rom_addr), .rom_data(bv_rom_data), .busy(bv_busy), .verified(bv_verified),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[8]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[287:256]), .PREADY(pready_s[8]), .PSLVERR(pslverr_s[8])
@@ -338,6 +344,8 @@ module SoC_Top #(
         .clk(clk), .por_rst(reset_system), .wdt_rst_req(wdt_rst),
         .sys_rst(sys_rst), .app_rst(app_rst), .app_zero_en(zero_en), .app_zero_addr(zero_addr),
         .boot_strap(boot_strap), .verified(bv_verified),
+        .dma_start(dma_run_start), .dma_ok(dma_run_ok), .dma_src(dma_src), .dma_nblk(dma_nblk),
+        .sha_cpu_wr(sha_cpu_wr), .imem_lock(imem_lock), .imem_hashed(imem_hashed),
         .bus_err(bus_err), .bus_err_write(bus_err_write), .bus_err_resp(bus_err_resp), .bus_err_addr(bus_err_addr),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[0]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[31:0]), .PREADY(pready_s[0]), .PSLVERR(pslverr_s[0])
@@ -378,6 +386,7 @@ module SoC_Top #(
 
     Secure_DMA dma (
         .clk(clk), .reset(sys_rst), .irq(dma_irq),
+        .run_start(dma_run_start), .run_ok(dma_run_ok), .src(dma_src), .nblk(dma_nblk),
         .PADDR(PADDR[11:0]), .PSEL(psel_s[7]), .PENABLE(PENABLE), .PWRITE(PWRITE),
         .PWDATA(PWDATA), .PSTRB(PSTRB), .PRDATA(prdata_s[255:224]), .PREADY(pready_s[7]), .PSLVERR(pslverr_s[7]),
         .req_valid(dma_req), .req_write(dma_req_write), .req_addr(dma_req_addr), .req_wdata(dma_req_wdata),

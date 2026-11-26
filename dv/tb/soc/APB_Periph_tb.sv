@@ -36,7 +36,10 @@ module APB_Periph_tb;
     reg  [1:0]  be_resp = 0;
     reg  [31:0] be_addr = 0;
 
+    wire        imem_lock, imem_hashed;
     SYSCSR #(.RST_HOLD(3), .ZERO_WORDS(16)) u_sys (
+        .dma_start(1'b0), .dma_ok(1'b0), .dma_src(32'b0), .dma_nblk(32'b0), .sha_cpu_wr(1'b0),
+        .imem_lock(imem_lock), .imem_hashed(imem_hashed),
         .clk(clk), .por_rst(por), .wdt_rst_req(wdt_rst), .sys_rst(sys_rst), .app_rst(app_rst), .boot_strap(4'hA), .verified(1'b0),
         .app_zero_en(zero_en), .app_zero_addr(zero_addr),
         .bus_err(be_pulse), .bus_err_write(be_write), .bus_err_resp(be_resp), .bus_err_addr(be_addr),

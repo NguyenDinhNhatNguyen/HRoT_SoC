@@ -19,10 +19,12 @@
 //
 // CHECK fails when SHA-256 does not hold a finished digest, when APP_VER < MIN_VER, or when any of
 // the 8 digest words differs from the Boot ROM slot. A passing CHECK raises MIN_VER to APP_VER.
+// With REQ_HASHED it also fails unless SYSCSR.IMEM_CTRL.HASHED stays high for the whole CHECK.
 module Boot_Verifier #(
     parameter [255:0] KEY         = 256'h0123456789ABCDEFFEDCBA98765432100F1E2D3C4B5A69788796A5B4C3D2E1F0,
     parameter [11:0]  GOLDEN_ADDR = 12'hFE0,     // 8 words in the Boot ROM, byte address
-    parameter [11:0]  TAG_ADDR    = 12'hFC0      // 8 words in the Boot ROM, byte address
+    parameter [11:0]  TAG_ADDR    = 12'hFC0,     // 8 words in the Boot ROM, byte address
+    parameter         REQ_HASHED  = 0            // 1 = the digest must be that of the locked IMEM
 )(
     input             clk,
     input             por_rst,         // power-on reset: clears KEY_LOCK and MIN_VER
@@ -32,6 +34,7 @@ module Boot_Verifier #(
     input  [255:0]    sha_digest,
     input             sha_done,
     input             sha_busy,
+    input             hashed,          // SYSCSR.IMEM_CTRL.HASHED (ignored when REQ_HASHED = 0)
 
     // Boot ROM read port (negedge registered, the data follows the address within the cycle).
     // SoC_Top gives this block the ROM's AXI-side port while busy is high
@@ -70,7 +73,8 @@ module Boot_Verifier #(
     wire        check_req = wr && PADDR == 12'h000 && PWDATA[0] && !checked;
     wire [31:0] want      = sha_digest[255 - 32*cnt -: 32];
     wire        ver_ok    = (app_ver >= min_ver);
-    wire        digest_ok = sha_done && !sha_busy;
+    wire        hash_ok   = hashed || (REQ_HASHED == 0);
+    wire        digest_ok = sha_done && !sha_busy && hash_ok;
 
     assign verified = ok_q;
     assign busy     = (st == S_FETCH);
@@ -99,11 +103,11 @@ module Boot_Verifier #(
             end
         end else begin
             // The word for the address of the previous cycle is valid now
-            if (rom_data != want)
+            if (rom_data != want || !hash_ok)
                 mismatch <= 1'b1;
             if (cnt == 3'd7) begin
                 st <= S_IDLE;
-                if (mismatch || rom_data != want)
+                if (mismatch || rom_data != want || !hash_ok)
                     fail_q <= 1'b1;
                 else
                     ok_q <= 1'b1;
@@ -115,7 +119,7 @@ module Boot_Verifier #(
     end
 
     // ---- Key lock and anti-rollback floor, cleared only by POR ----
-    wire min_up = (st == S_FETCH) && (cnt == 3'd7) && !mismatch && (rom_data == want);
+    wire min_up = (st == S_FETCH) && (cnt == 3'd7) && !mismatch && (rom_data == want) && hash_ok;
     wire min_wr = wr && PADDR == 12'h008 && (PWDATA > min_ver);
     always @(posedge clk) begin
         if (por_rst) begin

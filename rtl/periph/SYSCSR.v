@@ -16,11 +16,17 @@
 //   0x1C BUS_ERR_ADDR RO address of that error
 //   0x20 GUARD      RW  bit0 LOCK (write 1, cleared only by POR): holds the App Core in reset for good and
 //                   starts the zeroization of the App RAM. Reads bit0 LOCK, bit1 ZERO_BUSY, bit2 ZERO_DONE
+//   0x24 IMEM_CTRL  RW  bit0 LOCK (write 1, cleared only by a system reset): IMEM refuses writes.
+//                   bit1 HASHED (RO): the SHA-256 result is that of the locked IMEM. Set by a Secure DMA run
+//                   that started with LOCK on IMEM_BASE with 64 blocks and ended cleanly. Cleared by a new DMA
+//                   run, by any CPU write to SHA-256 and by a system reset
 //   other offsets: read 0, writes ignored
 module SYSCSR #(
     parameter VERIFY_GATE = 0,          // 1 = APP_RUN rises only while Boot_Verifier reports VERIFIED
     parameter RST_HOLD = 4,             // cycles sys_rst stays high after a reset request
-    parameter ZERO_WORDS = 1024         // words of the App RAM that zeroization clears
+    parameter ZERO_WORDS = 1024,        // words of the App RAM that zeroization clears
+    parameter IMEM_BOOT = 0,            // 1 = APP_RUN also needs IMEM_CTRL.LOCK
+    parameter [31:0] IMEM_BASE = 32'h7000_0000
 )(
     input             clk,
     input             por_rst,         // power-on / push-button reset, already synchronized outside
@@ -31,6 +37,15 @@ module SYSCSR #(
     output     [9:0]  app_zero_addr,   // word index being cleared
     input      [3:0]  boot_strap,
     input             verified,        // Boot_Verifier verdict (ignored when VERIFY_GATE = 0)
+
+    // IMEM_CTRL: Secure DMA run report, CPU write to SHA-256, state towards IMEM and Boot_Verifier
+    input             dma_start,
+    input             dma_ok,
+    input      [31:0] dma_src,
+    input      [31:0] dma_nblk,
+    input             sha_cpu_wr,
+    output reg        imem_lock,
+    output reg        imem_hashed,
 
     // Master bus error report from AXI4_Lite_Master
     input             bus_err,         // one-cycle pulse
@@ -153,7 +168,30 @@ module SYSCSR #(
             app_run <= 1'b0;
             strap_q <= boot_strap;      // latch the straps while in reset
         end else if (wr && PADDR == 12'h000 && PSTRB[0]) begin
-            app_run <= PWDATA[0] && (verified || !VERIFY_GATE);
+            app_run <= PWDATA[0] && ((verified && (imem_lock || IMEM_BOOT == 0)) || !VERIFY_GATE);
+        end
+    end
+
+    // ---- IMEM_CTRL ----
+    reg hash_armed;                     // the running DMA job counts for HASHED
+    always @(posedge clk) begin
+        if (sys_rst_q) begin
+            imem_lock   <= 1'b0;
+            imem_hashed <= 1'b0;
+            hash_armed  <= 1'b0;
+        end else begin
+            if (wr && PADDR == 12'h024 && PWDATA[0] && PSTRB[0])
+                imem_lock <= 1'b1;
+            if (sha_cpu_wr) begin
+                imem_hashed <= 1'b0;
+                hash_armed  <= 1'b0;
+            end else if (dma_start) begin
+                imem_hashed <= 1'b0;
+                hash_armed  <= imem_lock && (dma_src == IMEM_BASE) && (dma_nblk == 32'd64);
+            end else if (dma_ok) begin
+                imem_hashed <= hash_armed;
+                hash_armed  <= 1'b0;
+            end
         end
     end
     assign app_rst = sys_rst_q | ~app_run | lock_q;
@@ -176,6 +214,8 @@ module SYSCSR #(
                 PRDATA = be_addr;
             12'h020:
                 PRDATA = {29'b0, zero_done, zero_busy, lock_q};
+            12'h024:
+                PRDATA = {30'b0, imem_hashed, imem_lock};
             default:
                 PRDATA = 32'b0;
         endcase
